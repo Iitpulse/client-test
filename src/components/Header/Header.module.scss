@@ -1,0 +1,14 @@
+@import "../../utils/common.scss";
+
+.container {
+  .logoSection {
+    padding: 10px 20px;
+    @extend .flexRow;
+    .moreInfoTest {
+      margin-left: auto;
+      button {
+        margin: 5px;
+      }
+    }
+  }
+}

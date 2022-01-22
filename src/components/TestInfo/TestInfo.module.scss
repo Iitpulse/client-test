@@ -1,0 +1,17 @@
+@import "../../utils/common.scss";
+
+.container {
+  width: 100%;
+  padding: 10px 5%;
+  background-color: rgb(235, 235, 235);
+  @extend .flexRow;
+  select {
+    margin-left: auto;
+    font-size: 0.8rem;
+    width: 200px;
+    padding: 10px;
+    background-color: white;
+    outline: none;
+    border: 2px solid rgb(201, 201, 201);
+  }
+}

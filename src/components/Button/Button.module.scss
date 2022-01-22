@@ -1,0 +1,33 @@
+@import "../../utils/common.scss";
+
+.btn {
+  color: white;
+  padding: calc(0.5rem + 2px) 1.5rem;
+  border: none;
+  outline: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  margin: 0.5rem 0;
+  > span {
+    @extend .flexRow;
+    span {
+      margin-right: 0.3rem;
+    }
+  }
+}
+
+.clrPrimary {
+  background: var(--clr-primary);
+}
+.clrError {
+  background: var(--clr-error);
+}
+.clrWarning {
+  background: var(--clr-warning);
+}
+.clrSuccess {
+  background: var(--clr-success);
+}

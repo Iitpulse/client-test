@@ -21,10 +21,10 @@ const Question: React.FC<Props> = ({
   type,
 }) => {
   return (
-    <div className={styles.container}>
+    <div id="container" className={styles.container}>
       <div className={styles.header}>
         <h3>Question {index + 1}</h3>
-        <a id="arrow-down" href="#arrow-up">
+        <a id="top" href="#bottom">
           <img src={arrowDown} alt="Arrow Down" />
         </a>
       </div>
@@ -57,7 +57,7 @@ const Question: React.FC<Props> = ({
         ))}
       </ul>
       <div className={styles.buttonContainer}>
-        <a id="arrow-up" href="#arrow-down">
+        <a id="bottom" href="#top">
           <img src={arrowDown} alt="Arrow Up" />
         </a>
       </div>

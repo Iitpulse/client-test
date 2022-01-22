@@ -1,6 +1,7 @@
 import { Question, Header, Button } from "../../components";
 import styles from "./Home.module.scss";
 import { useRef } from "react";
+import expandRight from "../../assets/icons/greaterThan.svg";
 
 const Home = () => {
   const mainRef = useRef<HTMLDivElement>(null);
@@ -98,7 +99,21 @@ const Home = () => {
             </Button>
           </div>
         </main>
-        <aside className={styles.rightContainer}>This is Right Container</aside>
+        <aside className={styles.rightContainer}>
+          <Button className={styles.expandRight}>
+            <img src={expandRight} alt="Expand Right" />
+          </Button>
+          <div className={styles.mainContent}>
+            <div className={styles.legendContainer}></div>
+            <div className={styles.questionButtonsContainer}>
+              {Array(150)
+                .fill(0)
+                .map((item, i) => {
+                  return <button>{i}</button>;
+                })}
+            </div>
+          </div>
+        </aside>
       </section>
 
       {/* <Button onClick={handleScreen}>Toggle Screen</Button> */}

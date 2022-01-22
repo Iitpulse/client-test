@@ -1,0 +1,106 @@
+.container {
+  border: dotted black 3px;
+  margin: 1rem;
+  padding: 0.7rem;
+  width: 350px;
+  height: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+
+  .large {
+    flex: 2;
+  }
+
+  .subContainer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 150px;
+    height: 40px;
+
+    .notVisitedBtn {
+      padding: 5px;
+    }
+
+    .notAnswered {
+      height: 30px;
+      width: 30px;
+      background: red;
+      clip-path: polygon(0 0, 100% 25%, 100% 76%, 0% 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px;
+      color: #fff;
+    }
+
+    .answered {
+      height: 30px;
+      width: 30px;
+      background: green;
+      clip-path: polygon(0 0, 100% 25%, 100% 76%, 0% 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px;
+      color: #fff;
+    }
+
+    .markForReview {
+      color: #fff;
+
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+
+      background: rgb(2, 0, 36);
+      background: linear-gradient(
+        129deg,
+        rgba(2, 0, 36, 1) 0%,
+        rgba(131, 96, 187, 1) 0%,
+        rgba(77, 32, 146, 1) 100%
+      );
+      padding: 5px 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .answeredAndMarkForReview {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: rgb(2, 0, 36);
+      background: linear-gradient(
+        129deg,
+        rgba(2, 0, 36, 1) 0%,
+        rgba(131, 96, 187, 1) 0%,
+        rgba(77, 32, 146, 1) 100%
+      );
+      padding: 5px 7px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      &::after {
+        content: "";
+        background: #5cb85c;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        margin-bottom: 2px;
+        margin-right: 3px;
+      }
+    }
+
+    span {
+      margin-left: 10px;
+      font-size: 1rem;
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { Question } from "../../components";
+import Legend from "../../components/Legend/Legend";
 import styles from "./Home.module.scss";
 
 const Home = () => {
@@ -17,7 +18,7 @@ const Home = () => {
   ];
   return (
     <div>
-      {questions.map((question, i) => (
+      {/* {questions.map((question, i) => (
         <Question
           question={question.question}
           options={question.options}
@@ -26,7 +27,8 @@ const Home = () => {
           key={question.question}
           type="mcq"
         />
-      ))}
+      ))} */}
+      <Legend />
     </div>
   );
 };

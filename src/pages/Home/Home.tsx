@@ -1,3 +1,4 @@
+import Legend from "../../components/Legend/Legend";
 import { Question, Header, Button } from "../../components";
 import styles from "./Home.module.scss";
 import { useRef } from "react";
@@ -104,7 +105,7 @@ const Home = () => {
             <img src={expandRight} alt="Expand Right" />
           </Button>
           <div className={styles.mainContent}>
-            <div className={styles.legendContainer}></div>
+            <Legend />
             <div className={styles.questionButtonsContainer}>
               {Array(150)
                 .fill(0)

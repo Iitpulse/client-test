@@ -40,8 +40,11 @@ const Button = (props: ButtonProps) => {
       onClick={onClick || (() => {})}
       {...rest}
     >
-      {children}
-      {Icon && <span className={styles.icon}>{Icon}</span>}
+      <span>
+        {" "}
+        {Icon && <span className={styles.icon}>{Icon}</span>}
+        {children}
+      </span>
     </button>
   );
 };

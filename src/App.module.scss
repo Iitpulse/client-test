@@ -2,4 +2,14 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: "Roboto", sans-serif;
+}
+body {
+  font-size: 16px;
+}
+:root {
+  --clr-primary: #61b4f1;
+  --clr-success: #55bc7e;
+  --clr-warning: #f8ba1c;
+  --clr-error: #fc5f5f;
 }

@@ -1,0 +1,27 @@
+@import "../../utils/common.scss";
+
+.container {
+  background-color: white;
+  .mainContainer {
+    @extend .flexRow;
+    margin: 2% 0px;
+    margin-left: 3%;
+    .leftContainer {
+      width: 60%;
+      .actionButtonsContainer {
+        margin: 5px;
+        > button {
+          margin-right: 20px;
+        }
+      }
+      .navigationButtonsContainer {
+        margin: 0px 5px;
+        > button {
+          margin-right: 10px;
+        }
+      }
+    }
+    .rightContainer {
+    }
+  }
+}

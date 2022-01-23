@@ -1,7 +1,8 @@
 import clsx from "clsx";
-import React, { useState } from "react";
 import { IOption } from "../../utils/interfaces";
 import { isValidUrl } from "../../utils/utils";
+import { Button } from "../../components";
+import arrowDown from "../../assets/icons/arrowDown.svg";
 import styles from "./Question.module.scss";
 
 interface Props {
@@ -22,8 +23,12 @@ const Question: React.FC<Props> = ({
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h4>Question {index + 1}</h4>
+        <h3>Question {index + 1}</h3>
+        <a id="arrow-down" href="#arrow-up">
+          <img src={arrowDown} alt="Arrow Down" />
+        </a>
       </div>
+      <div className={styles.divider}></div>
       <div className={styles.main}>
         {isValidUrl(question) ? (
           <img src={question} alt="question" />
@@ -40,14 +45,22 @@ const Question: React.FC<Props> = ({
               selectedOption?.id === option.id && styles.selected
             )}
           >
-            {isValidUrl(option.value) ? (
-              <img src={option.value} alt="option" />
-            ) : (
-              <p>{option.value}</p>
-            )}
+            <input type="radio" name="options" id={option.id.toString()} />
+            <label htmlFor={option.id.toString()}>
+              {isValidUrl(option.value) ? (
+                <img src={option.value} alt="option" />
+              ) : (
+                <p>{option.value}</p>
+              )}
+            </label>
           </li>
         ))}
       </ul>
+      <div className={styles.buttonContainer}>
+        <a id="arrow-up" href="#arrow-down">
+          <img src={arrowDown} alt="Arrow Up" />
+        </a>
+      </div>
     </div>
   );
 };

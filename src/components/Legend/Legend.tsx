@@ -5,7 +5,7 @@ const Legend = () => {
   return (
     <div className={styles.container}>
       <div className={styles.subContainer}>
-        <button className={styles.notVisitedBtn}>74</button>
+        <span className={styles.notVisitedBtn}>74</span>
         <span>Not Visited</span>
       </div>
 

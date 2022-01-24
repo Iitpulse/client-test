@@ -2,6 +2,7 @@ import Legend from "../../components/Legend/Legend";
 import { Question, Header, Button } from "../../components";
 import styles from "./Home.module.scss";
 import { useRef } from "react";
+import expandRight from "../../assets/icons/greaterThan.svg";
 
 const Home = () => {
   const mainRef = useRef<HTMLDivElement>(null);
@@ -30,96 +31,104 @@ const Home = () => {
   }
 
   return (
-    <div>
-      {/* {questions.map((question, i) => (
-        <Question
-          question={question.question}
-          options={question.options}
-          index={i}
-          selectedOption={null}
-          key={question.question}
-          type="mcq"
-        />
-      ))} */}
-      <div ref={mainRef} className={styles.container}>
-        <Header />
-        <section className={styles.mainContainer}>
-          <main className={styles.leftContainer}>
-            <Question
-              question={questions[0].question}
-              options={questions[0].options}
-              index={12}
-              selectedOption={null}
-              key={questions[0].question}
-              type="mcq"
-            />
-            <div className={styles.actionButtonsContainer}>
-              <Button
-                style={{
-                  background: "#55bc7e",
-                  border: "1px solid #55bc7e",
-                }}
-                color="success"
-              >
-                Save {"&"} Next{" "}
-              </Button>
-              <Button
-                style={{
-                  background: "white",
-                  color: "black",
-                  border: "1px solid black",
-                }}
-              >
-                Clear
-              </Button>
-              <Button
-                style={{
-                  background: "#3a1772",
-                  border: "1px solid #3a1772",
-                }}
-                color="warning"
-              >
-                Save {"&"} Mark For Review
-              </Button>
-              <Button
-                style={{
-                  border: "1px solid #61b4f1",
-                }}
-              >
-                Mark For Review {"&"} Next{" "}
-              </Button>
-            </div>
-            <div className={styles.navigationButtonsContainer}>
-              <Button
-                style={{
-                  background: "white",
-                  color: "black",
-                  border: "1px solid black",
-                }}
-              >
-                Back{" "}
-              </Button>
-              <Button
-                style={{
-                  background: "white",
-                  color: "black",
-                  border: "1px solid black",
-                }}
-              >
-                Next
-              </Button>
-            </div>
-          </main>
-          <aside className={styles.rightContainer}>
+    <div ref={mainRef} className={styles.container}>
+      <Header />
+      <section className={styles.mainContainer}>
+        <main className={styles.leftContainer}>
+          <Question
+            question={questions[0].question}
+            options={questions[0].options}
+            index={12}
+            selectedOption={null}
+            key={questions[0].question}
+            type="mcq"
+          />
+          <div className={styles.actionButtonsContainer}>
+            <Button
+              style={{
+                background: "#55bc7e",
+                border: "1px solid #55bc7e",
+              }}
+              color="success"
+            >
+              Save {"&"} Next{" "}
+            </Button>
+            <Button
+              style={{
+                background: "white",
+                color: "black",
+                border: "1px solid black",
+              }}
+            >
+              Clear
+            </Button>
+            <Button
+              style={{
+                background: "#3a1772",
+                border: "1px solid #3a1772",
+              }}
+              color="warning"
+            >
+              Save {"&"} Mark For Review
+            </Button>
+            <Button
+              style={{
+                border: "1px solid #61b4f1",
+              }}
+            >
+              Mark For Review {"&"} Next{" "}
+            </Button>
+          </div>
+          <div className={styles.navigationButtonsContainer}>
+            <Button
+              style={{
+                background: "white",
+                color: "black",
+                border: "1px solid black",
+              }}
+            >
+              Back
+            </Button>
+            <Button
+              style={{
+                background: "white",
+                color: "black",
+                border: "1px solid black",
+              }}
+            >
+              Next
+            </Button>
+          </div>
+        </main>
+        <aside className={styles.rightContainer}>
+          <Button className={styles.expandRight}>
+            <img src={expandRight} alt="Expand Right" />
+          </Button>
+          <div className={styles.mainContent}>
             <Legend />
-          </aside>
-        </section>
+            <div className={styles.questionButtonsContainer}>
+              {Array(150)
+                .fill(0)
+                .map((item, i) => {
+                  return <QuestionButton>{i + 1}</QuestionButton>;
+                })}
+            </div>
+          </div>
+        </aside>
+      </section>
 
-        {/* <Button onClick={handleScreen}>Toggle Screen</Button> */}
-        <section className={styles.instructionContainer}></section>
-      </div>
+      {/* <Button onClick={handleScreen}>Toggle Screen</Button> */}
+      <section className={styles.instructionContainer}></section>
     </div>
   );
 };
 
 export default Home;
+
+interface QuestionButtonProps {
+  children: number;
+}
+
+const QuestionButton = (props: QuestionButtonProps) => {
+  return <button>{props.children}</button>;
+};

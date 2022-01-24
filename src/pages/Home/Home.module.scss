@@ -32,15 +32,21 @@
         background-color: white;
         border: 1px solid #555555;
       }
+      .mainContent {
+        min-width: 350px;
+        width: 100%;
+        margin: 0;
+      }
       .questionButtonsContainer {
         height: 40vh;
         overflow: auto;
-        padding: 5px;
+        // padding: 5px;
         button {
           width: 35px;
           height: 30px;
           margin: 3px;
           padding: 0px;
+          cursor: pointer;
           span {
             text-align: center;
           }

@@ -87,7 +87,7 @@ const Home = () => {
                 border: "1px solid black",
               }}
             >
-              Back{" "}
+              Back
             </Button>
             <Button
               style={{
@@ -110,7 +110,7 @@ const Home = () => {
               {Array(150)
                 .fill(0)
                 .map((item, i) => {
-                  return <button>{i}</button>;
+                  return <QuestionButton>{i + 1}</QuestionButton>;
                 })}
             </div>
           </div>
@@ -124,3 +124,11 @@ const Home = () => {
 };
 
 export default Home;
+
+interface QuestionButtonProps {
+  children: number;
+}
+
+const QuestionButton = (props: QuestionButtonProps) => {
+  return <button>{props.children}</button>;
+};

@@ -110,7 +110,7 @@ const Home = () => {
               {Array(150)
                 .fill(0)
                 .map((item, i) => {
-                  return <button>{i}</button>;
+                  return <button>{i + 1}</button>;
                 })}
             </div>
           </div>

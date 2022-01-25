@@ -1,8 +1,11 @@
-import { createContext } from "react";
+import { createContext, useState } from "react";
+import { SAMPLE_TEST } from "../constants";
 import { ITest } from "../interfaces";
 
 interface ITestsContext {
   test?: ITest | null;
+  userTest: ITest | null;
+  setUserTest: (test: ITest | null) => void;
 }
 
 interface ITestProviderProps {
@@ -10,13 +13,22 @@ interface ITestProviderProps {
 }
 
 const defaultTestContext = {
-  test: null,
+  test: SAMPLE_TEST,
+  userTest: SAMPLE_TEST,
+  setUserTest: () => {},
 };
 
 export const TestsContext = createContext<ITestsContext>(defaultTestContext);
 
 const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
-  return <TestsContext.Provider value={{}}>{children}</TestsContext.Provider>;
+  const [test, setTest] = useState<ITest | null>(SAMPLE_TEST);
+  const [userTest, setUserTest] = useState<ITest | null>(SAMPLE_TEST);
+
+  return (
+    <TestsContext.Provider value={{ test, userTest, setUserTest }}>
+      {children}
+    </TestsContext.Provider>
+  );
 };
 
 export default TestsContextProvider;

@@ -28,16 +28,10 @@ export interface ITest {
   description: string;
   sections: Array<ISection>;
   exam: string;
-  status: "ongoing" | "active" | "inactive" | "expired";
+  status: string; // "ongoing" | "active" | "inactive" | "expired";
   validity: IValidity;
-  attemptedBy: {
-    studentsCount: number;
-    locations: [string];
-  };
-  result: IResult;
-  createdBy: ICreatedByUser;
-  createdAt: Date;
-  modifiedAt: Date;
+  createdAt: string;
+  modifiedAt: string;
 }
 
 export interface ISection {
@@ -54,10 +48,10 @@ export interface ISubSection {
   id: string; // PT_SS_MCQ123
   name: string;
   description?: string; // (optional) this will be used as a placeholder for describing the subsection and will be replaced by the actual description later on
-  type: "single";
+  type: string;
   totalQuestions: number;
   toBeAttempted: number;
-  questions: [];
+  questions: Array<IQuestion>;
 }
 
 interface IStudentResult {
@@ -71,4 +65,16 @@ export interface IResult {
   averageMarks: number;
   averageCompletionTime: number; // minutes
   students: Array<IStudentResult>;
+}
+
+interface IMarkingScheme {
+  correct: Array<number>; // index-wise marks (index+1 = no. of correct options)
+  incorrect: number; // -1
+}
+
+interface IQuestion {
+  id: string; // QT_MCQ123
+  question: string;
+  options: Array<IOption>;
+  markingScheme: IMarkingScheme;
 }

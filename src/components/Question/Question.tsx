@@ -45,7 +45,7 @@ const Question: React.FC<Props> = ({
               selectedOption?.id === option.id && styles.selected
             )}
           >
-            <input type="radio" name="options" id={option.id.toString()} />
+            <input type="radio" name="options" id={option?.id.toString()} />
             <label htmlFor={option.id.toString()}>
               {isValidUrl(option.value) ? (
                 <img src={option.value} alt="option" />

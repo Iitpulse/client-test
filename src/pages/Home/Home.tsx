@@ -1,25 +1,51 @@
-import Legend from "../../components/Legend/Legend";
-import { Question, Header, Button } from "../../components";
+import { useRef, useContext, useEffect, useState } from "react";
+import { Question, Header, Button, Legend } from "../../components";
 import styles from "./Home.module.scss";
-import { useRef } from "react";
 import expandRight from "../../assets/icons/greaterThan.svg";
+import { TestsContext } from "../../utils/contexts/TestsContext";
+import { IQuestion, ITest } from "../../utils/interfaces";
 
 const Home = () => {
-  const mainRef = useRef<HTMLDivElement>(null);
-  const questions = [
-    {
-      question:
-        "One of the easiest and handy tricks for MCQ of JEE Mains guess work is the assumption. Often it becomes easier to solve an equation when we put some assumed values to get the correct answer. The method is similar to the substitution technique. For example, in a question related to trigonometry, you can substitute Ɵ with any assumed value say 45°. This value can be applied to the given answer options for easily and quickly solving the problem.",
-      options: [
-        { id: 1, value: "f1 = {(x,y): y = x + 1}" },
-        { id: 2, value: "f2 = {(x,y): y < = x}" },
-        { id: 3, value: "f3 = { (x,y): x + y = > 5}" },
-        { id: 4, value: "None of these" },
-      ],
-      selectedOption: { id: 1, value: "New Delhi" },
-      type: "mcq",
+  const {
+    globalTest,
+    test,
+    setTest,
+    status,
+    currentQuestion,
+    currentSection,
+    currentSubSection,
+  } = useContext(TestsContext);
+
+  const [question, setQuestion] = useState<IQuestion>({
+    id: "",
+    question: "",
+    options: [],
+    selectedOption: {
+      id: "",
+      value: "",
     },
-  ];
+    type: "mcq",
+    markingScheme: {
+      correct: [4],
+      incorrect: -1,
+    },
+  });
+
+  useEffect(() => {
+    if (test) {
+      setQuestion(
+        getCurrentQuestion(
+          test,
+          currentQuestion,
+          currentSection,
+          currentSubSection
+        )
+      );
+    }
+  }, [currentQuestion, currentSection, currentSubSection, test]);
+
+  const mainRef = useRef<HTMLDivElement>(null);
+
   function handleScreen() {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
@@ -30,17 +56,21 @@ const Home = () => {
     }
   }
 
+  useEffect(() => {
+    console.log({ test });
+  }, [test]);
+
   return (
     <div ref={mainRef} className={styles.container}>
       <Header />
       <section className={styles.mainContainer}>
         <main className={styles.leftContainer}>
           <Question
-            question={questions[0].question}
-            options={questions[0].options}
-            index={12}
-            selectedOption={null}
-            key={questions[0].question}
+            question={question.question}
+            options={question.options}
+            index={currentQuestion}
+            selectedOption={question.selectedOption}
+            key={question.id}
             type="mcq"
           />
           <div className={styles.actionButtonsContainer}>
@@ -105,7 +135,7 @@ const Home = () => {
             <img src={expandRight} alt="Expand Right" />
           </Button>
           <div className={styles.mainContent}>
-            <Legend />
+            <Legend status={status} />
             <div className={styles.questionButtonsContainer}>
               {Array(150)
                 .fill(0)
@@ -132,3 +162,14 @@ interface QuestionButtonProps {
 const QuestionButton = (props: QuestionButtonProps) => {
   return <button>{props.children}</button>;
 };
+
+function getCurrentQuestion(
+  test: ITest,
+  currentQuestion: number,
+  currentSection: number,
+  currentSubSection: number
+): IQuestion {
+  return test.sections[currentSection].subSections[currentSubSection].questions[
+    currentQuestion
+  ];
+}

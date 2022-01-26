@@ -2,9 +2,13 @@
 
 .container {
   background-color: white;
+
   .mainContainer {
     @extend .flexRow;
-    margin: 2% 3%;
+
+    max-width: var(--fixed-width);
+    width: 90%;
+    margin: 2rem auto;
     align-items: flex-start;
     .leftContainer {
       width: 60%;
@@ -39,16 +43,61 @@
       }
       .questionButtonsContainer {
         height: 40vh;
-        overflow: auto;
-        // padding: 5px;
-        button {
+        overflow-y: auto;
+
+        .notVisited {
           width: 35px;
-          height: 30px;
+          height: 35px;
           margin: 3px;
           padding: 0px;
+          background: rgba(0, 0, 0, 0.04);
+          border: 2px solid rgba(0, 0, 0, 0.3);
+          border-radius: 3px;
+
           cursor: pointer;
           span {
             text-align: center;
+          }
+        }
+
+        .notAnswered,
+        .answered {
+          background: red;
+          clip-path: polygon(0 0, 100% 25%, 100% 76%, 0% 100%);
+          color: white;
+          border: none;
+        }
+
+        .answered {
+          background: green;
+        }
+
+        .markedForReview,
+        .answeredAndMarkedForReview {
+          background: linear-gradient(
+            129deg,
+            rgba(2, 0, 36, 1) 0%,
+            rgba(131, 96, 187, 1) 0%,
+            rgba(77, 32, 146, 1) 100%
+          );
+          color: white;
+          border: none;
+          border-radius: 50%;
+        }
+
+        .answeredAndMarkedForReview {
+          position: relative;
+          &::after {
+            content: "";
+            background: #5cb85c;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            margin-bottom: 2px;
+            margin-right: 3px;
           }
         }
       }

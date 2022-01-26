@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect } from "react";
 import { SAMPLE_TEST } from "../constants";
-import { IQuestion, ITest, ITestStatus } from "../interfaces";
-import { flattenQuestions } from "../utils";
+import { IQuestionWithID, ITest, ITestStatus } from "../interfaces";
+import { flattenQuestions, shuffleQuestions } from "../utils";
 
 interface ITestsContext {
   globalTest: ITest | null;
@@ -11,7 +11,7 @@ interface ITestsContext {
   currentQuestion: number;
   currentSection: number;
   currentSubSection: number;
-  questions: Array<IQuestion>;
+  questions: Array<IQuestionWithID>;
   handleChangeCurrentQuestion: (val: number) => void;
 }
 
@@ -46,24 +46,9 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   const [currentQuestion, setCurrentQuestion] = useState<number>(0);
   const [currentSection, setCurrentSection] = useState<number>(0);
   const [currentSubSection, setCurrentSubSection] = useState<number>(0);
-  const [questions, setQuestions] = useState<Array<IQuestion>>([]);
+  const [questions, setQuestions] = useState<Array<IQuestionWithID>>([]);
 
   useEffect(() => {
-    function shuffleQuestions(ques: Array<IQuestion>) {
-      let currentIndex = ques.length,
-        temporaryValue,
-        randomIndex;
-
-      while (currentIndex !== 0) {
-        randomIndex = Math.floor(Math.random() * currentIndex);
-        currentIndex -= 1;
-        temporaryValue = ques[currentIndex];
-        ques[currentIndex] = ques[randomIndex];
-        ques[randomIndex] = temporaryValue;
-      }
-      return ques;
-    }
-
     if (globalTest) {
       setTest(globalTest);
       let allQuestionsFromTest = flattenQuestions(globalTest);

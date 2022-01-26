@@ -84,6 +84,7 @@ export interface IQuestion {
 export interface IQuestionWithID extends IQuestion {
   sectionId: string;
   subSectionId: string;
+  status: IStatus;
 }
 
 export interface ITestStatus {

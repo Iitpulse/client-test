@@ -2,9 +2,10 @@
 
 .container {
   width: 100%;
-  padding: 10px 30px;
+  padding: 10px calc((100% - var(--fixed-width)) / 2);
   background-color: rgb(235, 235, 235);
   @extend .flexRow;
+
   select {
     margin-left: auto;
     font-size: 0.8rem;

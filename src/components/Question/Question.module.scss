@@ -3,11 +3,15 @@
 .container {
   scroll-behavior: smooth;
   user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   padding: 2%;
   padding: 10px 30px;
   height: 50vh;
   overflow: auto;
   border: 1px solid rgb(216, 216, 216);
+
   a {
     margin-left: auto;
     background-color: var(--clr-primary);
@@ -31,13 +35,13 @@
     }
   }
   .options {
-    padding: 10px;
-  }
-  li {
-    @extend .flexRow;
-    padding: 10px;
-    input {
-      margin-right: 10px;
+    padding: 10px 0;
+    li {
+      @extend .flexRow;
+      margin: 1rem 0;
+      input {
+        margin-right: 10px;
+      }
     }
   }
   .buttonContainer {

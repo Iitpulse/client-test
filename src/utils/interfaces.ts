@@ -81,6 +81,11 @@ export interface IQuestion {
   type: string;
 }
 
+export interface IQuestionWithID extends IQuestion {
+  sectionId: string;
+  subSectionId: string;
+}
+
 export interface ITestStatus {
   notVisitied: number;
   notAnswered: number;

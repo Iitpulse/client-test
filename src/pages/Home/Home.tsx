@@ -12,8 +12,8 @@ const Home = () => {
     setTest,
     status,
     currentQuestion,
-    currentSection,
-    currentSubSection,
+    handleChangeCurrentQuestion,
+    questions,
   } = useContext(TestsContext);
 
   const [question, setQuestion] = useState<IQuestion>({
@@ -31,19 +31,6 @@ const Home = () => {
     },
   });
 
-  useEffect(() => {
-    if (test) {
-      setQuestion(
-        getCurrentQuestion(
-          test,
-          currentQuestion,
-          currentSection,
-          currentSubSection
-        )
-      );
-    }
-  }, [currentQuestion, currentSection, currentSubSection, test]);
-
   const mainRef = useRef<HTMLDivElement>(null);
 
   function handleScreen() {
@@ -55,6 +42,24 @@ const Home = () => {
       }
     }
   }
+
+  function handleClickNext() {
+    if (currentQuestion < questions.length - 1) {
+      handleChangeCurrentQuestion(currentQuestion + 1);
+    }
+  }
+
+  function handleClickPrev() {
+    if (currentQuestion > 0) {
+      handleChangeCurrentQuestion(currentQuestion - 1);
+    }
+  }
+
+  useEffect(() => {
+    if (test) {
+      setQuestion(questions[currentQuestion]);
+    }
+  }, [currentQuestion, questions, test]);
 
   useEffect(() => {
     console.log({ test });
@@ -116,6 +121,7 @@ const Home = () => {
                 color: "black",
                 border: "1px solid black",
               }}
+              onClick={handleClickPrev}
             >
               Back
             </Button>
@@ -125,6 +131,7 @@ const Home = () => {
                 color: "black",
                 border: "1px solid black",
               }}
+              onClick={handleClickNext}
             >
               Next
             </Button>
@@ -137,11 +144,11 @@ const Home = () => {
           <div className={styles.mainContent}>
             <Legend status={status} />
             <div className={styles.questionButtonsContainer}>
-              {Array(150)
-                .fill(0)
-                .map((item, i) => {
-                  return <QuestionButton>{i + 1}</QuestionButton>;
-                })}
+              {questions.map((question, i) => (
+                <QuestionButton onClick={() => handleChangeCurrentQuestion(i)}>
+                  {i + 1}
+                </QuestionButton>
+              ))}
             </div>
           </div>
         </aside>
@@ -157,10 +164,11 @@ export default Home;
 
 interface QuestionButtonProps {
   children: number;
+  onClick: () => void;
 }
 
 const QuestionButton = (props: QuestionButtonProps) => {
-  return <button>{props.children}</button>;
+  return <button onClick={props.onClick}>{props.children}</button>;
 };
 
 function getCurrentQuestion(

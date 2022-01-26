@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect } from "react";
 import { SAMPLE_TEST } from "../constants";
-import { ITest, ITestStatus } from "../interfaces";
+import { IQuestion, ITest, ITestStatus } from "../interfaces";
+import { flattenQuestions } from "../utils";
 
 interface ITestsContext {
   globalTest: ITest | null;
@@ -10,6 +11,8 @@ interface ITestsContext {
   currentQuestion: number;
   currentSection: number;
   currentSubSection: number;
+  questions: Array<IQuestion>;
+  handleChangeCurrentQuestion: (val: number) => void;
 }
 
 interface ITestProviderProps {
@@ -18,7 +21,7 @@ interface ITestProviderProps {
 
 const defaultTestContext = {
   globalTest: SAMPLE_TEST,
-  userTest: SAMPLE_TEST,
+  test: SAMPLE_TEST,
   setTest: () => {},
   status: {
     notVisitied: 0,
@@ -30,6 +33,8 @@ const defaultTestContext = {
   currentQuestion: 0,
   currentSection: 0,
   currentSubSection: 0,
+  questions: [],
+  handleChangeCurrentQuestion: () => {},
 };
 
 export const TestsContext = createContext<ITestsContext>(defaultTestContext);
@@ -41,44 +46,34 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   const [currentQuestion, setCurrentQuestion] = useState<number>(0);
   const [currentSection, setCurrentSection] = useState<number>(0);
   const [currentSubSection, setCurrentSubSection] = useState<number>(0);
+  const [questions, setQuestions] = useState<Array<IQuestion>>([]);
 
   useEffect(() => {
-    function shuffleQuestions(tst: ITest) {
-      let currentIndex = 0,
+    function shuffleQuestions(ques: Array<IQuestion>) {
+      let currentIndex = ques.length,
         temporaryValue,
         randomIndex;
 
-      tst.sections.forEach((section, sectionIdx) => {
-        section.subSections.forEach((subSection, subSectionIdx) => {
-          currentIndex = subSection.questions.length;
-
-          while (currentIndex !== 0) {
-            randomIndex = Math.floor(Math.random() * currentIndex);
-            currentIndex -= 1;
-            temporaryValue =
-              tst.sections[sectionIdx].subSections[subSectionIdx].questions[
-                currentIndex
-              ];
-            tst.sections[sectionIdx].subSections[subSectionIdx].questions[
-              currentIndex
-            ] =
-              tst.sections[sectionIdx].subSections[subSectionIdx].questions[
-                randomIndex
-              ];
-            tst.sections[sectionIdx].subSections[subSectionIdx].questions[
-              randomIndex
-            ] = temporaryValue;
-          }
-        });
-      });
-      return tst;
+      while (currentIndex !== 0) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex -= 1;
+        temporaryValue = ques[currentIndex];
+        ques[currentIndex] = ques[randomIndex];
+        ques[randomIndex] = temporaryValue;
+      }
+      return ques;
     }
 
     if (globalTest) {
-      console.log({ globalTest });
-      setTest(shuffleQuestions(globalTest));
+      setTest(globalTest);
+      let allQuestionsFromTest = flattenQuestions(globalTest);
+      setQuestions(shuffleQuestions(allQuestionsFromTest));
     }
   }, [globalTest]);
+
+  function handleChangeCurrentQuestion(val: number) {
+    setCurrentQuestion(val);
+  }
 
   return (
     <TestsContext.Provider
@@ -90,6 +85,8 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
         currentQuestion,
         currentSection,
         currentSubSection,
+        questions,
+        handleChangeCurrentQuestion,
       }}
     >
       {children}

@@ -29,7 +29,7 @@ export const SAMPLE_TEST = {
           .fill(null)
           .map((_, idx) => ({
             id: "QT_MCQ" + idx,
-            question: "What is the meaning of life?",
+            question: "What is the meaning of life? " + idx,
             options: [
               {
                 id: "QO_MCQ123_A",

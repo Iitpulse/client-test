@@ -12,4 +12,18 @@ body {
   --clr-success: #55bc7e;
   --clr-warning: #f8ba1c;
   --clr-error: #fc5f5f;
+
+  --fixed-width: 80%;
+}
+
+@media screen and (max-width: 1400px) {
+  :root {
+    --fixed-width: 90%;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  :root {
+    --fixed-width: 95%;
+  }
 }

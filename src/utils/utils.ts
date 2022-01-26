@@ -14,8 +14,25 @@ export function isValidUrl(str: string): boolean {
   return pattern.test(str);
 }
 
+export function shuffleQuestions(ques: Array<IQuestionWithID>) {
+  let currentIndex = ques.length,
+    temporaryValue,
+    randomIndex;
+
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+    temporaryValue = ques[currentIndex];
+    ques[currentIndex] = ques[randomIndex];
+    ques[randomIndex] = temporaryValue;
+  }
+
+  return ques;
+}
+
 export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
   let questions: Array<IQuestionWithID> = [];
+
   test.sections.forEach((section) => {
     section.subSections.forEach((subSection) => {
       questions = questions.concat(
@@ -23,9 +40,17 @@ export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
           ...question,
           sectionId: section.id,
           subSectionId: subSection.id,
+          status: {
+            status: "notVisited",
+            visitedAt: null,
+            answeredAt: null,
+            answeredAndMarkedForReviewAt: null,
+            markedForReviewAt: null,
+          },
         }))
       );
     });
   });
+
   return questions;
 }

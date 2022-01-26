@@ -4,6 +4,7 @@ import styles from "./Home.module.scss";
 import expandRight from "../../assets/icons/greaterThan.svg";
 import { TestsContext } from "../../utils/contexts/TestsContext";
 import { IQuestion, ITest } from "../../utils/interfaces";
+import clsx from "clsx";
 
 const Home = () => {
   const {
@@ -145,7 +146,10 @@ const Home = () => {
             <Legend status={status} />
             <div className={styles.questionButtonsContainer}>
               {questions.map((question, i) => (
-                <QuestionButton onClick={() => handleChangeCurrentQuestion(i)}>
+                <QuestionButton
+                  status={question.status.status}
+                  onClick={() => handleChangeCurrentQuestion(i)}
+                >
                   {i + 1}
                 </QuestionButton>
               ))}
@@ -165,19 +169,22 @@ export default Home;
 interface QuestionButtonProps {
   children: number;
   onClick: () => void;
+  status:
+    | "notVisited"
+    | "notAnswered"
+    | "answered"
+    | "markedForReview"
+    | "answeredAndMarkedForReview"
+    | string;
 }
 
 const QuestionButton = (props: QuestionButtonProps) => {
-  return <button onClick={props.onClick}>{props.children}</button>;
+  return (
+    <button
+      onClick={props.onClick}
+      className={clsx(styles.questionBtn, styles[props.status])}
+    >
+      {props.children}
+    </button>
+  );
 };
-
-function getCurrentQuestion(
-  test: ITest,
-  currentQuestion: number,
-  currentSection: number,
-  currentSubSection: number
-): IQuestion {
-  return test.sections[currentSection].subSections[currentSubSection].questions[
-    currentQuestion
-  ];
-}

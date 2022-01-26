@@ -1,3 +1,5 @@
+import { IQuestionWithID, ITest } from "./interfaces";
+
 export function isValidUrl(str: string): boolean {
   let pattern = new RegExp(
     "^((ft|htt)ps?:\\/\\/)?" + // protocol
@@ -10,4 +12,20 @@ export function isValidUrl(str: string): boolean {
     "i"
   ); // fragment locator
   return pattern.test(str);
+}
+
+export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
+  let questions: Array<IQuestionWithID> = [];
+  test.sections.forEach((section) => {
+    section.subSections.forEach((subSection) => {
+      questions = questions.concat(
+        subSection.questions.map((question) => ({
+          ...question,
+          sectionId: section.id,
+          subSectionId: subSection.id,
+        }))
+      );
+    });
+  });
+  return questions;
 }

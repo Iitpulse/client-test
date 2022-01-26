@@ -72,9 +72,24 @@ interface IMarkingScheme {
   incorrect: number; // -1
 }
 
-interface IQuestion {
+export interface IQuestion {
   id: string; // QT_MCQ123
   question: string;
   options: Array<IOption>;
   markingScheme: IMarkingScheme;
+  selectedOption: IOption | null;
+  type: string;
+}
+
+export interface IQuestionWithID extends IQuestion {
+  sectionId: string;
+  subSectionId: string;
+}
+
+export interface ITestStatus {
+  notVisitied: number;
+  notAnswered: number;
+  answered: number;
+  markedForReview: number;
+  answeredAndMarkedForReview: number;
 }

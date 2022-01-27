@@ -1,18 +1,17 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useEffect, useReducer } from "react";
+import { TEST_ACTION, TEST_ACTION_TYPES } from "../actions";
 import { SAMPLE_TEST } from "../constants";
 import { IQuestionWithID, ITest, ITestStatus } from "../interfaces";
-import { flattenQuestions, shuffleQuestions } from "../utils";
+import TestReducer from "../reducers/TestReducer";
 
-interface ITestsContext {
+export interface ITestsContext {
   globalTest: ITest | null;
   test?: ITest | null;
-  setTest: (test: ITest | null) => void;
   status: ITestStatus;
   currentQuestion: number;
   currentSection: number;
   currentSubSection: number;
   questions: Array<IQuestionWithID>;
-  handleChangeCurrentQuestion: (val: number) => void;
 }
 
 interface ITestProviderProps {
@@ -22,7 +21,6 @@ interface ITestProviderProps {
 const defaultTestContext = {
   globalTest: SAMPLE_TEST,
   test: SAMPLE_TEST,
-  setTest: () => {},
   status: {
     notVisitied: 0,
     notAnswered: 0,
@@ -34,46 +32,28 @@ const defaultTestContext = {
   currentSection: 0,
   currentSubSection: 0,
   questions: [],
-  handleChangeCurrentQuestion: () => {},
 };
 
-export const TestsContext = createContext<ITestsContext>(defaultTestContext);
+export const TestsContext = createContext<{
+  state: ITestsContext;
+  dispatch: React.Dispatch<TEST_ACTION>;
+}>({
+  state: defaultTestContext,
+  dispatch: () => {},
+});
 
 const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
-  const [globalTest, setGlobalTest] = useState<ITest | null>(SAMPLE_TEST);
-  const [test, setTest] = useState<ITest | null>();
-  const [status, setStatus] = useState<ITestStatus>(defaultTestContext.status);
-  const [currentQuestion, setCurrentQuestion] = useState<number>(0);
-  const [currentSection, setCurrentSection] = useState<number>(0);
-  const [currentSubSection, setCurrentSubSection] = useState<number>(0);
-  const [questions, setQuestions] = useState<Array<IQuestionWithID>>([]);
+  const [state, dispatch] = useReducer(TestReducer, defaultTestContext);
 
   useEffect(() => {
-    if (globalTest) {
-      setTest(globalTest);
-      let allQuestionsFromTest = flattenQuestions(globalTest);
-      setQuestions(shuffleQuestions(allQuestionsFromTest));
-    }
-  }, [globalTest]);
-
-  function handleChangeCurrentQuestion(val: number) {
-    setCurrentQuestion(val);
-  }
+    dispatch({
+      type: TEST_ACTION_TYPES.INITIALIZE_QUESTIONS,
+      payload: null,
+    });
+  }, []);
 
   return (
-    <TestsContext.Provider
-      value={{
-        globalTest,
-        test,
-        setTest,
-        status,
-        currentQuestion,
-        currentSection,
-        currentSubSection,
-        questions,
-        handleChangeCurrentQuestion,
-      }}
-    >
+    <TestsContext.Provider value={{ state, dispatch }}>
       {children}
     </TestsContext.Provider>
   );

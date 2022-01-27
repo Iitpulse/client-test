@@ -5,17 +5,12 @@ import expandRight from "../../assets/icons/greaterThan.svg";
 import { TestsContext } from "../../utils/contexts/TestsContext";
 import { IQuestion, ITest } from "../../utils/interfaces";
 import clsx from "clsx";
+import { TEST_ACTION_TYPES } from "../../utils/actions";
 
 const Home = () => {
-  const {
-    globalTest,
-    test,
-    setTest,
-    status,
-    currentQuestion,
-    handleChangeCurrentQuestion,
-    questions,
-  } = useContext(TestsContext);
+  const { state, dispatch } = useContext(TestsContext);
+
+  const { questions, currentQuestion, test, status } = state;
 
   const [question, setQuestion] = useState<IQuestion>({
     id: "",
@@ -45,20 +40,23 @@ const Home = () => {
   }
 
   function handleClickNext() {
-    if (currentQuestion < questions.length - 1) {
-      handleChangeCurrentQuestion(currentQuestion + 1);
-    }
+    dispatch({
+      type: TEST_ACTION_TYPES.NEXT_QUESTION,
+      payload: currentQuestion,
+    });
   }
 
   function handleClickPrev() {
-    if (currentQuestion > 0) {
-      handleChangeCurrentQuestion(currentQuestion - 1);
-    }
+    dispatch({
+      type: TEST_ACTION_TYPES.PREVIOUS_QUESTION,
+      payload: currentQuestion,
+    });
   }
 
   useEffect(() => {
     if (test) {
-      setQuestion(questions[currentQuestion]);
+      console.log({ questions, test });
+      if (questions?.length) setQuestion(questions[currentQuestion]);
     }
   }, [currentQuestion, questions, test]);
 
@@ -147,8 +145,14 @@ const Home = () => {
             <div className={styles.questionButtonsContainer}>
               {questions.map((question, i) => (
                 <QuestionButton
+                  key={question.question + i}
                   status={question.status.status}
-                  onClick={() => handleChangeCurrentQuestion(i)}
+                  onClick={() =>
+                    dispatch({
+                      type: TEST_ACTION_TYPES.GO_TO_QUESTION,
+                      payload: i,
+                    })
+                  }
                 >
                   {i + 1}
                 </QuestionButton>

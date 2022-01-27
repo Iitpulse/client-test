@@ -1,6 +1,6 @@
 import { TEST_ACTION, TEST_ACTION_TYPES } from "../actions";
 import { ITestsContext } from "../contexts/TestsContext";
-import { IQuestionWithID } from "../interfaces";
+import { IOption, IQuestionWithID } from "../interfaces";
 import { flattenQuestions, shuffleQuestions } from "../utils";
 
 export default function TestReducer(
@@ -43,29 +43,34 @@ export default function TestReducer(
         }),
         status: {
           ...state.status,
-          notVisitied: allQuestionsShuffled.length,
+          notVisited: allQuestionsShuffled
+            .map((question) => question.id)
+            .filter((_, i) => i !== 0),
+          notAnswered: [allQuestionsShuffled[0].id],
         },
       };
     }
     case TEST_ACTION_TYPES.NEXT_QUESTION: {
       const nextIdx =
         currentQuestion < questions.length - 1 ? payload + 1 : payload;
-      let questionVisisted = isQuestionVisited(questions[nextIdx]);
+      let questionVisited = isQuestionVisited(questions[nextIdx]);
       return {
         ...state,
         currentQuestion: nextIdx,
-        questions: !questionVisisted
-          ? markQuestionVisited(questions, nextIdx)
+        questions: !questionVisited
+          ? markQuestionWithStatus(questions, nextIdx, "notAnswered")
           : questions,
         status: {
           ...state.status,
-          notVisitied:
-            !questionVisisted && nextIdx !== currentQuestion
-              ? state.status.notVisitied - 1
-              : state.status.notVisitied,
+          notVisited:
+            !questionVisited && nextIdx !== currentQuestion
+              ? state.status.notVisited.filter(
+                  (id) => id !== questions[nextIdx].id
+                )
+              : state.status.notVisited,
           notAnswered:
-            !questionVisisted && nextIdx !== currentQuestion
-              ? state.status.notAnswered + 1
+            !questionVisited && nextIdx !== currentQuestion
+              ? [...state.status.notAnswered, questions[nextIdx].id]
               : state.status.notAnswered,
         },
       };
@@ -77,17 +82,19 @@ export default function TestReducer(
         ...state,
         currentQuestion: nextIdx,
         questions: !questionVisited
-          ? markQuestionVisited(questions, nextIdx)
+          ? markQuestionWithStatus(questions, nextIdx, "notAnswered")
           : questions,
         status: {
           ...state.status,
-          notVisitied:
+          notVisited:
             !questionVisited && nextIdx !== currentQuestion
-              ? state.status.notVisitied - 1
-              : state.status.notVisitied,
+              ? state.status.notVisited.filter(
+                  (id) => id !== questions[nextIdx].id
+                )
+              : state.status.notVisited,
           notAnswered:
             !questionVisited && nextIdx !== currentQuestion
-              ? state.status.notAnswered + 1
+              ? [...state.status.notAnswered, questions[nextIdx].id]
               : state.status.notAnswered,
         },
       };
@@ -99,18 +106,132 @@ export default function TestReducer(
         currentQuestion: payload,
         questions:
           !questionVisited && payload !== currentQuestion
-            ? markQuestionVisited(questions, payload)
+            ? markQuestionWithStatus(questions, payload, "notAnswered")
             : questions,
         status: {
           ...state.status,
-          notVisitied:
+          notVisited:
             !questionVisited && payload !== currentQuestion
-              ? state.status.notVisitied - 1
-              : state.status.notVisitied,
+              ? state.status.notVisited.filter(
+                  (id) => id !== questions[payload].id
+                )
+              : state.status.notVisited,
           notAnswered:
             !questionVisited && payload !== currentQuestion
-              ? state.status.notAnswered + 1
+              ? [...state.status.notAnswered, questions[payload].id]
               : state.status.notAnswered,
+        },
+      };
+    }
+    case TEST_ACTION_TYPES.SAVE_AND_NEXT: {
+      const nextIdx =
+        currentQuestion < questions.length - 1
+          ? payload.currentQuestion + 1
+          : payload.currentQuestion;
+      let questionVisited = isQuestionVisited(questions[nextIdx]);
+      return {
+        ...state,
+        currentQuestion: nextIdx,
+        questions: markQuestionWithStatus(
+          markQuestionWithStatus(questions, currentQuestion, "answered"),
+          nextIdx,
+          nextIdx === questions.length - 1 ? "answered" : "notAnswered",
+          payload.selectedOption
+        ),
+        status: {
+          ...state.status,
+          notVisited:
+            !questionVisited && nextIdx !== currentQuestion
+              ? state.status.notVisited.filter(
+                  (id) => id !== questions[nextIdx].id
+                )
+              : state.status.notVisited,
+          notAnswered:
+            !questionVisited && nextIdx !== currentQuestion
+              ? [
+                  ...state.status.notAnswered.filter(
+                    (id) => id !== questions[payload.currentQuestion].id
+                  ),
+                  questions[nextIdx].id,
+                ]
+              : state.status.notAnswered,
+          answered: [
+            ...state.status.answered,
+            questions[payload.currentQuestion].id,
+          ],
+        },
+      };
+    }
+    case TEST_ACTION_TYPES.MARK_FOR_REVIEW_AND_NEXT: {
+      const nextIdx =
+        currentQuestion < questions.length - 1 ? payload + 1 : payload;
+      let questionVisited = isQuestionVisited(questions[nextIdx]);
+      return {
+        ...state,
+        currentQuestion: nextIdx,
+        questions: markQuestionWithStatus(
+          markQuestionWithStatus(questions, currentQuestion, "markedForReview"),
+          nextIdx,
+          "notAnswered"
+        ),
+        status: {
+          ...state.status,
+          notVisited:
+            !questionVisited && nextIdx !== currentQuestion
+              ? state.status.notVisited.filter(
+                  (id) => id !== questions[nextIdx].id
+                )
+              : state.status.notVisited,
+          notAnswered:
+            !questionVisited && nextIdx !== currentQuestion
+              ? [...state.status.notAnswered, questions[payload].id]
+              : state.status.notAnswered,
+          answered: state.status.answered.filter(
+            (id) => id !== questions[payload].id
+          ),
+          markedForReview: [
+            ...state.status.markedForReview,
+            questions[payload].id,
+          ],
+        },
+      };
+    }
+    case TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW: {
+      const nextIdx =
+        currentQuestion < questions.length - 1 ? payload + 1 : payload;
+      let questionVisited = isQuestionVisited(questions[nextIdx]);
+      return {
+        ...state,
+        currentQuestion: nextIdx,
+        questions: markQuestionWithStatus(
+          markQuestionWithStatus(
+            questions,
+            currentQuestion,
+            "answeredAndMarkedForReview"
+          ),
+          nextIdx,
+          "notAnswered"
+        ),
+        status: {
+          ...state.status,
+          notVisited:
+            !questionVisited && nextIdx !== currentQuestion
+              ? state.status.notVisited.filter(
+                  (id) => id !== questions[nextIdx].id
+                )
+              : state.status.notVisited,
+          notAnswered:
+            !questionVisited && nextIdx !== currentQuestion
+              ? [...state.status.notAnswered, questions[payload].id]
+              : state.status.notAnswered,
+          answered: [...state.status.answered, questions[payload].id],
+          markedForReview: state.status.markedForReview.filter(
+            (id) => id !== questions[payload].id
+          ),
+          answeredAndMarkedForReview: [
+            ...state.status.answeredAndMarkedForReview,
+            questions[payload].id,
+          ],
         },
       };
     }
@@ -132,9 +253,11 @@ function isQuestionVisited(question: IQuestionWithID): boolean {
   }
 }
 
-function markQuestionVisited(
+function markQuestionWithStatus(
   questions: Array<IQuestionWithID>,
-  qIdx: number
+  qIdx: number,
+  status: string,
+  selectedOption?: IOption
 ): Array<IQuestionWithID> {
   return questions.map((question, index) => {
     if (index === qIdx) {
@@ -142,8 +265,9 @@ function markQuestionVisited(
         ...question,
         status: {
           ...question.status,
-          status: "notAnswered",
+          status,
         },
+        selectedOption: selectedOption || question.selectedOption,
       };
     }
     return question;

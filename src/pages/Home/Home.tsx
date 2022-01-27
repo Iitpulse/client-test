@@ -3,7 +3,7 @@ import { Question, Header, Button, Legend } from "../../components";
 import styles from "./Home.module.scss";
 import expandRight from "../../assets/icons/greaterThan.svg";
 import { TestsContext } from "../../utils/contexts/TestsContext";
-import { IQuestion, ITest } from "../../utils/interfaces";
+import { IOption, IQuestion, ITest } from "../../utils/interfaces";
 import clsx from "clsx";
 import { TEST_ACTION_TYPES } from "../../utils/actions";
 
@@ -53,6 +53,35 @@ const Home = () => {
     });
   }
 
+  function handleClickSaveAndNext(option: IOption | null) {
+    if (!option) return alert("Please select an option");
+    dispatch({
+      type: TEST_ACTION_TYPES.SAVE_AND_NEXT,
+      payload: { currentQuestion, option },
+    });
+  }
+
+  function handleClickMarkForReview() {
+    dispatch({
+      type: TEST_ACTION_TYPES.MARK_FOR_REVIEW_AND_NEXT,
+      payload: currentQuestion,
+    });
+  }
+
+  function handleClickSaveAndMarkForReview() {
+    dispatch({
+      type: TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW,
+      payload: currentQuestion,
+    });
+  }
+
+  function handleClickOption(option: IOption) {
+    setQuestion({
+      ...question,
+      selectedOption: option,
+    });
+  }
+
   useEffect(() => {
     if (test) {
       console.log({ questions, test });
@@ -76,6 +105,7 @@ const Home = () => {
             selectedOption={question.selectedOption}
             key={question.id}
             type="mcq"
+            onClickOption={handleClickOption}
           />
           <div className={styles.actionButtonsContainer}>
             <Button
@@ -84,6 +114,7 @@ const Home = () => {
                 border: "1px solid #55bc7e",
               }}
               color="success"
+              onClick={() => handleClickSaveAndNext(question.selectedOption)}
             >
               Save {"&"} Next{" "}
             </Button>
@@ -102,6 +133,7 @@ const Home = () => {
                 border: "1px solid #3a1772",
               }}
               color="warning"
+              onClick={handleClickSaveAndMarkForReview}
             >
               Save {"&"} Mark For Review
             </Button>
@@ -109,6 +141,7 @@ const Home = () => {
               style={{
                 border: "1px solid #61b4f1",
               }}
+              onClick={handleClickMarkForReview}
             >
               Mark For Review {"&"} Next{" "}
             </Button>

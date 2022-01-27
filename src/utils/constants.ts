@@ -28,7 +28,7 @@ export const SAMPLE_TEST = {
         questions: Array(40)
           .fill(null)
           .map((_, idx) => ({
-            id: "QT_MCQ" + idx,
+            id: "QT_MCQ" + sec + idx,
             question: "What is the meaning of life? " + idx,
             options: [
               {

@@ -88,9 +88,9 @@ export interface IQuestionWithID extends IQuestion {
 }
 
 export interface ITestStatus {
-  notVisitied: number;
-  notAnswered: number;
-  answered: number;
-  markedForReview: number;
-  answeredAndMarkedForReview: number;
+  notVisited: Array<string>;
+  notAnswered: Array<string>;
+  answered: Array<string>;
+  markedForReview: Array<string>;
+  answeredAndMarkedForReview: Array<string>;
 }

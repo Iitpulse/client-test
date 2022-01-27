@@ -1,8 +1,8 @@
-import { createContext, useState, useEffect, useReducer } from "react";
+import { createContext, useEffect, useReducer } from "react";
+import { TEST_ACTION, TEST_ACTION_TYPES } from "../actions";
 import { SAMPLE_TEST } from "../constants";
 import { IQuestionWithID, ITest, ITestStatus } from "../interfaces";
 import TestReducer from "../reducers/TestReducer";
-import { flattenQuestions, shuffleQuestions } from "../utils";
 
 export interface ITestsContext {
   globalTest: ITest | null;
@@ -36,34 +36,21 @@ const defaultTestContext = {
 
 export const TestsContext = createContext<{
   state: ITestsContext;
-  dispatch: React.Dispatch<any>;
+  dispatch: React.Dispatch<TEST_ACTION>;
 }>({
   state: defaultTestContext,
   dispatch: () => {},
 });
 
 const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
-  // const [globalTest, setGlobalTest] = useState<ITest | null>(SAMPLE_TEST);
-  // const [test, setTest] = useState<ITest | null>();
-  // const [status, setStatus] = useState<ITestStatus>(defaultTestContext.status);
-  // const [currentQuestion, setCurrentQuestion] = useState<number>(0);
-  // const [currentSection, setCurrentSection] = useState<number>(0);
-  // const [currentSubSection, setCurrentSubSection] = useState<number>(0);
-  // const [questions, setQuestions] = useState<Array<IQuestionWithID>>([]);
-
   const [state, dispatch] = useReducer(TestReducer, defaultTestContext);
 
-  // useEffect(() => {
-  //   if (globalTest) {
-  //     setTest(globalTest);
-  //     let allQuestionsFromTest = flattenQuestions(globalTest);
-  //     setQuestions(shuffleQuestions(allQuestionsFromTest));
-  //   }
-  // }, [globalTest]);
-
-  // function handleChangeCurrentQuestion(val: number) {
-  //   setCurrentQuestion(val);
-  // }
+  useEffect(() => {
+    dispatch({
+      type: TEST_ACTION_TYPES.INITIALIZE_QUESTIONS,
+      payload: null,
+    });
+  }, []);
 
   return (
     <TestsContext.Provider value={{ state, dispatch }}>

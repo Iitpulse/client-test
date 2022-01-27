@@ -57,7 +57,7 @@ const Home = () => {
     if (!option) return alert("Please select an option");
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_NEXT,
-      payload: { currentQuestion, option },
+      payload: { currentQuestion, selectedOption: option },
     });
   }
 
@@ -68,10 +68,11 @@ const Home = () => {
     });
   }
 
-  function handleClickSaveAndMarkForReview() {
+  function handleClickSaveAndMarkForReview(option: IOption | null) {
+    if (!option) return alert("Please select an option");
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW,
-      payload: currentQuestion,
+      payload: { currentQuestion, selectedOption: option },
     });
   }
 
@@ -90,8 +91,8 @@ const Home = () => {
   }, [currentQuestion, questions, test]);
 
   useEffect(() => {
-    console.log({ test });
-  }, [test]);
+    console.log({ status });
+  }, [status]);
 
   return (
     <div ref={mainRef} className={styles.container}>
@@ -133,7 +134,9 @@ const Home = () => {
                 border: "1px solid #3a1772",
               }}
               color="warning"
-              onClick={handleClickSaveAndMarkForReview}
+              onClick={() =>
+                handleClickSaveAndMarkForReview(question.selectedOption)
+              }
             >
               Save {"&"} Mark For Review
             </Button>

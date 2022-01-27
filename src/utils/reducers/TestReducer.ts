@@ -36,6 +36,7 @@ export default function TestReducer(
               status: {
                 ...question.status,
                 status: "notAnswered",
+                visitedAt: new Date().toISOString(),
               },
             };
           }
@@ -133,10 +134,14 @@ export default function TestReducer(
         ...state,
         currentQuestion: nextIdx,
         questions: markQuestionWithStatus(
-          markQuestionWithStatus(questions, currentQuestion, "answered"),
+          markQuestionWithStatus(
+            questions,
+            currentQuestion,
+            "answered",
+            payload.selectedOption
+          ),
           nextIdx,
-          nextIdx === questions.length - 1 ? "answered" : "notAnswered",
-          payload.selectedOption
+          nextIdx === questions.length - 1 ? "answered" : "notAnswered"
         ),
         status: {
           ...state.status,
@@ -184,7 +189,12 @@ export default function TestReducer(
               : state.status.notVisited,
           notAnswered:
             !questionVisited && nextIdx !== currentQuestion
-              ? [...state.status.notAnswered, questions[payload].id]
+              ? [
+                  ...state.status.notAnswered.filter(
+                    (id) => id !== questions[payload].id
+                  ),
+                  questions[nextIdx].id,
+                ]
               : state.status.notAnswered,
           answered: state.status.answered.filter(
             (id) => id !== questions[payload].id
@@ -198,7 +208,9 @@ export default function TestReducer(
     }
     case TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW: {
       const nextIdx =
-        currentQuestion < questions.length - 1 ? payload + 1 : payload;
+        currentQuestion < questions.length - 1
+          ? payload.currentQuestion + 1
+          : payload.currentQuestion;
       let questionVisited = isQuestionVisited(questions[nextIdx]);
       return {
         ...state,
@@ -207,10 +219,13 @@ export default function TestReducer(
           markQuestionWithStatus(
             questions,
             currentQuestion,
-            "answeredAndMarkedForReview"
+            "answeredAndMarkedForReview",
+            payload.selectedOption
           ),
           nextIdx,
-          "notAnswered"
+          nextIdx === questions.length - 1
+            ? "answeredAndMarkedForReview"
+            : "notAnswered"
         ),
         status: {
           ...state.status,
@@ -220,17 +235,29 @@ export default function TestReducer(
                   (id) => id !== questions[nextIdx].id
                 )
               : state.status.notVisited,
-          notAnswered:
-            !questionVisited && nextIdx !== currentQuestion
-              ? [...state.status.notAnswered, questions[payload].id]
-              : state.status.notAnswered,
-          answered: [...state.status.answered, questions[payload].id],
+          notAnswered: !questionVisited
+            ? payload.currentQuestion === questions
+              ? state.status.notAnswered.filter(
+                  (id) =>
+                    id !== questions[payload.currentQuestion].id &&
+                    id !== questions[nextIdx].id
+                )
+              : [
+                  ...state.status.notAnswered.filter(
+                    (id) => id !== questions[payload.currentQuestion].id
+                  ),
+                  questions[nextIdx].id,
+                ]
+            : state.status.notAnswered,
+          answered: state.status.answered.filter(
+            (id) => id !== questions[payload.currentQuestion].id
+          ),
           markedForReview: state.status.markedForReview.filter(
-            (id) => id !== questions[payload].id
+            (id) => id !== questions[payload.currentQuestion].id
           ),
           answeredAndMarkedForReview: [
             ...state.status.answeredAndMarkedForReview,
-            questions[payload].id,
+            questions[payload.currentQuestion].id,
           ],
         },
       };
@@ -266,6 +293,23 @@ function markQuestionWithStatus(
         status: {
           ...question.status,
           status,
+          visitedAt: question.status.visitedAt || new Date().toISOString(),
+          answeredAt:
+            selectedOption &&
+            !question.status.answeredAt &&
+            status === "answered"
+              ? new Date().toISOString()
+              : question.status.answeredAt,
+          answeredAndMarkedForReviewAt:
+            selectedOption &&
+            !question.status.answeredAndMarkedForReviewAt &&
+            status === "answeredAndMarkedForReview"
+              ? new Date().toISOString()
+              : question.status.answeredAndMarkedForReviewAt,
+          markedForReviewAt:
+            !question.status.markedForReviewAt && status === "markedForReview"
+              ? new Date().toISOString()
+              : question.status.markedForReviewAt,
         },
         selectedOption: selectedOption || question.selectedOption,
       };

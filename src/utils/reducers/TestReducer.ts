@@ -71,7 +71,10 @@ export default function TestReducer(
               : state.status.notVisited,
           notAnswered:
             !questionVisited && nextIdx !== currentQuestion
-              ? [...state.status.notAnswered, questions[nextIdx].id]
+              ? uniqueValuesOnly([
+                  ...state.status.notAnswered,
+                  questions[nextIdx].id,
+                ])
               : state.status.notAnswered,
         },
       };
@@ -95,7 +98,10 @@ export default function TestReducer(
               : state.status.notVisited,
           notAnswered:
             !questionVisited && nextIdx !== currentQuestion
-              ? [...state.status.notAnswered, questions[nextIdx].id]
+              ? uniqueValuesOnly([
+                  ...state.status.notAnswered,
+                  questions[nextIdx].id,
+                ])
               : state.status.notAnswered,
         },
       };
@@ -119,7 +125,10 @@ export default function TestReducer(
               : state.status.notVisited,
           notAnswered:
             !questionVisited && payload !== currentQuestion
-              ? [...state.status.notAnswered, questions[payload].id]
+              ? uniqueValuesOnly([
+                  ...state.status.notAnswered,
+                  questions[payload].id,
+                ])
               : state.status.notAnswered,
         },
       };
@@ -141,7 +150,10 @@ export default function TestReducer(
             payload.selectedOption
           ),
           nextIdx,
-          nextIdx === questions.length - 1 ? "answered" : "notAnswered"
+          nextIdx === payload.currentQuestion &&
+            payload.currentQuestion === questions.length - 1
+            ? "answered"
+            : "notAnswered"
         ),
         status: {
           ...state.status,
@@ -153,17 +165,23 @@ export default function TestReducer(
               : state.status.notVisited,
           notAnswered:
             !questionVisited && nextIdx !== currentQuestion
-              ? [
+              ? uniqueValuesOnly([
                   ...state.status.notAnswered.filter(
                     (id) => id !== questions[payload.currentQuestion].id
                   ),
                   questions[nextIdx].id,
-                ]
-              : state.status.notAnswered,
-          answered: [
+                ])
+              : state.status.notAnswered.filter(
+                  (id) => id !== questions[payload.currentQuestion].id
+                ),
+          answered: uniqueValuesOnly([
             ...state.status.answered,
             questions[payload.currentQuestion].id,
-          ],
+          ]),
+          answeredAndMarkedForReview:
+            state.status.answeredAndMarkedForReview.filter(
+              (id) => id !== questions[payload.currentQuestion].id
+            ),
         },
       };
     }
@@ -177,7 +195,7 @@ export default function TestReducer(
         questions: markQuestionWithStatus(
           markQuestionWithStatus(questions, currentQuestion, "markedForReview"),
           nextIdx,
-          "notAnswered"
+          nextIdx === questions.length - 1 ? "markedForReview" : "notAnswered"
         ),
         status: {
           ...state.status,
@@ -189,28 +207,31 @@ export default function TestReducer(
               : state.status.notVisited,
           notAnswered:
             !questionVisited && nextIdx !== currentQuestion
-              ? [
+              ? uniqueValuesOnly([
                   ...state.status.notAnswered.filter(
                     (id) => id !== questions[payload].id
                   ),
                   questions[nextIdx].id,
-                ]
-              : state.status.notAnswered,
+                ])
+              : state.status.notAnswered.filter(
+                  (id) => id !== questions[payload].id
+                ),
           answered: state.status.answered.filter(
             (id) => id !== questions[payload].id
           ),
-          markedForReview: [
+          markedForReview: uniqueValuesOnly([
             ...state.status.markedForReview,
             questions[payload].id,
-          ],
+          ]),
         },
       };
     }
     case TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW: {
       const nextIdx =
-        currentQuestion < questions.length - 1
+        payload.currentQuestion < questions.length - 1
           ? payload.currentQuestion + 1
           : payload.currentQuestion;
+      console.log({ cq: payload.currentQuestion, nextIdx });
       let questionVisited = isQuestionVisited(questions[nextIdx]);
       return {
         ...state,
@@ -236,29 +257,29 @@ export default function TestReducer(
                 )
               : state.status.notVisited,
           notAnswered: !questionVisited
-            ? payload.currentQuestion === questions
+            ? payload.currentQuestion === nextIdx
               ? state.status.notAnswered.filter(
-                  (id) =>
-                    id !== questions[payload.currentQuestion].id &&
-                    id !== questions[nextIdx].id
+                  (id) => id !== questions[nextIdx].id
                 )
-              : [
+              : uniqueValuesOnly([
                   ...state.status.notAnswered.filter(
                     (id) => id !== questions[payload.currentQuestion].id
                   ),
                   questions[nextIdx].id,
-                ]
-            : state.status.notAnswered,
+                ])
+            : state.status.notAnswered.filter(
+                (id) => id !== questions[payload.currentQuestion].id
+              ),
           answered: state.status.answered.filter(
             (id) => id !== questions[payload.currentQuestion].id
           ),
           markedForReview: state.status.markedForReview.filter(
             (id) => id !== questions[payload.currentQuestion].id
           ),
-          answeredAndMarkedForReview: [
+          answeredAndMarkedForReview: uniqueValuesOnly([
             ...state.status.answeredAndMarkedForReview,
             questions[payload.currentQuestion].id,
-          ],
+          ]),
         },
       };
     }
@@ -269,15 +290,7 @@ export default function TestReducer(
 }
 
 function isQuestionVisited(question: IQuestionWithID): boolean {
-  switch (question.status.status) {
-    case "notAnswered":
-    case "answered":
-    case "markedForReview":
-    case "answeredAndMarkedForReview":
-      return true;
-    default:
-      return false;
-  }
+  return question.status.status !== "notVisited";
 }
 
 function markQuestionWithStatus(
@@ -316,4 +329,8 @@ function markQuestionWithStatus(
     }
     return question;
   });
+}
+
+function uniqueValuesOnly(arr: Array<any>) {
+  return [...new Set(arr)];
 }

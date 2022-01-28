@@ -11,6 +11,7 @@ interface Props {
   selectedOption: IOption | null;
   type: "mcq" | "numerical";
   index: number;
+  onClickOption: (option: IOption) => void;
 }
 
 const Question: React.FC<Props> = ({
@@ -19,6 +20,7 @@ const Question: React.FC<Props> = ({
   options,
   selectedOption,
   type,
+  onClickOption,
 }) => {
   return (
     <div id="container" className={styles.container}>
@@ -45,8 +47,17 @@ const Question: React.FC<Props> = ({
               selectedOption?.id === option.id && styles.selected
             )}
           >
-            <input type="radio" name="options" id={option?.id.toString()} />
-            <label htmlFor={option.id.toString()}>
+            <input
+              type="radio"
+              name="options"
+              id={option?.id.toString()}
+              onChange={() => onClickOption(option)}
+              checked={selectedOption?.id === option.id}
+            />
+            <label
+              htmlFor={option.id.toString()}
+              // onClick={() => onClickOption(option)}
+            >
               {isValidUrl(option.value) ? (
                 <img src={option.value} alt="option" />
               ) : (

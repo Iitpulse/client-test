@@ -49,6 +49,7 @@
           width: 35px;
           height: 35px;
           margin: 3px;
+          cursor: pointer;
         }
         .notVisited {
           padding: 0px;
@@ -56,7 +57,6 @@
           border: 2px solid rgba(0, 0, 0, 0.3);
           border-radius: 3px;
 
-          cursor: pointer;
           span {
             text-align: center;
           }

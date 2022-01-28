@@ -150,10 +150,14 @@ export default function TestReducer(
             payload.selectedOption
           ),
           nextIdx,
-          nextIdx === payload.currentQuestion &&
-            payload.currentQuestion === questions.length - 1
-            ? "answered"
-            : "notAnswered"
+          statusForNextQuestion(
+            payload,
+            nextIdx,
+            questions,
+            questionVisited,
+            "answered",
+            "notAnswered"
+          )
         ),
         status: {
           ...state.status,
@@ -163,17 +167,20 @@ export default function TestReducer(
                   (id) => id !== questions[nextIdx].id
                 )
               : state.status.notVisited,
-          notAnswered:
-            !questionVisited && nextIdx !== currentQuestion
-              ? uniqueValuesOnly([
+          notAnswered: !questionVisited
+            ? isLastQuestion(payload, nextIdx, questions)
+              ? state.status.notAnswered.filter(
+                  (id) => id !== questions[payload.currentQuestion].id
+                )
+              : uniqueValuesOnly([
                   ...state.status.notAnswered.filter(
                     (id) => id !== questions[payload.currentQuestion].id
                   ),
                   questions[nextIdx].id,
                 ])
-              : state.status.notAnswered.filter(
-                  (id) => id !== questions[payload.currentQuestion].id
-                ),
+            : state.status.notAnswered.filter(
+                (id) => id !== questions[payload.currentQuestion].id
+              ),
           answered: uniqueValuesOnly([
             ...state.status.answered,
             questions[payload.currentQuestion].id,
@@ -195,7 +202,14 @@ export default function TestReducer(
         questions: markQuestionWithStatus(
           markQuestionWithStatus(questions, currentQuestion, "markedForReview"),
           nextIdx,
-          nextIdx === questions.length - 1 ? "markedForReview" : "notAnswered"
+          statusForNextQuestion(
+            { currentQuestion: payload },
+            nextIdx,
+            questions,
+            questionVisited,
+            "markedForReview",
+            "notAnswered"
+          )
         ),
         status: {
           ...state.status,
@@ -244,9 +258,14 @@ export default function TestReducer(
             payload.selectedOption
           ),
           nextIdx,
-          nextIdx === questions.length - 1
-            ? "answeredAndMarkedForReview"
-            : "notAnswered"
+          statusForNextQuestion(
+            payload,
+            nextIdx,
+            questions,
+            questionVisited,
+            "answeredAndMarkedForReview",
+            "notAnswered"
+          )
         ),
         status: {
           ...state.status,
@@ -257,7 +276,7 @@ export default function TestReducer(
                 )
               : state.status.notVisited,
           notAnswered: !questionVisited
-            ? payload.currentQuestion === nextIdx
+            ? isLastQuestion(payload, nextIdx, questions)
               ? state.status.notAnswered.filter(
                   (id) => id !== questions[nextIdx].id
                 )
@@ -333,4 +352,26 @@ function markQuestionWithStatus(
 
 function uniqueValuesOnly(arr: Array<any>) {
   return [...new Set(arr)];
+}
+
+function isLastQuestion(payload: any, nextIdx: number, questions: any) {
+  return (
+    nextIdx === payload.currentQuestion &&
+    payload.currentQuestion === questions.length - 1
+  );
+}
+
+function statusForNextQuestion(
+  payload: any,
+  nextIdx: number,
+  questions: Array<IQuestionWithID>,
+  isNextQuestionVisited: boolean,
+  positiveStatus: string,
+  negativeStatus: string
+): string {
+  return isLastQuestion(payload, nextIdx, questions)
+    ? positiveStatus
+    : isNextQuestionVisited
+    ? questions[nextIdx].status.status
+    : negativeStatus;
 }

@@ -51,11 +51,12 @@ const Question: React.FC<Props> = ({
               type="radio"
               name="options"
               id={option?.id.toString()}
-              onClick={() => onClickOption(option)}
+              onChange={() => onClickOption(option)}
+              checked={selectedOption?.id === option.id}
             />
             <label
               htmlFor={option.id.toString()}
-              onClick={() => onClickOption(option)}
+              // onClick={() => onClickOption(option)}
             >
               {isValidUrl(option.value) ? (
                 <img src={option.value} alt="option" />

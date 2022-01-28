@@ -40,6 +40,7 @@ const Home = () => {
   }
 
   function handleClickNext() {
+    if (currentQuestion === questions.length - 1) return;
     dispatch({
       type: TEST_ACTION_TYPES.NEXT_QUESTION,
       payload: currentQuestion,
@@ -80,6 +81,18 @@ const Home = () => {
     setQuestion({
       ...question,
       selectedOption: option,
+    });
+  }
+
+  function handleClickClear() {
+    if (!question.selectedOption) return;
+    setQuestion({
+      ...question,
+      selectedOption: null,
+    });
+    dispatch({
+      type: TEST_ACTION_TYPES.CLEAR_SELECTION,
+      payload: currentQuestion,
     });
   }
 
@@ -125,6 +138,7 @@ const Home = () => {
                 color: "black",
                 border: "1px solid black",
               }}
+              onClick={handleClickClear}
             >
               Clear
             </Button>

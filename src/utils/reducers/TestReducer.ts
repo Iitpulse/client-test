@@ -302,6 +302,26 @@ export default function TestReducer(
         },
       };
     }
+    case TEST_ACTION_TYPES.CLEAR_SELECTION: {
+      return {
+        ...state,
+        questions: clearOptionSelection(questions, payload),
+        status: {
+          ...state.status,
+          notAnswered: uniqueValuesOnly([...state.status.notAnswered, payload]),
+          answered: state.status.answered.filter(
+            (id) => id !== questions[payload].id
+          ),
+          answeredAndMarkedForReview:
+            state.status.answeredAndMarkedForReview.filter(
+              (id) => id !== questions[payload].id
+            ),
+          markedForReview: state.status.markedForReview.filter(
+            (id) => id !== questions[payload].id
+          ),
+        },
+      };
+    }
     default: {
       return state;
     }
@@ -374,4 +394,26 @@ function statusForNextQuestion(
     : isNextQuestionVisited
     ? questions[nextIdx].status.status
     : negativeStatus;
+}
+
+function clearOptionSelection(
+  questions: Array<IQuestionWithID>,
+  currentQuestion: number
+) {
+  return questions.map((question, i) => {
+    if (i === currentQuestion) {
+      return {
+        ...question,
+        status: {
+          ...question.status,
+          status: "notAnswered",
+          answeredAt: null,
+          markedForReviewAt: null,
+          answeredAndMarkedForReviewAt: null,
+        },
+        selectedOption: null,
+      };
+    }
+    return question;
+  });
 }

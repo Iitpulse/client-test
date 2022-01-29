@@ -25,7 +25,9 @@ export default function TestReducer(
       };
     }
     case TEST_ACTION_TYPES.INITIALIZE_QUESTIONS: {
-      const allQuestionsExtracted = test ? flattenQuestions(test) : questions;
+      const allQuestionsExtracted = payload
+        ? flattenQuestions(payload)
+        : questions;
       const allQuestionsShuffled = shuffleQuestions(allQuestionsExtracted);
       return {
         ...state,

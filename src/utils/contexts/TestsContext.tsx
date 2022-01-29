@@ -3,6 +3,7 @@ import { TEST_ACTION, TEST_ACTION_TYPES } from "../actions";
 import { SAMPLE_TEST } from "../constants";
 import { IQuestionWithID, ITest, ITestStatus } from "../interfaces";
 import TestReducer from "../reducers/TestReducer";
+import axios from "axios";
 
 export interface ITestsContext {
   globalTest: ITest | null;
@@ -46,10 +47,17 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(TestReducer, defaultTestContext);
 
   useEffect(() => {
-    dispatch({
-      type: TEST_ACTION_TYPES.INITIALIZE_QUESTIONS,
-      payload: null,
-    });
+    async function fetchTest() {
+      let test = await axios.get("http://localhost:5002/test/get");
+      console.log({ data: test.data });
+      if (test?.data) {
+        dispatch({
+          type: TEST_ACTION_TYPES.INITIALIZE_QUESTIONS,
+          payload: test.data[0],
+        });
+      }
+    }
+    fetchTest();
   }, []);
 
   return (

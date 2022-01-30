@@ -8,11 +8,6 @@ WORKDIR /usr/src/
 
 COPY package*.json ./
 
-# Give owner rights to the current user
-RUN chown -Rh $user:$user /project
-
-USER $user
-
 ###  Installing dependencies
 RUN npm install --silent
 

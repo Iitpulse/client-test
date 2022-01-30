@@ -48,7 +48,9 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
 
   useEffect(() => {
     async function fetchTest() {
-      let test = await axios.get("http://localhost:5002/test/get");
+      let test = await axios.get(
+        process.env.REACT_APP_TEST_API_URI || "http://localhost:5002/test/get"
+      );
       console.log({ data: test.data });
       if (test?.data) {
         dispatch({

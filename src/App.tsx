@@ -1,18 +1,25 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { Home } from "./pages";
+import { Home, Login } from "./pages";
 import styles from "./App.module.scss";
 import TestsContextProvider from "./utils/contexts/TestsContext";
+import AuthContextProvider from "./utils/auth/AuthContext";
+import PrivateRoute from "./utils/auth/PrivateRoute";
 
 const App = () => {
   return (
     <div className={styles.container}>
-      <TestsContextProvider>
-        <Router>
+      <Router>
+        <AuthContextProvider>
           <Routes>
-            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
           </Routes>
-        </Router>
-      </TestsContextProvider>
+          <TestsContextProvider>
+            <Routes>
+              <Route path="/" element={<PrivateRoute component={Home} />} />
+            </Routes>
+          </TestsContextProvider>
+        </AuthContextProvider>
+      </Router>
     </div>
   );
 };

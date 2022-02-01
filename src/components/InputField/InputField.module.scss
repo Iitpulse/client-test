@@ -1,0 +1,48 @@
+@import "../../utils/common.scss";
+
+.container {
+  @extend .flexCol;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+  user-select: none;
+  align-items: flex-start;
+
+  label {
+    padding: 0.5rem 0px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: #676767;
+  }
+  label:focus {
+    color: #299bed;
+  }
+  input {
+    padding: 0.7rem 0.5rem;
+    outline: none;
+    border-radius: 10px;
+    color: #676767;
+    border: 2px solid #c2c2c2;
+  }
+  input:hover {
+    border: 2px solid #a8a8a8;
+  }
+  input:focus {
+    border: 2px solid #299bed;
+  }
+  input:focus + label {
+    color: #299bed;
+  }
+
+  input:disabled,
+  input:disabled + label {
+    color: #676767;
+    cursor: not-allowed;
+  }
+  input:disabled:hover {
+    border: 2px solid #c2c2c2;
+  }
+  input[type="radio"] + label,
+  input[type="checkbox"] + label {
+    padding: 0.5rem 1rem;
+  }
+}

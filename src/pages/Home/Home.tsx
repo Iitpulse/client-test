@@ -48,6 +48,7 @@ const Home = () => {
   }
 
   function handleClickPrev() {
+    if (currentQuestion === 0) return;
     dispatch({
       type: TEST_ACTION_TYPES.PREVIOUS_QUESTION,
       payload: currentQuestion,
@@ -99,7 +100,10 @@ const Home = () => {
   useEffect(() => {
     if (test) {
       console.log({ questions, test });
-      if (questions?.length) setQuestion(questions[currentQuestion]);
+      if (questions?.length) {
+        setQuestion(questions[currentQuestion]);
+        handleScreen();
+      }
     }
   }, [currentQuestion, questions, test]);
 

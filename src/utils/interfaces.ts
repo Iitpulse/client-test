@@ -94,3 +94,14 @@ export interface ITestStatus {
   markedForReview: Array<string>;
   answeredAndMarkedForReview: Array<string>;
 }
+
+export interface ICurrentUser {
+  uid: string;
+  email: string;
+  userType: string;
+}
+
+export interface IAuthContext {
+  currentUser: ICurrentUser | null;
+  setCurrentUser: React.Dispatch<React.SetStateAction<ICurrentUser | null>>;
+}

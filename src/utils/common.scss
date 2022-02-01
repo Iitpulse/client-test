@@ -4,8 +4,6 @@
   align-items: center;
 }
 .flexCol {
-  display: flex;
+  @extend .flexRow;
   flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
 }

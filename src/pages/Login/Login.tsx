@@ -1,8 +1,9 @@
 import { useState, useEffect, useContext } from "react";
 import styles from "./Login.module.scss";
-import { Button, InputField } from "../../components";
+import { Button, InputField, Header } from "../../components";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../utils/auth/AuthContext";
+import logo from "../../assets/images/logo.svg";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -29,6 +30,11 @@ const Login = () => {
 
   return (
     <div className={styles.container}>
+      <section className={styles.logoSection}>
+        <div className={styles.imageContainer}>
+          <img src={logo} alt="IIT Pulse" />
+        </div>
+      </section>
       <div className={styles.card}>
         <h4>Login</h4>
         <form onSubmit={handleClickSubmit}>

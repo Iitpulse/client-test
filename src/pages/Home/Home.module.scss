@@ -104,5 +104,12 @@
         }
       }
     }
+    @media screen and (max-width: 1100px) {
+      flex-direction: column;
+      main,
+      aside {
+        width: 100% !important;
+      }
+    }
   }
 }

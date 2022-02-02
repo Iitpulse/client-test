@@ -10,7 +10,7 @@ const TestInfo = () => {
         exam="JEE ADVANCED 2022"
         image={currentUserImage}
       />
-      <select name="language">
+      <select title="Langauge" name="language">
         <option value="english">English</option>
         <option value="hindi">Hindi</option>
       </select>

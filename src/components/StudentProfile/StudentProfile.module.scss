@@ -19,6 +19,7 @@
     padding: 10px;
     @extend .flexCol;
     justify-content: flex-start;
+    align-items: flex-start;
     p {
       padding: 3px;
       color: #555555;
@@ -28,7 +29,7 @@
       }
       .timeTag {
         background-color: #61b4f1;
-        padding: 5px;
+        padding: 0.3rem 0.8rem;
         color: white;
         border-radius: 20px;
       }

@@ -102,7 +102,6 @@ const Home = () => {
       console.log({ questions, test });
       if (questions?.length) {
         setQuestion(questions[currentQuestion]);
-        handleScreen();
       }
     }
   }, [currentQuestion, questions, test]);

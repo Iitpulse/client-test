@@ -2,8 +2,11 @@
 
 .container {
   @extend .flexRow;
+  -ms-user-select: none;
+  -webkit-user-select: none;
   user-select: none;
   height: 100px;
+  width: -moz-fit-content;
   width: fit-content;
   .imageContainer {
     width: 100px;

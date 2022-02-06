@@ -50,14 +50,14 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
     async function fetchTest() {
       let test = await axios.get(
         process.env.REACT_APP_TEST_API_URI
-          ? `${process.env.REACT_APP_TEST_API_URI}/test/get`
-          : "http://localhost:5002/test/get"
+          ? `${process.env.REACT_APP_TEST_API_URI}/test/get/student/IITP_AB123`
+          : "http://localhost:5002/test/get/student/IITP_AB123"
       );
       console.log({ data: test.data });
       if (test?.data) {
         dispatch({
           type: TEST_ACTION_TYPES.INITIALIZE_QUESTIONS,
-          payload: test.data[0],
+          payload: test.data,
         });
       }
     }

@@ -99,6 +99,7 @@ export interface ICurrentUser {
   id: string;
   email: string;
   userType: string;
+  instituteId: string;
 }
 
 export interface IAuthContext {

@@ -18,10 +18,14 @@
           margin-right: 20px;
         }
       }
-      .navigationButtonsContainer {
-        margin: 0px 5px;
-        > button {
-          margin-right: 10px;
+      .navigationBtnsContainer {
+        @extend .flexRow;
+        justify-content: space-between;
+        .navigationBtns {
+          margin: 0px 5px;
+          button:nth-child(2) {
+            margin-left: 10px;
+          }
         }
       }
     }

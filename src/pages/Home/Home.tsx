@@ -6,8 +6,11 @@ import { TestsContext } from "../../utils/contexts/TestsContext";
 import { IOption, IQuestion, ITest } from "../../utils/interfaces";
 import clsx from "clsx";
 import { TEST_ACTION_TYPES } from "../../utils/actions";
+import { AuthContext } from "src/utils/auth/AuthContext";
 
 const Home = () => {
+  const { currentUser } = useContext(AuthContext);
+
   const { state, dispatch } = useContext(TestsContext);
 
   const { questions, currentQuestion, test, status } = state;
@@ -97,6 +100,23 @@ const Home = () => {
     });
   }
 
+  function handleClickSubmit() {
+    if (!currentUser) return alert("No valid user found");
+
+    dispatch({
+      type: TEST_ACTION_TYPES.SUBMIT_TEST,
+      payload: {
+        test,
+        user: {
+          id: currentUser.id,
+          type: currentUser.userType,
+          instituteId: currentUser.instituteId,
+        },
+        token: localStorage.getItem("token"),
+      },
+    });
+  }
+
   useEffect(() => {
     if (test) {
       console.log({ questions, test });
@@ -166,26 +186,35 @@ const Home = () => {
               Mark For Review {"&"} Next{" "}
             </Button>
           </div>
-          <div className={styles.navigationButtonsContainer}>
+          <div className={styles.navigationBtnsContainer}>
+            <div className={styles.navigationBtns}>
+              <Button
+                style={{
+                  background: "white",
+                  color: "black",
+                  border: "1px solid black",
+                }}
+                onClick={handleClickPrev}
+              >
+                Back
+              </Button>
+              <Button
+                style={{
+                  background: "white",
+                  color: "black",
+                  border: "1px solid black",
+                }}
+                onClick={handleClickNext}
+              >
+                Next
+              </Button>
+            </div>
             <Button
-              style={{
-                background: "white",
-                color: "black",
-                border: "1px solid black",
-              }}
-              onClick={handleClickPrev}
+              color="success"
+              onClick={handleClickSubmit}
+              title="Submit Test"
             >
-              Back
-            </Button>
-            <Button
-              style={{
-                background: "white",
-                color: "black",
-                border: "1px solid black",
-              }}
-              onClick={handleClickNext}
-            >
-              Next
+              Submit
             </Button>
           </div>
         </main>

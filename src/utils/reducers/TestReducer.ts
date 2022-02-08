@@ -1,7 +1,8 @@
 import { TEST_ACTION, TEST_ACTION_TYPES } from "../actions";
 import { ITestsContext } from "../contexts/TestsContext";
-import { IOption, IQuestionWithID } from "../interfaces";
+import { IOption, IQuestionWithID, ITest } from "../interfaces";
 import { flattenQuestions, shuffleQuestions } from "../utils";
+import axios from "axios";
 
 export default function TestReducer(
   state: ITestsContext,
@@ -324,10 +325,49 @@ export default function TestReducer(
         },
       };
     }
+    case TEST_ACTION_TYPES.SUBMIT_TEST: {
+      submitTest(payload, {
+        ...state.test,
+        id: "IITP_AB123",
+        sections: state.test?.sections.map((section) => ({
+          ...section,
+          subSections: section.subSections.map((subSection) => ({
+            ...subSection,
+            questions: subSection.questions.map((question) =>
+              state.questions.find((q) => q.id === question.id)
+            ),
+          })),
+        })),
+      });
+      return state;
+    }
     default: {
       return state;
     }
   }
+}
+
+async function submitTest(payload: any, test: any) {
+  if (!test) return;
+  const testId = test.id;
+  let res = await axios.post(
+    `${process.env.REACT_APP_TEST_API_URI}/test/submit/`,
+    {
+      user: payload.user,
+      test,
+    },
+    {
+      headers: {
+        "x-access-token": `Bearer ${payload.token}`,
+      },
+    }
+  );
+  if (res.status === 200) {
+    alert("Submitted succesfully");
+  } else {
+    alert("Some error occured");
+  }
+  return console.log({ res });
 }
 
 function isQuestionVisited(question: IQuestionWithID): boolean {

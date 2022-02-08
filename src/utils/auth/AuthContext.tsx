@@ -25,6 +25,7 @@ const AuthContextProvider = (props: ProviderProps) => {
         email: decoded.email,
         id: decoded.id,
         userType: decoded.userType,
+        instituteId: decoded.instituteId,
       });
     }
   }, []);

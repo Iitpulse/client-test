@@ -30,6 +30,7 @@ const Login = () => {
         id: decoded.id,
         email: decoded.email,
         userType: decoded.userType,
+        instituteId: decoded.instituteId,
       });
       localStorage.setItem("token", response.data.token);
       navigate("/");
@@ -45,6 +46,7 @@ const Login = () => {
           email: decoded.email,
           id: decoded.id,
           userType: decoded.userType,
+          instituteId: decoded.instituteId,
         });
       }
     }

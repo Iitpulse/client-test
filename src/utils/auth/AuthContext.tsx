@@ -1,9 +1,10 @@
 import { useState, createContext, useEffect } from "react";
 import { ICurrentUser, IAuthContext } from "../interfaces";
+import { decodeToken } from "react-jwt";
 
 interface ProviderProps {
   children: React.ReactNode;
-  setCurrentUser?: React.Dispatch<React.SetStateAction<ICurrentUser | null>>;
+  setCurrentUser?: React.Dispatch<React.SetStateAction<ICurrentUser | any>>;
 }
 
 const defaultAuthContext = {
@@ -17,10 +18,14 @@ const AuthContextProvider = (props: ProviderProps) => {
   const [currentUser, setCurrentUser] = useState<ICurrentUser | null>(null);
 
   useEffect(() => {
-    const user = localStorage.getItem("currentUser");
-    console.log({ user });
+    const user = localStorage.getItem("token");
     if (user) {
-      setCurrentUser(JSON.parse(user));
+      let decoded = decodeToken(user) as any;
+      setCurrentUser({
+        email: decoded.email,
+        id: decoded.id,
+        userType: decoded.userType,
+      });
     }
   }, []);
 

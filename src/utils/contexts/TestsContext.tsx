@@ -4,6 +4,8 @@ import { SAMPLE_TEST } from "../constants";
 import { IQuestionWithID, ITest, ITestStatus } from "../interfaces";
 import TestReducer from "../reducers/TestReducer";
 import axios from "axios";
+import { AuthContext } from "../auth/AuthContext";
+import { useContext } from "react";
 
 export interface ITestsContext {
   globalTest: ITest | null;
@@ -45,13 +47,19 @@ export const TestsContext = createContext<{
 
 const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(TestReducer, defaultTestContext);
+  const { currentUser } = useContext(AuthContext);
 
   useEffect(() => {
     async function fetchTest() {
       let test = await axios.get(
         process.env.REACT_APP_TEST_API_URI
-          ? `${process.env.REACT_APP_TEST_API_URI}/test/get/student/IITP_AB123`
-          : "http://localhost:5002/test/get/student/IITP_AB123"
+          ? `${process.env.REACT_APP_TEST_API_URI}/test/student/IITP_AB123`
+          : "http://localhost:5002/test/student/IITP_AB123",
+        {
+          headers: {
+            "X-Access-Token": `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
       );
       console.log({ data: test.data });
       if (test?.data) {
@@ -61,8 +69,10 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
         });
       }
     }
-    fetchTest();
-  }, []);
+    if (currentUser?.id) {
+      fetchTest();
+    }
+  }, [currentUser]);
 
   return (
     <TestsContext.Provider value={{ state, dispatch }}>

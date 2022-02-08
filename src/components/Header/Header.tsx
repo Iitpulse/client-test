@@ -3,8 +3,10 @@ import { TestInfo, Button } from "../../components";
 import logo from "../../assets/images/logo.svg";
 import question from "../../assets/icons/note.svg";
 import info from "../../assets/icons/info.svg";
+import { useNavigate } from "react-router-dom";
 
 const Header = () => {
+  const navigate = useNavigate();
   return (
     <div className={styles.container}>
       <section className={styles.logoSection}>
@@ -15,7 +17,15 @@ const Header = () => {
           <Button icon={<img src={question} alt="List" />} color="success">
             View Question Paper
           </Button>
-          <Button icon={<img src={info} alt="List" />}>View Instruction</Button>
+          <Button
+            onClick={() => {
+              navigate("/login");
+              localStorage.removeItem("token");
+            }}
+            icon={<img src={info} alt="List" />}
+          >
+            View Instruction
+          </Button>
         </div>
       </section>
       <TestInfo />

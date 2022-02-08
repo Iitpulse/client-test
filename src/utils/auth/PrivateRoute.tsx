@@ -9,7 +9,7 @@ interface Props {
 const PrivateRoute: React.FC<Props> = ({ component: RouteComponent }) => {
   const { currentUser } = useContext(AuthContext);
 
-  if (!currentUser && !localStorage.getItem("currentUser")) {
+  if (!currentUser && !localStorage.getItem("token")) {
     return <Navigate to="/login" />;
   }
 

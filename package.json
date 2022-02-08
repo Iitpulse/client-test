@@ -23,6 +23,7 @@
     "react": "^17.0.2",
     "react-app-rewired": "^2.1.11",
     "react-dom": "^17.0.2",
+    "react-jwt": "^1.1.4",
     "react-router-dom": "^6.2.1",
     "react-scripts": "5.0.0",
     "sass": "^1.49.0",
@@ -57,5 +58,8 @@
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^8.5.8"
+  },
+  "browser": {
+    "crypto": false
   }
 }

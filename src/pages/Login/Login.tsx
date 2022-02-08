@@ -1,9 +1,11 @@
 import { useState, useEffect, useContext } from "react";
 import styles from "./Login.module.scss";
-import { Button, InputField, Header } from "../../components";
+import { Button, InputField } from "../../components";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../utils/auth/AuthContext";
 import logo from "../../assets/images/logo.svg";
+import axios from "axios";
+import { decodeToken } from "react-jwt";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,17 +17,37 @@ const Login = () => {
 
   async function handleClickSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    localStorage.setItem(
-      "currentUser",
-      JSON.stringify({ email, uid: "IITP_ST_123", userType: "student" })
-    );
-    setCurrentUser({ email, uid: "IITP_ST_123", userType: "student" });
-    navigate("/");
+    const response = await axios.post("http://localhost:5000/auth/login/", {
+      email,
+      password,
+    });
+
+    console.log({ decoded: decodeToken(response.data.token), response });
+
+    if (response.status === 200) {
+      let decoded = decodeToken(response.data.token) as any;
+      setCurrentUser({
+        id: decoded.id,
+        email: decoded.email,
+        userType: decoded.userType,
+      });
+      localStorage.setItem("token", response.data.token);
+      navigate("/");
+    }
   }
 
   useEffect(() => {
-    localStorage.getItem("currentUser") &&
-      setCurrentUser(JSON.parse(localStorage.getItem("currentUser") as string));
+    let token = localStorage.getItem("token");
+    if (token) {
+      const decoded = decodeToken(token) as any;
+      if (decoded) {
+        setCurrentUser({
+          email: decoded.email,
+          id: decoded.id,
+          userType: decoded.userType,
+        });
+      }
+    }
   }, [setCurrentUser]);
 
   return (

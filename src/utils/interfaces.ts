@@ -96,7 +96,7 @@ export interface ITestStatus {
 }
 
 export interface ICurrentUser {
-  uid: string;
+  id: string;
   email: string;
   userType: string;
 }

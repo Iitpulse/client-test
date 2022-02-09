@@ -8,17 +8,17 @@ import styles from "./Question.module.scss";
 interface Props {
   question: string;
   options: Array<IOption>;
-  selectedOption: IOption | null;
+  selectedOptions: Array<string>;
   type: "mcq" | "numerical";
   index: number;
-  onClickOption: (option: IOption) => void;
+  onClickOption: (option: string) => void;
 }
 
 const Question: React.FC<Props> = ({
   index,
   question,
   options,
-  selectedOption,
+  selectedOptions,
   type,
   onClickOption,
 }) => {
@@ -44,15 +44,15 @@ const Question: React.FC<Props> = ({
             key={`${option.id}-${i}`}
             className={clsx(
               styles.option,
-              selectedOption?.id === option.id && styles.selected
+              selectedOptions?.includes(option.id) && styles.selected
             )}
           >
             <input
               type="radio"
               name="options"
               id={option?.id.toString()}
-              onChange={() => onClickOption(option)}
-              checked={selectedOption?.id === option.id}
+              onChange={() => onClickOption(option.id)}
+              checked={selectedOptions?.includes(option.id)}
             />
             <label
               htmlFor={option.id.toString()}

@@ -7,7 +7,7 @@ export interface IStatus {
 }
 
 export interface IOption {
-  id: string | number;
+  id: string;
   value: string;
 }
 
@@ -77,7 +77,7 @@ export interface IQuestion {
   question: string;
   options: Array<IOption>;
   markingScheme: IMarkingScheme;
-  selectedOption: IOption | null;
+  selectedOptions: Array<string>;
   type: string;
 }
 

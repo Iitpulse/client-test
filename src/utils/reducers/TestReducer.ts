@@ -32,6 +32,7 @@ export default function TestReducer(
       const allQuestionsShuffled = shuffleQuestions(allQuestionsExtracted);
       return {
         ...state,
+        test: payload,
         questions: allQuestionsShuffled.map((question, idx) => {
           if (idx === 0) {
             return {
@@ -326,19 +327,18 @@ export default function TestReducer(
       };
     }
     case TEST_ACTION_TYPES.SUBMIT_TEST: {
-      submitTest(payload, {
+      let finalTest = {
         ...state.test,
-        id: "IITP_AB123",
         sections: state.test?.sections.map((section) => ({
           ...section,
           subSections: section.subSections.map((subSection) => ({
             ...subSection,
-            questions: subSection.questions.map((question) =>
-              state.questions.find((q) => q.id === question.id)
-            ),
+            questions: getSubSectionQuestions(subSection.id, questions),
           })),
         })),
-      });
+      };
+      console.log({ finalTest });
+      submitTest(payload, finalTest);
       return state;
     }
     default: {
@@ -347,21 +347,34 @@ export default function TestReducer(
   }
 }
 
+function getSubSectionQuestions(subSectionId: string, questions: any) {
+  let qs: any = {};
+  // for (let [key, value] of Object.entries(subSection.questions)) {
+  //   qs[key] = questions.find((q: any) => q.subSectionId === subSectionId);
+  // }
+  questions.forEach((question: any) => {
+    if (question.subSectionId === subSectionId) {
+      qs[question.id] = question;
+    }
+  });
+
+  return questions;
+}
+
 async function submitTest(payload: any, test: any) {
   if (!test) return;
   const testId = test.id;
-  let res = await axios.post(
-    `${process.env.REACT_APP_TEST_API_URI}/test/submit/`,
-    {
-      user: payload.user,
-      test,
+  let res = await axios.post(`http://localhost:5002/test/submit`, {
+    user: payload.user,
+    test: {
+      id: test.id,
+      sections: test.sections,
+      status: "submitted",
+      validity: test.validity,
+      createdAt: test.createdAt,
+      modifiedAt: test.modifiedAt,
     },
-    {
-      headers: {
-        "x-access-token": `Bearer ${payload.token}`,
-      },
-    }
-  );
+  });
   if (res.status === 200) {
     alert("Submitted succesfully");
   } else {
@@ -405,14 +418,16 @@ function markQuestionWithStatus(
               ? new Date().toISOString()
               : question.status.markedForReviewAt,
         },
-        selectedOption: selectedOption || question.selectedOption,
+        selectedOptions: selectedOption
+          ? uniqueValuesOnly([...question.selectedOptions, selectedOption])
+          : question.selectedOptions,
       };
     }
     return question;
   });
 }
 
-function uniqueValuesOnly(arr: Array<any>) {
+export function uniqueValuesOnly(arr: Array<any>) {
   return [...new Set(arr)];
 }
 
@@ -453,7 +468,7 @@ function clearOptionSelection(
           markedForReviewAt: null,
           answeredAndMarkedForReviewAt: null,
         },
-        selectedOption: null,
+        selectedOptions: [],
       };
     }
     return question;

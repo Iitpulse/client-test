@@ -52,7 +52,7 @@ export const SAMPLE_TEST = {
               correct: [4],
               incorrect: -1,
             },
-            selectedOption: null,
+            selectedOptions: [],
             type: "mcq",
           })),
       },

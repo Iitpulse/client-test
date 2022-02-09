@@ -7,6 +7,9 @@ import { IOption, IQuestion, ITest } from "../../utils/interfaces";
 import clsx from "clsx";
 import { TEST_ACTION_TYPES } from "../../utils/actions";
 import { AuthContext } from "src/utils/auth/AuthContext";
+import axios from "axios";
+import { constants } from "http2";
+import { uniqueValuesOnly } from "src/utils/reducers/TestReducer";
 
 const Home = () => {
   const { currentUser } = useContext(AuthContext);
@@ -19,10 +22,7 @@ const Home = () => {
     id: "",
     question: "",
     options: [],
-    selectedOption: {
-      id: "",
-      value: "",
-    },
+    selectedOptions: [],
     type: "mcq",
     markingScheme: {
       correct: [4],
@@ -58,7 +58,7 @@ const Home = () => {
     });
   }
 
-  function handleClickSaveAndNext(option: IOption | null) {
+  function handleClickSaveAndNext(option: string | null) {
     if (!option) return alert("Please select an option");
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_NEXT,
@@ -73,7 +73,7 @@ const Home = () => {
     });
   }
 
-  function handleClickSaveAndMarkForReview(option: IOption | null) {
+  function handleClickSaveAndMarkForReview(option: string | null) {
     if (!option) return alert("Please select an option");
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW,
@@ -81,18 +81,20 @@ const Home = () => {
     });
   }
 
-  function handleClickOption(option: IOption) {
+  function handleClickOption(option: string) {
     setQuestion({
       ...question,
-      selectedOption: option,
+      selectedOptions: question.selectedOptions.includes(option)
+        ? question.selectedOptions.filter((o) => o! === option)
+        : uniqueValuesOnly([question.selectedOptions, option]),
     });
   }
 
   function handleClickClear() {
-    if (!question.selectedOption) return;
+    if (!question.selectedOptions?.length) return;
     setQuestion({
       ...question,
-      selectedOption: null,
+      selectedOptions: [],
     });
     dispatch({
       type: TEST_ACTION_TYPES.CLEAR_SELECTION,
@@ -100,7 +102,7 @@ const Home = () => {
     });
   }
 
-  function handleClickSubmit() {
+  async function handleClickSubmit() {
     if (!currentUser) return alert("No valid user found");
 
     dispatch({
@@ -119,7 +121,7 @@ const Home = () => {
 
   useEffect(() => {
     if (test) {
-      console.log({ questions, test });
+      console.log({ questions, test, currentQuestion });
       if (questions?.length) {
         setQuestion(questions[currentQuestion]);
       }
@@ -139,7 +141,7 @@ const Home = () => {
             question={question.question}
             options={question.options}
             index={currentQuestion}
-            selectedOption={question.selectedOption}
+            selectedOptions={question.selectedOptions}
             key={question.id}
             type="mcq"
             onClickOption={handleClickOption}
@@ -151,7 +153,13 @@ const Home = () => {
                 border: "1px solid #55bc7e",
               }}
               color="success"
-              onClick={() => handleClickSaveAndNext(question.selectedOption)}
+              onClick={() =>
+                handleClickSaveAndNext(
+                  question.selectedOptions[
+                    question.selectedOptions.length - 1
+                  ] || null
+                )
+              }
             >
               Save {"&"} Next{" "}
             </Button>
@@ -172,7 +180,9 @@ const Home = () => {
               }}
               color="warning"
               onClick={() =>
-                handleClickSaveAndMarkForReview(question.selectedOption)
+                handleClickSaveAndMarkForReview(
+                  question.selectedOptions[question.selectedOptions.length - 1]
+                )
               }
             >
               Save {"&"} Mark For Review

@@ -33,6 +33,8 @@ export function shuffleQuestions(ques: Array<IQuestionWithID>) {
 export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
   let questions: Array<IQuestionWithID> = [];
 
+  console.log("inner", test);
+
   test.sections.forEach((section) => {
     section.subSections.forEach((subSection) => {
       questions = questions.concat(
@@ -40,6 +42,7 @@ export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
           ...question,
           sectionId: section.id,
           subSectionId: subSection.id,
+          selectedOptions: [],
           status: {
             status: "notVisited",
             visitedAt: null,
@@ -49,6 +52,7 @@ export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
           },
         }))
       );
+      console.log({ questions });
     });
   });
 

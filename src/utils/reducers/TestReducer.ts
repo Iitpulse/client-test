@@ -377,6 +377,8 @@ async function submitTest(payload: any, test: any) {
   });
   if (res.status === 200) {
     alert("Submitted succesfully");
+    localStorage.setItem("result", res.data.result.totalMarks);
+    payload.cb();
   } else {
     alert("Some error occured");
   }

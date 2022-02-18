@@ -1,0 +1,22 @@
+@import "../../utils/common.scss";
+
+.container {
+  @extend .flexCol;
+  width: 100%;
+  height: 100vh;
+  .imageContainer {
+    padding: 20px;
+    margin: auto;
+    width: -moz-fit-content;
+    width: -webkit-fit-content;
+    width: fit-content;
+  }
+
+  .main {
+    text-align: center;
+
+    button {
+      margin-top: 10rem;
+    }
+  }
+}

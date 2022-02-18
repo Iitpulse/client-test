@@ -10,9 +10,12 @@ import { AuthContext } from "src/utils/auth/AuthContext";
 import axios from "axios";
 import { constants } from "http2";
 import { uniqueValuesOnly } from "src/utils/reducers/TestReducer";
+import { useNavigate } from "react-router-dom";
 
 const Home = () => {
   const { currentUser } = useContext(AuthContext);
+
+  const navigate = useNavigate();
 
   const { state, dispatch } = useContext(TestsContext);
 
@@ -115,6 +118,10 @@ const Home = () => {
           instituteId: currentUser.instituteId,
         },
         token: localStorage.getItem("token"),
+        cb: () => {
+          handleScreen();
+          navigate("/result");
+        },
       },
     });
   }

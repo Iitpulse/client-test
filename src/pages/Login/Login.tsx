@@ -33,7 +33,7 @@ const Login = () => {
         instituteId: decoded.instituteId,
       });
       localStorage.setItem("token", response.data.token);
-      navigate("/");
+      navigate("/instructions");
     }
   }
 

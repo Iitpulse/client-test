@@ -1,0 +1,45 @@
+@import "../../utils/common.scss";
+
+.container {
+  width: 100vw;
+  height: 100vh;
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  animation: scaleAndAlpha 0.3s ease-in-out;
+
+  &.backdrop {
+    background: rgba(0, 0, 0, 0.5);
+  }
+  .modal {
+    max-width: 70%;
+    max-height: 70vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    // width: fit-content;
+    background: white;
+    padding: 1rem;
+    border-radius: 0.2rem;
+
+    .header {
+      @extend .flexRow;
+      justify-content: space-between;
+    }
+  }
+  &.modalOpen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+@keyframes scaleAndAlpha {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}

@@ -1,15 +1,13 @@
 import { useRef, useContext, useEffect, useState } from "react";
-import { Question, Header, Button, Legend } from "../../components";
+import { Question, Header, Button, Legend, Modal } from "../../components";
 import styles from "./Home.module.scss";
 import expandRight from "../../assets/icons/greaterThan.svg";
 import { TestsContext } from "../../utils/contexts/TestsContext";
-import { IOption, IQuestion, ITest } from "../../utils/interfaces";
+import { IQuestion } from "../../utils/interfaces";
 import clsx from "clsx";
 import { TEST_ACTION_TYPES } from "../../utils/actions";
-import { AuthContext } from "src/utils/auth/AuthContext";
-import axios from "axios";
-import { constants } from "http2";
-import { uniqueValuesOnly } from "src/utils/reducers/TestReducer";
+import { AuthContext } from "../../utils/auth/AuthContext";
+import { uniqueValuesOnly } from "../../utils/reducers/TestReducer";
 import { useNavigate } from "react-router-dom";
 
 const Home = () => {
@@ -32,6 +30,10 @@ const Home = () => {
       incorrect: -1,
     },
   });
+
+  const [questionPaperModal, setQuestionPaperModal] = useState<boolean>(false);
+  const [exitFullScreenModal, setExitFullScreenModal] =
+    useState<boolean>(false);
 
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -139,9 +141,31 @@ const Home = () => {
     console.log({ status });
   }, [status]);
 
+  // fullScreen even listener
+  useEffect(() => {
+    function manageFullScreen(e: any) {
+      // if (e.keyCode === 27) {
+      if (!document.fullscreenElement) {
+        setExitFullScreenModal(true);
+      } else {
+        setExitFullScreenModal(false);
+      }
+      // }
+    }
+    if (!document.fullscreenElement) {
+      setExitFullScreenModal(true);
+    }
+
+    document.addEventListener("fullscreenchange", manageFullScreen);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", manageFullScreen);
+    };
+  }, []);
+
   return (
     <div ref={mainRef} className={styles.container}>
-      <Header />
+      <Header onClickViewQuestionPaper={() => setQuestionPaperModal(true)} />
       <section className={styles.mainContainer}>
         <main className={styles.leftContainer}>
           <Question
@@ -168,7 +192,7 @@ const Home = () => {
                 )
               }
             >
-              Save {"&"} Next{" "}
+              Save {"&"} Next
             </Button>
             <Button
               style={{
@@ -263,6 +287,36 @@ const Home = () => {
 
       {/* <Button onClick={handleScreen}>Toggle Screen</Button> */}
       <section className={styles.instructionContainer}></section>
+      <Modal
+        isOpen={questionPaperModal}
+        onClose={() => setQuestionPaperModal(false)}
+        title="Question Paper"
+        backdrop
+      >
+        Hi this modal is for testing purpose
+      </Modal>
+      <Modal
+        isOpen={exitFullScreenModal}
+        onClose={() => {
+          handleScreen();
+          setExitFullScreenModal(false);
+        }}
+        title="Are you sure you want to exit full screen?"
+        backdrop
+      >
+        <div className={styles.flexRow}>
+          <Button color="error">Yes, Submit Test</Button>&nbsp;
+          <Button
+            color="primary"
+            onClick={() => {
+              handleScreen();
+              setExitFullScreenModal(false);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

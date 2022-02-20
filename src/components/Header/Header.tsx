@@ -5,7 +5,12 @@ import question from "../../assets/icons/note.svg";
 import info from "../../assets/icons/info.svg";
 import { useNavigate } from "react-router-dom";
 
-const Header = () => {
+interface IHeaderProps {
+  onClickViewQuestionPaper?: () => void;
+  onClickViewInstructions?: () => void;
+}
+
+const Header: React.FC<IHeaderProps> = ({ onClickViewQuestionPaper }) => {
   const navigate = useNavigate();
   return (
     <div className={styles.container}>
@@ -14,7 +19,11 @@ const Header = () => {
           <img src={logo} alt="IIT Pulse" />
         </div>
         <div className={styles.moreInfoTest}>
-          <Button icon={<img src={question} alt="List" />} color="success">
+          <Button
+            icon={<img src={question} alt="List" />}
+            color="success"
+            onClick={onClickViewQuestionPaper}
+          >
             View Question Paper
           </Button>
           <Button

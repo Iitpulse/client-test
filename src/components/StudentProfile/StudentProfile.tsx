@@ -56,16 +56,18 @@ const StudentProfile = (props: Props) => {
       </div>
       <div className={styles.textContainer}>
         <p>
-          Name : <span className={styles.fieldAnswerTextual}>{name}</span>
+          <span>Name : </span>
+          <span className={styles.fieldAnswerTextual}>{name}</span>
         </p>
         <p>
-          Exam : <span className={styles.fieldAnswerTextual}>{exam}</span>{" "}
+          <span>Exam : </span>
+          <span className={styles.fieldAnswerTextual}>{exam}</span>
         </p>
         <p>
-          Time Remaining :{" "}
+          <span>Time Remaining : </span>
           <span className={styles.timeTag}>
             {timer.hours} : {timer.minutes} : {timer.seconds}
-          </span>{" "}
+          </span>
         </p>
       </div>
     </div>

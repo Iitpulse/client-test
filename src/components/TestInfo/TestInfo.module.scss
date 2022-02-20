@@ -2,7 +2,7 @@
 
 .container {
   width: 100%;
-  padding: 10px calc((100% - var(--fixed-width)) / 2);
+  padding: 1.5rem calc((100% - var(--fixed-width)) / 2);
   background-color: rgb(235, 235, 235);
   @extend .flexRow;
 
@@ -14,5 +14,19 @@
     background-color: white;
     outline: none;
     border: 2px solid rgb(201, 201, 201);
+  }
+  @media screen and (max-width: 786px) {
+    flex-direction: column;
+    align-items: center;
+
+    select {
+      margin-left: 0;
+      margin-top: 1rem;
+    }
+  }
+  @media screen and (max-width: 400px) {
+    select {
+      width: 100%;
+    }
   }
 }

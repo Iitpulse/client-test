@@ -19,7 +19,7 @@ const Instructions = () => {
 
   function handleClickContinue() {
     handleScreen();
-    navigate("/test");
+    navigate("/");
   }
 
   return (

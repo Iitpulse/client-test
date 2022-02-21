@@ -40,42 +40,45 @@ const defaultTestContext = {
 export const TestsContext = createContext<{
   state: ITestsContext;
   dispatch: React.Dispatch<TEST_ACTION>;
+  fetchTest: (testId: string) => void;
 }>({
   state: defaultTestContext,
   dispatch: () => {},
+  fetchTest: () => {},
 });
 
 const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(TestReducer, defaultTestContext);
   const { currentUser } = useContext(AuthContext);
 
-  useEffect(() => {
-    async function fetchTest() {
-      let test = await axios.get(
-        process.env.REACT_APP_TEST_API_URI
-          ? `${process.env.REACT_APP_TEST_API_URI}/test/student/IITP_AB123`
-          : "http://localhost:5002/test/student/IITP_AB123",
-        {
-          headers: {
-            "X-Access-Token": `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-      console.log({ data: test.data });
-      if (test?.data) {
-        dispatch({
-          type: TEST_ACTION_TYPES.INITIALIZE_QUESTIONS,
-          payload: test.data,
-        });
+  async function fetchTest(testId: string) {
+    let test = await axios.get(
+      process.env.REACT_APP_TEST_API_URI
+        ? `${process.env.REACT_APP_TEST_API_URI}/test/student/${testId}`
+        : `http://localhost:5002/test/student/${testId}`,
+      {
+        headers: {
+          "X-Access-Token": `Bearer ${localStorage.getItem("token")}`,
+        },
       }
+    );
+    console.log({ data: test.data });
+    if (test?.data) {
+      dispatch({
+        type: TEST_ACTION_TYPES.INITIALIZE_QUESTIONS,
+        payload: test.data,
+      });
     }
+  }
+
+  useEffect(() => {
     if (currentUser?.id) {
-      fetchTest();
+      fetchTest("IITP_AB123");
     }
   }, [currentUser]);
 
   return (
-    <TestsContext.Provider value={{ state, dispatch }}>
+    <TestsContext.Provider value={{ state, dispatch, fetchTest }}>
       {children}
     </TestsContext.Provider>
   );

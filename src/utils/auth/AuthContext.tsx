@@ -4,7 +4,6 @@ import { decodeToken } from "react-jwt";
 
 interface ProviderProps {
   children: React.ReactNode;
-  setCurrentUser?: React.Dispatch<React.SetStateAction<ICurrentUser | any>>;
 }
 
 const defaultAuthContext = {

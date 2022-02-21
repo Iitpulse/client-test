@@ -13,11 +13,11 @@ const AuthWithURI = () => {
 
   useEffect(() => {
     if (user && testId) {
-      setIsError(false);
       const token = user;
       if (token) {
         const decoded = decodeToken(token) as any;
         if (decoded) {
+          setIsError(false);
           setCurrentUser({
             email: decoded.email,
             id: decoded.id,
@@ -25,7 +25,7 @@ const AuthWithURI = () => {
             instituteId: decoded.instituteId,
           });
           localStorage.setItem("token", token);
-          navigate(`/`);
+          navigate(`/instructions`);
         }
       }
     } else {
@@ -35,7 +35,7 @@ const AuthWithURI = () => {
 
   return (
     <div className={styles.container}>
-      {isError ? <Loader /> : <div>Some error occured</div>}
+      {!isError ? <Loader /> : <div>Some error occured</div>}
     </div>
   );
 };

@@ -30,7 +30,7 @@ const AuthWithURI = () => {
           setTestId(testId);
           localStorage.setItem("token", token);
           setKeyRequiredForTest(keyRequired);
-          navigate(keyRequired ? "/login-key" : `/login`);
+          navigate(keyRequired ? "/login-key" : `/instructions`);
         }
       }
     } else {

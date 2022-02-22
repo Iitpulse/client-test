@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import styles from "./Instructions.module.scss";
-import logo from "../../assets/images/logo.svg";
 import { Button, Header } from "src/components";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
@@ -13,11 +12,14 @@ import {
   NAVIGATING_THROUGH_SECTIONS_INSTRUCTIONS,
 } from "src/utils/constants";
 import { InstructionType } from "src/utils/interfaces";
+import { TestsContext } from "src/utils/contexts/TestsContext";
 
 const Instructions = () => {
   const navigate = useNavigate();
   const [confirmCheck, setConfirmCheck] = useState(false);
   const [locale, setLocale] = useState<string>("en");
+
+  const { state } = useContext(TestsContext);
 
   function handleScreen() {
     if (!document.fullscreenElement) {
@@ -41,6 +43,12 @@ const Instructions = () => {
     setLocale(e.target.value);
   }
 
+  useEffect(() => {
+    if (!state.test || !localStorage.getItem("token")) {
+      navigate("/login");
+    }
+  }, [state.test, navigate]);
+
   return (
     <div className={styles.container}>
       <Header
@@ -54,7 +62,7 @@ const Instructions = () => {
         <div className={clsx(styles.instructionSection)}>
           <h4>General Instructions:</h4>
           <InstructionsList
-            instructions={GENERAL_INSTRUCTIONS}
+            instructions={getGeneralInstructionsWithTestName(state.test)}
             locale={locale}
           />
         </div>
@@ -123,7 +131,7 @@ const InstructionsList: React.FC<InstructionsListProps> = ({
     <ol>
       {instructions.map((instruction, i) =>
         instruction.children ? (
-          <li>
+          <li key={i * Math.random()}>
             {instruction.content[locale] || instruction.content.en}
             <InstructionsList
               instructions={instruction.children}
@@ -131,9 +139,25 @@ const InstructionsList: React.FC<InstructionsListProps> = ({
             />
           </li>
         ) : (
-          <li> {instruction.content[locale] || instruction.content.en}</li>
+          <li key={i * Math.random()}>
+            {instruction.content[locale] || instruction.content.en}
+          </li>
         )
       )}
     </ol>
   );
 };
+
+function getGeneralInstructionsWithTestName(test: any) {
+  return GENERAL_INSTRUCTIONS.map((instruction, i) =>
+    i === 0
+      ? {
+          ...instruction,
+          content: {
+            en: `Total duration of ${test.name} is 180 min.`,
+            hi: `सभी प्रश्नों को हल करने की कुल अवधि ${test.name} के लिए 180 मिनट है।`,
+          },
+        }
+      : instruction
+  );
+}

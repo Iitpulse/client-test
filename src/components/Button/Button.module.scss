@@ -23,23 +23,27 @@
   background: var(--clr-primary);
   &:disabled {
     background: var(--clr-primary-disabled);
+    cursor: not-allowed;
   }
 }
 .clrError {
   background: var(--clr-error);
   &:disabled {
     background: var(--clr-error-disabled);
+    cursor: not-allowed;
   }
 }
 .clrWarning {
   background: var(--clr-warning);
   &:disabled {
     background: var(--clr-warning-disabled);
+    cursor: not-allowed;
   }
 }
 .clrSuccess {
   background: var(--clr-success);
   &:disabled {
     background: var(--clr-success-disabled);
+    cursor: not-allowed;
   }
 }

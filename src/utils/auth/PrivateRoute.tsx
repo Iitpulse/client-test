@@ -1,4 +1,5 @@
 import { useContext } from "react";
+import { decodeToken } from "react-jwt";
 import { Navigate } from "react-router-dom";
 import { AuthContext } from "./AuthContext";
 
@@ -7,9 +8,13 @@ interface Props {
   path?: string;
 }
 const PrivateRoute: React.FC<Props> = ({ component: RouteComponent }) => {
-  const { currentUser } = useContext(AuthContext);
+  const { currentUser, keyRequiredForTest } = useContext(AuthContext);
 
-  if (!currentUser && !localStorage.getItem("token")) {
+  if (
+    !currentUser &&
+    !localStorage.getItem("token") &&
+    !isValidTestKey(keyRequiredForTest)
+  ) {
     return <Navigate to="/login" />;
   }
 
@@ -17,3 +22,15 @@ const PrivateRoute: React.FC<Props> = ({ component: RouteComponent }) => {
 };
 
 export default PrivateRoute;
+
+function isValidTestKey(keyRequired: boolean) {
+  if (!keyRequired) return true;
+  const token = localStorage.getItem("testKeyToken");
+  if (token) {
+    const decoded = decodeToken(token) as any;
+    if (decoded?.testKey) {
+      return true;
+    }
+  }
+  return false;
+}

@@ -4,9 +4,11 @@ import { decodeToken } from "react-jwt";
 import { AuthContext } from "../../utils/auth/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader } from "src/components";
+import { TestsContext } from "src/utils/contexts/TestsContext";
 
 const AuthWithURI = () => {
-  const { setCurrentUser } = useContext(AuthContext);
+  const { setCurrentUser, setKeyRequiredForTest } = useContext(AuthContext);
+  const { setTestId } = useContext(TestsContext);
   const navigate = useNavigate();
   const { user, testId } = useParams();
   const [isError, setIsError] = useState(false);
@@ -17,6 +19,7 @@ const AuthWithURI = () => {
       if (token) {
         const decoded = decodeToken(token) as any;
         if (decoded) {
+          let keyRequired = Boolean(decoded.keyRequiredForTest);
           setIsError(false);
           setCurrentUser({
             email: decoded.email,
@@ -24,14 +27,23 @@ const AuthWithURI = () => {
             userType: decoded.userType,
             instituteId: decoded.instituteId,
           });
+          setTestId(testId);
           localStorage.setItem("token", token);
-          navigate(`/instructions`);
+          setKeyRequiredForTest(keyRequired);
+          navigate(keyRequired ? "/login-key" : `/login`);
         }
       }
     } else {
       setIsError(true);
     }
-  }, [user, testId, setCurrentUser, navigate]);
+  }, [
+    user,
+    testId,
+    setCurrentUser,
+    navigate,
+    setKeyRequiredForTest,
+    setTestId,
+  ]);
 
   return (
     <div className={styles.container}>

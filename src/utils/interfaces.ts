@@ -105,4 +105,17 @@ export interface ICurrentUser {
 export interface IAuthContext {
   currentUser: ICurrentUser | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<ICurrentUser | null>>;
+  keyRequiredForTest: boolean;
+  setKeyRequiredForTest: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+type ContentType = {
+  en: string | React.ReactNode;
+  hi?: string | React.ReactNode;
+};
+
+export interface InstructionType {
+  type: "text" | "rich";
+  children?: Array<InstructionType>;
+  content: ContentType | any;
 }

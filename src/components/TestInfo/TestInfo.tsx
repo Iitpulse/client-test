@@ -5,11 +5,13 @@ import currentUserImage from "../../assets/images/currentUserImage.jpg";
 interface Props {
   testInfoLeftComp?: React.ReactNode;
   testInfoRightComp?: React.ReactNode;
+  onChangeLanguage?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
 const TestInfo: React.FC<Props> = ({
   testInfoLeftComp: LeftComp,
   testInfoRightComp: RightComp,
+  onChangeLanguage,
 }) => {
   return (
     <div className={styles.container}>
@@ -21,9 +23,9 @@ const TestInfo: React.FC<Props> = ({
         />
       )}
       {RightComp || (
-        <select title="Langauge" name="language">
-          <option value="english">English</option>
-          <option value="hindi">Hindi</option>
+        <select title="Langauge" name="language" onChange={onChangeLanguage}>
+          <option value="en">English</option>
+          <option value="hi">Hindi</option>
         </select>
       )}
     </div>

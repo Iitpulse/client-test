@@ -6,6 +6,7 @@ import TestReducer from "../reducers/TestReducer";
 import axios from "axios";
 import { AuthContext } from "../auth/AuthContext";
 import { useContext } from "react";
+import { useState } from "react";
 
 export interface ITestsContext {
   globalTest: ITest | null;
@@ -40,15 +41,16 @@ const defaultTestContext = {
 export const TestsContext = createContext<{
   state: ITestsContext;
   dispatch: React.Dispatch<TEST_ACTION>;
-  fetchTest: (testId: string) => void;
+  setTestId: (testId: string) => void;
 }>({
   state: defaultTestContext,
   dispatch: () => {},
-  fetchTest: () => {},
+  setTestId: () => {},
 });
 
 const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(TestReducer, defaultTestContext);
+  const [testId, setTestId] = useState("IITP_AB123");
   const { currentUser } = useContext(AuthContext);
 
   async function fetchTest(testId: string) {
@@ -72,13 +74,13 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    if (currentUser?.id) {
-      fetchTest("IITP_AB123");
+    if (currentUser?.id && testId) {
+      fetchTest(testId);
     }
-  }, [currentUser]);
+  }, [currentUser, testId]);
 
   return (
-    <TestsContext.Provider value={{ state, dispatch, fetchTest }}>
+    <TestsContext.Provider value={{ state, dispatch, setTestId }}>
       {children}
     </TestsContext.Provider>
   );

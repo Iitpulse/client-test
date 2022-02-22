@@ -1,5 +1,12 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { AuthWithURI, Home, Instructions, Login, Result } from "./pages";
+import {
+  AuthWithURI,
+  Home,
+  Instructions,
+  Login,
+  Result,
+  TestKeyLogin,
+} from "./pages";
 import styles from "./App.module.scss";
 import TestsContextProvider from "./utils/contexts/TestsContext";
 import AuthContextProvider from "./utils/auth/AuthContext";
@@ -16,6 +23,7 @@ const App = () => {
           <TestsContextProvider>
             <Routes>
               <Route path="/auth/:user/:testId" element={<AuthWithURI />} />
+              <Route path="/login-with-key" element={<TestKeyLogin />} />
               <Route
                 path="/instructions"
                 element={<PrivateRoute component={Instructions} />}

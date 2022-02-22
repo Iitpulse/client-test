@@ -21,13 +21,25 @@
 
 .clrPrimary {
   background: var(--clr-primary);
+  &:disabled {
+    background: var(--clr-primary-disabled);
+  }
 }
 .clrError {
   background: var(--clr-error);
+  &:disabled {
+    background: var(--clr-error-disabled);
+  }
 }
 .clrWarning {
   background: var(--clr-warning);
+  &:disabled {
+    background: var(--clr-warning-disabled);
+  }
 }
 .clrSuccess {
   background: var(--clr-success);
+  &:disabled {
+    background: var(--clr-success-disabled);
+  }
 }

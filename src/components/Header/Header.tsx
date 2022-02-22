@@ -13,6 +13,7 @@ interface IHeaderProps {
   classes?: Array<string>;
   onClickViewQuestionPaper?: () => void;
   onClickViewInstructions?: () => void;
+  onChangeLanguage?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
 }
 
 const Header: React.FC<IHeaderProps> = ({
@@ -20,6 +21,7 @@ const Header: React.FC<IHeaderProps> = ({
   rightComp: RightComp,
   testInfoLeftComp: TestInfoLeftComp,
   testInfoRightComp: TestInfoRightComp,
+  onChangeLanguage,
   classes,
 }) => {
   const navigate = useNavigate();
@@ -53,6 +55,7 @@ const Header: React.FC<IHeaderProps> = ({
       <TestInfo
         testInfoLeftComp={TestInfoLeftComp}
         testInfoRightComp={TestInfoRightComp}
+        onChangeLanguage={onChangeLanguage}
       />
     </div>
   );

@@ -9,9 +9,16 @@ body {
 }
 :root {
   --clr-primary: #61b4f1;
+  --clr-primary-disabled: #bbe3ff;
+
   --clr-success: #55bc7e;
+  --clr-success-disabled: #94c9a9;
+
   --clr-warning: #f8ba1c;
+  --clr-warning-disabled: #fce7b2;
+
   --clr-error: #fc5f5f;
+  --clr-error-disabled: #f79090;
 
   --fixed-width: 80%;
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import styles from "./Login.module.scss";
+import styles from "../Login/Login.module.scss";
 import { Button, Header, InputField } from "../../components";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../utils/auth/AuthContext";
@@ -7,50 +7,45 @@ import logo from "../../assets/images/logo.svg";
 import axios from "axios";
 import { decodeToken } from "react-jwt";
 
-const Login = () => {
+const TestKeyLogin = () => {
   const navigate = useNavigate();
 
-  const { setCurrentUser, keyRequiredForTest } = useContext(AuthContext);
+  const { keyRequiredForTest } = useContext(AuthContext);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [key, setKey] = useState("");
 
   async function handleClickSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const response = await axios.post("http://localhost:5000/auth/login/", {
-      email,
-      password,
-    });
+    const response = await axios.post(
+      "http://localhost:5000/auth/login-with-key/",
+      {
+        key,
+      }
+    );
 
     console.log({ decoded: decodeToken(response.data.token), response });
 
     if (response.status === 200) {
       let decoded = decodeToken(response.data.token) as any;
-      setCurrentUser({
-        id: decoded.id,
-        email: decoded.email,
-        userType: decoded.userType,
-        instituteId: decoded.instituteId,
-      });
-      localStorage.setItem("token", response.data.token);
-      navigate(keyRequiredForTest ? "/login-key" : "/instructions");
+      if (decoded) {
+        localStorage.setItem("testKeyToken", response.data.token);
+        navigate("/instructions");
+      }
     }
   }
 
   useEffect(() => {
     let token = localStorage.getItem("token");
-    if (token) {
-      const decoded = decodeToken(token) as any;
-      if (decoded) {
-        setCurrentUser({
-          email: decoded.email,
-          id: decoded.id,
-          userType: decoded.userType,
-          instituteId: decoded.instituteId,
-        });
-      }
+    if (!token) {
+      navigate("/login");
+      return;
     }
-  }, [setCurrentUser]);
+    // Explicitly checking for false because the key might be null
+    if (keyRequiredForTest === false) {
+      navigate("/instructions");
+      return;
+    }
+  }, [navigate, keyRequiredForTest]);
 
   return (
     <div className={styles.container}>
@@ -69,23 +64,13 @@ const Login = () => {
         <form onSubmit={handleClickSubmit}>
           <InputField
             classes={[styles.inputField]}
-            id="email"
-            label="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            id="key"
+            label="Key"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
             required
-            placeholder="Enter your email"
+            placeholder="Enter your key"
             type="text"
-          />
-          <InputField
-            classes={[styles.inputField]}
-            id="password"
-            label="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            placeholder="Enter your Password"
-            type="password"
           />
           <Button type="submit" classes={[styles.submitBtn]}>
             Submit
@@ -96,7 +81,7 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default TestKeyLogin;
 
 const HeaderLeft: React.FC<{ candidateName: string; paper: string }> = ({
   candidateName,

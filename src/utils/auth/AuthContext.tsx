@@ -9,12 +9,15 @@ interface ProviderProps {
 const defaultAuthContext = {
   currentUser: null,
   setCurrentUser: () => {},
+  keyRequiredForTest: false,
+  setKeyRequiredForTest: () => {},
 };
 
 export const AuthContext = createContext<IAuthContext>(defaultAuthContext);
 
 const AuthContextProvider = (props: ProviderProps) => {
   const [currentUser, setCurrentUser] = useState<ICurrentUser | null>(null);
+  const [keyRequiredForTest, setKeyRequiredForTest] = useState<boolean>(false);
 
   useEffect(() => {
     const user = localStorage.getItem("token");
@@ -30,7 +33,14 @@ const AuthContextProvider = (props: ProviderProps) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, setCurrentUser }}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        setCurrentUser,
+        keyRequiredForTest,
+        setKeyRequiredForTest,
+      }}
+    >
       {props.children}
     </AuthContext.Provider>
   );

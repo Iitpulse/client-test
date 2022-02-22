@@ -3,7 +3,7 @@ import { Question, Header, Button, Legend, Modal } from "../../components";
 import styles from "./Home.module.scss";
 import expandRight from "../../assets/icons/greaterThan.svg";
 import { TestsContext } from "../../utils/contexts/TestsContext";
-import { IQuestion } from "../../utils/interfaces";
+import { IQuestion, IQuestionWithID } from "../../utils/interfaces";
 import clsx from "clsx";
 import { TEST_ACTION_TYPES } from "../../utils/actions";
 import { AuthContext } from "../../utils/auth/AuthContext";
@@ -293,7 +293,7 @@ const Home = () => {
         title="Question Paper"
         backdrop
       >
-        Hi this modal is for testing purpose
+        <QuestionPaper questions={questions} />
       </Modal>
       <Modal
         isOpen={exitFullScreenModal}
@@ -343,5 +343,20 @@ const QuestionButton = (props: QuestionButtonProps) => {
     >
       {props.children}
     </button>
+  );
+};
+
+const QuestionPaper: React.FC<{ questions: Array<IQuestionWithID> }> = ({
+  questions,
+}) => {
+  return (
+    <div className={styles.questions}>
+      {questions.map((question, i) => (
+        <div key={question.id} className={styles.question}>
+          <span>{i + 1}. </span>
+          <p>{question.question}</p>
+        </div>
+      ))}
+    </div>
   );
 };

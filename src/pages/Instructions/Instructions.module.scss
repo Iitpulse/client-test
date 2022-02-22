@@ -81,8 +81,12 @@
     color: rgb(255, 68, 68);
     margin: 2rem 0;
   }
+  input[type="checkbox"] {
+    cursor: pointer;
+  }
   label {
     color: rgba(0, 0, 0, 0.6);
+    cursor: pointer;
   }
 }
 .notVisitedBtn {

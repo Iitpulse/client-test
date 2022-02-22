@@ -75,6 +75,7 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
 
   useEffect(() => {
     if (currentUser?.id && testId) {
+      console.log({ testId });
       fetchTest(testId);
     }
   }, [currentUser, testId]);

@@ -87,12 +87,24 @@ const Home = () => {
   }
 
   function handleClickOption(option: string) {
-    setQuestion({
-      ...question,
-      selectedOptions: question.selectedOptions.includes(option)
-        ? question.selectedOptions.filter((o) => o! === option)
-        : uniqueValuesOnly([question.selectedOptions, option]),
-    });
+    //////////////////////////////////////////////////////////////
+    ///// Change to 'single' later after updating databse////////
+    /////////////////////////////////////////////////////////////
+    if (question.type === "mcq") {
+      setQuestion({
+        ...question,
+        selectedOptions: question.selectedOptions.includes(option)
+          ? []
+          : [option],
+      });
+    } else {
+      setQuestion({
+        ...question,
+        selectedOptions: question.selectedOptions.includes(option)
+          ? question.selectedOptions.filter((o) => o! === option)
+          : uniqueValuesOnly([...question.selectedOptions, option]),
+      });
+    }
   }
 
   function handleClickClear() {

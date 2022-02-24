@@ -280,7 +280,7 @@ const Home = () => {
             <div className={styles.questionButtonsContainer}>
               {questions.map((question, i) => (
                 <QuestionButton
-                  key={question.question + i}
+                  key={question.id + Math.random() * i}
                   status={question.status.status}
                   onClick={() =>
                     dispatch({
@@ -364,7 +364,7 @@ const QuestionPaper: React.FC<{ questions: Array<IQuestionWithID> }> = ({
   return (
     <div className={styles.questions}>
       {questions.map((question, i) => (
-        <div key={question.id} className={styles.question}>
+        <div key={question.id + Math.random() * i} className={styles.question}>
           <span>{i + 1}. </span>
           <p>{question.question}</p>
         </div>

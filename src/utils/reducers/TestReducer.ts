@@ -333,7 +333,11 @@ export default function TestReducer(
           ...section,
           subSections: section.subSections.map((subSection) => ({
             ...subSection,
-            questions: getSubSectionQuestions(subSection.id, questions),
+            questions: getSubSectionQuestions(
+              section.id,
+              subSection.id,
+              questions
+            ),
           })),
         })),
       };
@@ -347,34 +351,52 @@ export default function TestReducer(
   }
 }
 
-function getSubSectionQuestions(subSectionId: string, questions: any) {
+function getSubSectionQuestions(
+  sectionId: string,
+  subSectionId: string,
+  questions: any
+) {
   let qs: any = {};
   // for (let [key, value] of Object.entries(subSection.questions)) {
   //   qs[key] = questions.find((q: any) => q.subSectionId === subSectionId);
   // }
   questions.forEach((question: any) => {
-    if (question.subSectionId === subSectionId) {
+    if (
+      question.subSectionId === subSectionId &&
+      question.sectionId === sectionId
+    ) {
       qs[question.id] = question;
     }
   });
 
-  return questions;
+  console.log({ qs });
+
+  return qs;
 }
 
 async function submitTest(payload: any, test: any) {
   if (!test) return;
   const testId = test.id;
-  let res = await axios.post(`http://localhost:5002/test/submit`, {
-    user: payload.user,
-    test: {
-      id: test.id,
-      sections: test.sections,
-      status: "submitted",
-      validity: test.validity,
-      createdAt: test.createdAt,
-      modifiedAt: test.modifiedAt,
+  let res = await axios.post(
+    `http://localhost:5002/test/submit`,
+    {
+      user: payload.user,
+      test: {
+        id: test.id,
+        sections: test.sections,
+        status: "submitted",
+        validity: test.validity,
+        createdAt: test.createdAt,
+        modifiedAt: test.modifiedAt,
+      },
     },
-  });
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "x-access-token": `Bearer ${payload.token}`,
+      },
+    }
+  );
   if (res.status === 200) {
     alert("Submitted succesfully");
     localStorage.setItem("result", res.data.result.totalMarks);

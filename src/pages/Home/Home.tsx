@@ -87,23 +87,19 @@ const Home = () => {
   }
 
   function handleClickOption(option: string) {
-    //////////////////////////////////////////////////////////////
-    ///// Change to 'single' later after updating databse////////
-    /////////////////////////////////////////////////////////////
-    if (question.type === "mcq") {
-      setQuestion({
-        ...question,
-        selectedOptions: question.selectedOptions.includes(option)
-          ? []
-          : [option],
-      });
+    console.log({ option });
+    if (question.type === "single") {
+      setQuestion((curr) => ({
+        ...curr,
+        selectedOptions: curr.selectedOptions.includes(option) ? [] : [option],
+      }));
     } else {
-      setQuestion({
-        ...question,
-        selectedOptions: question.selectedOptions.includes(option)
-          ? question.selectedOptions.filter((o) => o! === option)
-          : uniqueValuesOnly([...question.selectedOptions, option]),
-      });
+      setQuestion((curr) => ({
+        ...curr,
+        selectedOptions: curr.selectedOptions.includes(option)
+          ? curr.selectedOptions.filter((o) => o! === option)
+          : [...curr.selectedOptions, option],
+      }));
     }
   }
 
@@ -186,7 +182,7 @@ const Home = () => {
             index={currentQuestion}
             selectedOptions={question.selectedOptions}
             key={question.id}
-            type="mcq"
+            type={question.type}
             onClickOption={handleClickOption}
           />
           <div className={styles.actionButtonsContainer}>

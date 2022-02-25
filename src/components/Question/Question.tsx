@@ -9,7 +9,7 @@ interface Props {
   question: string;
   options: Array<IOption>;
   selectedOptions: Array<string>;
-  type: "mcq" | "numerical";
+  type: "single" | "multiple" | "numerical" | string;
   index: number;
   onClickOption: (option: string) => void;
 }
@@ -48,7 +48,7 @@ const Question: React.FC<Props> = ({
             )}
           >
             <input
-              type="radio"
+              type={type === "single" ? "radio" : "checkbox"}
               name="options"
               id={option?.id.toString()}
               onChange={() => onClickOption(option.id)}

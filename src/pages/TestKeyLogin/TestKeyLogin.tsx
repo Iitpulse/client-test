@@ -6,6 +6,7 @@ import { AuthContext } from "../../utils/auth/AuthContext";
 import logo from "../../assets/images/logo.svg";
 import axios from "axios";
 import { decodeToken } from "react-jwt";
+import { APIS } from "src/utils/constants";
 
 const TestKeyLogin = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const TestKeyLogin = () => {
   async function handleClickSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const response = await axios.post(
-      "http://localhost:5000/auth/login-with-key/",
+      `${APIS.USERS_API}/student/auth/login-with-key/`,
       {
         key,
       }

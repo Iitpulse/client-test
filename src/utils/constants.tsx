@@ -2,6 +2,12 @@ import { InstructionType } from "./interfaces";
 import styles from "../pages/Instructions/Instructions.module.scss";
 import arrowDown from "../assets/icons/arrowDown.svg";
 
+export const APIS = {
+  USERS_API: process.env.USERS_API || "http://localhost:5000",
+  QUESTIONS_API: process.env.QUESTIONS_API || "http://localhost:5001",
+  TESTS_API: process.env.TESTS_API || "http://localhost:5002",
+};
+
 export const ROLES = {
   ADMIN: "admin",
   TEACHER: "teacher",

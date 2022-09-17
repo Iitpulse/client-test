@@ -300,9 +300,9 @@ const Home = () => {
           <div className={styles.mainContent}>
             <Legend status={status} />
             <div className={styles.questionButtonsContainer}>
-              {questions.map((question, i) => (
+              {questions?.map((question, i) => (
                 <QuestionButton
-                  key={question.id + Math.random() * i}
+                  key={"QBTN_" + question.id}
                   status={question.status.status}
                   onClick={() =>
                     dispatch({
@@ -327,7 +327,7 @@ const Home = () => {
         title="Question Paper"
         backdrop
       >
-        <QuestionPaper questions={questions} />
+        {questions?.length && <QuestionPaper questions={questions} />}
       </Modal>
       <Modal
         isOpen={exitFullScreenModal}
@@ -383,10 +383,11 @@ const QuestionButton = (props: QuestionButtonProps) => {
 const QuestionPaper: React.FC<{ questions: Array<IQuestionWithID> }> = ({
   questions,
 }) => {
+  console.log(questions[0]?.id);
   return (
     <div className={styles.questions}>
       {questions.map((question, i) => (
-        <div key={question.id + Math.random() * i} className={styles.question}>
+        <div key={"QUES_" + question.id} className={styles.question}>
           <span>{i + 1}. </span>
           <RenderWithLatex quillString={question?.en?.question} />
         </div>

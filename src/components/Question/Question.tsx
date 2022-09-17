@@ -4,13 +4,15 @@ import { isValidUrl } from "../../utils/utils";
 import { Button } from "../../components";
 import arrowDown from "../../assets/icons/arrowDown.svg";
 import styles from "./Question.module.scss";
+import RenderWithLatex from "../RenderWithLatex/RenderWithLatex";
 
 interface Props {
-  question: string;
+  question: any;
   options: Array<IOption>;
   selectedOptions: Array<string>;
   type: "single" | "multiple" | "numerical" | string;
   index: number;
+  language: string;
   onClickOption: (option: string) => void;
 }
 
@@ -21,57 +23,62 @@ const Question: React.FC<Props> = ({
   selectedOptions,
   type,
   onClickOption,
+  language,
 }) => {
   return (
     <div id="container" className={styles.container}>
-      <div className={styles.header}>
-        <h3>Question {index + 1}</h3>
-        <a id="top" href="#bottom">
-          <img src={arrowDown} alt="Arrow Down" />
-        </a>
-      </div>
-      <div className={styles.divider}></div>
-      <div className={styles.main}>
-        {isValidUrl(question) ? (
-          <img src={question} alt="question" />
-        ) : (
-          <p>{question}</p>
-        )}
-      </div>
-      <ul className={styles.options}>
-        {options.map((option, i) => (
-          <li
-            key={`${option.id}-${i}`}
-            className={clsx(
-              styles.option,
-              selectedOptions?.includes(option.id) && styles.selected
+      {question && (
+        <>
+          <div className={styles.header}>
+            <h3>Question {index + 1}</h3>
+            <a id="top" href="#bottom">
+              <img src={arrowDown} alt="Arrow Down" />
+            </a>
+          </div>
+          <div className={styles.divider}></div>
+          <div className={styles.main}>
+            {isValidUrl(question) ? (
+              <img src={question} alt="question" />
+            ) : (
+              <RenderWithLatex quillString={question[language].question} />
             )}
-          >
-            <input
-              type={type === "single" ? "radio" : "checkbox"}
-              name="options"
-              id={option?.id.toString()}
-              onChange={() => onClickOption(option.id)}
-              checked={selectedOptions?.includes(option.id)}
-            />
-            <label
-              htmlFor={option.id.toString()}
-              // onClick={() => onClickOption(option)}
-            >
-              {isValidUrl(option.value) ? (
-                <img src={option.value} alt="option" />
-              ) : (
-                <p>{option.value}</p>
-              )}
-            </label>
-          </li>
-        ))}
-      </ul>
-      <div className={styles.buttonContainer}>
-        <a id="bottom" href="#top">
-          <img src={arrowDown} alt="Arrow Up" />
-        </a>
-      </div>
+          </div>
+          <ul className={styles.options}>
+            {question[language].options?.map((option: IOption, i: number) => (
+              <li
+                key={`${option.id}-${i}`}
+                className={clsx(
+                  styles.option,
+                  selectedOptions?.includes(option.id) && styles.selected
+                )}
+              >
+                <input
+                  type={type === "single" ? "radio" : "checkbox"}
+                  name="options"
+                  id={option?.id.toString()}
+                  onChange={() => onClickOption(option.id)}
+                  checked={selectedOptions?.includes(option.id)}
+                />
+                <label
+                  htmlFor={option.id.toString()}
+                  // onClick={() => onClickOption(option)}
+                >
+                  {isValidUrl(option.value) ? (
+                    <img src={option.value} alt="option" />
+                  ) : (
+                    <RenderWithLatex quillString={option.value} />
+                  )}
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className={styles.buttonContainer}>
+            <a id="bottom" href="#top">
+              <img src={arrowDown} alt="Arrow Up" />
+            </a>
+          </div>
+        </>
+      )}
     </div>
   );
 };

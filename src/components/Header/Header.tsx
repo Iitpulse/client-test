@@ -5,6 +5,7 @@ import question from "../../assets/icons/note.svg";
 import info from "../../assets/icons/info.svg";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
+import { AUTH_TOKEN } from "src/utils/constants";
 
 interface IHeaderProps {
   rightComp?: React.ReactNode;
@@ -43,7 +44,7 @@ const Header: React.FC<IHeaderProps> = ({
             <Button
               onClick={() => {
                 navigate("/login");
-                localStorage.removeItem("token");
+                localStorage.removeItem(AUTH_TOKEN);
               }}
               icon={<img src={info} alt="List" />}
             >

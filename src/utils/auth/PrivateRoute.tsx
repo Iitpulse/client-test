@@ -1,6 +1,7 @@
 import { useContext } from "react";
 import { decodeToken } from "react-jwt";
 import { Navigate } from "react-router-dom";
+import { AUTH_TOKEN } from "../constants";
 import { AuthContext } from "./AuthContext";
 
 interface Props {
@@ -12,7 +13,7 @@ const PrivateRoute: React.FC<Props> = ({ component: RouteComponent }) => {
 
   if (
     !currentUser &&
-    !localStorage.getItem("token") &&
+    !localStorage.getItem(AUTH_TOKEN) &&
     !isValidTestKey(keyRequiredForTest)
   ) {
     return <Navigate to="/login" />;

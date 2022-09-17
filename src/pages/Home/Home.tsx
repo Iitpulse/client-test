@@ -9,11 +9,14 @@ import { TEST_ACTION_TYPES } from "../../utils/actions";
 import { AuthContext } from "../../utils/auth/AuthContext";
 import { uniqueValuesOnly } from "../../utils/reducers/TestReducer";
 import { useNavigate } from "react-router-dom";
+import { AUTH_TOKEN } from "src/utils/constants";
+import RenderWithLatex from "src/components/RenderWithLatex/RenderWithLatex";
 
 const Home = () => {
   const { currentUser } = useContext(AuthContext);
 
   const navigate = useNavigate();
+  const [language, setLanguage] = useState<string>("en");
 
   const { state, dispatch } = useContext(TestsContext);
 
@@ -21,7 +24,16 @@ const Home = () => {
 
   const [question, setQuestion] = useState<IQuestion>({
     id: "",
-    question: "",
+    en: {
+      question: "",
+      options: [],
+      solution: "",
+    },
+    hi: {
+      question: "",
+      options: [],
+      solution: "",
+    },
     options: [],
     selectedOptions: [],
     type: "mcq",
@@ -127,7 +139,7 @@ const Home = () => {
           type: currentUser.userType,
           instituteId: currentUser.instituteId,
         },
-        token: localStorage.getItem("token"),
+        token: localStorage.getItem(AUTH_TOKEN),
         cb: () => {
           handleScreen();
           navigate("/result");
@@ -140,10 +152,17 @@ const Home = () => {
     if (test) {
       console.log({ questions, test, currentQuestion });
       if (questions?.length) {
-        setQuestion(questions[currentQuestion]);
+        let quest: any = questions[currentQuestion];
+        if (quest) {
+          console.log({ quest });
+          setQuestion({
+            ...questions[currentQuestion],
+            options: quest[language].options,
+          });
+        }
       }
     }
-  }, [currentQuestion, questions, test]);
+  }, [currentQuestion, questions, test, language]);
 
   useEffect(() => {
     console.log({ status });
@@ -173,17 +192,24 @@ const Home = () => {
 
   return (
     <div ref={mainRef} className={styles.container}>
-      <Header onClickViewQuestionPaper={() => setQuestionPaperModal(true)} />
+      <Header
+        onClickViewQuestionPaper={() => setQuestionPaperModal(true)}
+        onChangeLanguage={(e: any) => setLanguage(e.target.value)}
+      />
       <section className={styles.mainContainer}>
         <main className={styles.leftContainer}>
           <Question
-            question={question.question}
+            question={{
+              en: question.en,
+              hi: question.hi,
+            }}
             options={question.options}
             index={currentQuestion}
             selectedOptions={question.selectedOptions}
             key={question.id}
             type={question.type}
             onClickOption={handleClickOption}
+            language={language}
           />
           <div className={styles.actionButtonsContainer}>
             <Button
@@ -362,7 +388,7 @@ const QuestionPaper: React.FC<{ questions: Array<IQuestionWithID> }> = ({
       {questions.map((question, i) => (
         <div key={question.id + Math.random() * i} className={styles.question}>
           <span>{i + 1}. </span>
-          <p>{question.question}</p>
+          <RenderWithLatex quillString={question?.en?.question} />
         </div>
       ))}
     </div>

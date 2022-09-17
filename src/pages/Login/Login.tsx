@@ -6,6 +6,8 @@ import { AuthContext } from "../../utils/auth/AuthContext";
 import logo from "../../assets/images/logo.svg";
 import axios from "axios";
 import { decodeToken } from "react-jwt";
+import { API_USERS } from "src/utils/api";
+import { AUTH_TOKEN } from "src/utils/constants";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -17,7 +19,7 @@ const Login = () => {
 
   async function handleClickSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const response = await axios.post("http://localhost:5000/auth/login/", {
+    const response = await API_USERS().post("/auth/login/", {
       email,
       password,
     });
@@ -32,13 +34,13 @@ const Login = () => {
         userType: decoded.userType,
         instituteId: decoded.instituteId,
       });
-      localStorage.setItem("token", response.data.token);
+      localStorage.setItem(AUTH_TOKEN, response.data.token);
       navigate(keyRequiredForTest ? "/login-key" : "/instructions");
     }
   }
 
   useEffect(() => {
-    let token = localStorage.getItem("token");
+    let token = localStorage.getItem(AUTH_TOKEN);
     if (token) {
       const decoded = decodeToken(token) as any;
       if (decoded) {

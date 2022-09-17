@@ -74,7 +74,16 @@ interface IMarkingScheme {
 
 export interface IQuestion {
   id: string; // QT_MCQ123
-  question: string;
+  en: {
+    question: string;
+    options: Array<IOption>;
+    solution: string;
+  };
+  hi: {
+    question: string;
+    options: Array<IOption>;
+    solution: string;
+  };
   options: Array<IOption>;
   markingScheme: IMarkingScheme;
   selectedOptions: Array<string>;

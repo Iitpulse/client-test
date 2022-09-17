@@ -6,7 +6,8 @@ import { AuthContext } from "../../utils/auth/AuthContext";
 import logo from "../../assets/images/logo.svg";
 import axios from "axios";
 import { decodeToken } from "react-jwt";
-import { APIS } from "src/utils/constants";
+import { APIS, AUTH_TOKEN } from "src/utils/constants";
+import { API_USERS } from "src/utils/api";
 
 const TestKeyLogin = () => {
   const navigate = useNavigate();
@@ -17,12 +18,9 @@ const TestKeyLogin = () => {
 
   async function handleClickSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const response = await axios.post(
-      `${APIS.USERS_API}/student/auth/login-with-key/`,
-      {
-        key,
-      }
-    );
+    const response = await API_USERS().post(`/student/auth/login-with-key/`, {
+      key,
+    });
 
     console.log({ decoded: decodeToken(response.data.token), response });
 
@@ -36,7 +34,7 @@ const TestKeyLogin = () => {
   }
 
   useEffect(() => {
-    let token = localStorage.getItem("token");
+    let token = localStorage.getItem(AUTH_TOKEN);
     if (!token) {
       navigate("/login");
       return;

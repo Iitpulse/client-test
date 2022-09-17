@@ -3,6 +3,7 @@ import { ITestsContext } from "../contexts/TestsContext";
 import { IOption, IQuestionWithID, ITest } from "../interfaces";
 import { flattenQuestions, shuffleQuestions } from "../utils";
 import axios from "axios";
+import { API_TESTS } from "../api";
 
 export default function TestReducer(
   state: ITestsContext,
@@ -377,8 +378,8 @@ function getSubSectionQuestions(
 async function submitTest(payload: any, test: any) {
   if (!test) return;
   const testId = test.id;
-  let res = await axios.post(
-    `http://localhost:5002/test/submit`,
+  let res = await API_TESTS().post(
+    `/test/submit`,
     {
       user: payload.user,
       test: {

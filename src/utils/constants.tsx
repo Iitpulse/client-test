@@ -23,6 +23,8 @@ export const ROLES = {
   STUDENT: "student",
 };
 
+export const AUTH_TOKEN = "IITP_TEST_AUTH_TOKEN";
+
 const sections = ["Physics", "Chemistry", "Maths"];
 
 export const SAMPLE_TEST = {

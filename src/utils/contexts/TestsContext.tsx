@@ -7,6 +7,7 @@ import axios from "axios";
 import { AuthContext } from "../auth/AuthContext";
 import { useContext } from "react";
 import { useState } from "react";
+import { API_TESTS } from "../api";
 
 export interface ITestsContext {
   globalTest: ITest | null;
@@ -23,8 +24,8 @@ interface ITestProviderProps {
 }
 
 const defaultTestContext = {
-  globalTest: SAMPLE_TEST,
-  test: SAMPLE_TEST,
+  globalTest: {} as any,
+  test: {} as any,
   status: {
     notVisited: [],
     notAnswered: [],
@@ -54,16 +55,7 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   const { currentUser } = useContext(AuthContext);
 
   async function fetchTest(testId: string) {
-    let test = await axios.get(
-      process.env.REACT_APP_TEST_API_URI
-        ? `${process.env.REACT_APP_TEST_API_URI}/test/student/${testId}`
-        : `http://localhost:5002/test/student/${testId}`,
-      {
-        headers: {
-          "X-Access-Token": `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
+    let test = await API_TESTS().get(`/test/student/${testId}`);
     console.log({ data: test.data });
     if (test?.data) {
       dispatch({

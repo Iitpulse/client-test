@@ -37,9 +37,12 @@ export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
 
   test.sections.forEach((section) => {
     section.subSections.forEach((subSection) => {
+      console.log({ some: subSection.questions });
       questions = questions.concat(
         Object.values(subSection.questions).map((question, i) => ({
           ...question,
+          en: question.en,
+          hi: question.hi,
           sectionId: section.id,
           subSectionId: subSection.id,
           selectedOptions: [],
@@ -57,4 +60,33 @@ export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
   });
 
   return questions;
+}
+
+export function splitAndKeepDelimiters(
+  str: any,
+  separator: any,
+  method = "seperate"
+) {
+  function splitAndKeep(strValue: string, sep: any, method = "seperate") {
+    return strValue
+      .split(sep)
+      .reduce((acc, cur) => {
+        return [...acc, cur, sep];
+      }, [] as string[])
+      .slice(0, -1);
+  }
+
+  if (Array.isArray(separator)) {
+    let parts = splitAndKeep(str, separator[0], method);
+    for (let i = 1; i < separator.length; i++) {
+      let partsTemp = parts;
+      parts = [];
+      for (let p = 0; p < partsTemp.length; p++) {
+        parts = parts.concat(splitAndKeep(partsTemp[p], separator[i], method));
+      }
+    }
+    return parts;
+  } else {
+    return splitAndKeep(str, separator, method);
+  }
 }

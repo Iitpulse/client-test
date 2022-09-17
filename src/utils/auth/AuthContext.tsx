@@ -1,6 +1,7 @@
 import { useState, createContext, useEffect } from "react";
 import { ICurrentUser, IAuthContext } from "../interfaces";
 import { decodeToken } from "react-jwt";
+import { AUTH_TOKEN } from "../constants";
 
 interface ProviderProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ const AuthContextProvider = (props: ProviderProps) => {
   const [keyRequiredForTest, setKeyRequiredForTest] = useState<boolean>(false);
 
   useEffect(() => {
-    const user = localStorage.getItem("token");
+    const user = localStorage.getItem(AUTH_TOKEN);
     if (user) {
       let decoded = decodeToken(user) as any;
       setCurrentUser({

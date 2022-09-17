@@ -5,6 +5,7 @@ import { AuthContext } from "../../utils/auth/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader } from "src/components";
 import { TestsContext } from "src/utils/contexts/TestsContext";
+import { AUTH_TOKEN } from "src/utils/constants";
 
 const AuthWithURI = () => {
   const { setCurrentUser, setKeyRequiredForTest } = useContext(AuthContext);
@@ -18,6 +19,7 @@ const AuthWithURI = () => {
       const token = user;
       if (token) {
         const decoded = decodeToken(token) as any;
+        console.log({ decoded });
         if (decoded) {
           let keyRequired = Boolean(decoded.keyRequiredForTest);
           setIsError(false);
@@ -28,7 +30,7 @@ const AuthWithURI = () => {
             instituteId: decoded.instituteId,
           });
           setTestId(testId);
-          localStorage.setItem("token", token);
+          localStorage.setItem(AUTH_TOKEN, token);
           setKeyRequiredForTest(keyRequired);
           navigate(keyRequired ? "/login-key" : `/instructions`);
         }

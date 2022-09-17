@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import {
   ANSWERING_A_QUESTION_INSTRUCTIONS,
+  AUTH_TOKEN,
   GENERAL_INSTRUCTIONS,
   INSTRUCTIONS_CONFIRMATION,
   INSTRUCTIONS_WARNING,
@@ -44,7 +45,7 @@ const Instructions = () => {
   }
 
   useEffect(() => {
-    if (!state.test || !localStorage.getItem("token")) {
+    if (!state.test || !localStorage.getItem(AUTH_TOKEN)) {
       navigate("/login");
     }
   }, [state.test, navigate]);

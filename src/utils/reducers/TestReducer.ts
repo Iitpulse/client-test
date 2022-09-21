@@ -376,29 +376,22 @@ function getSubSectionQuestions(
 }
 
 async function submitTest(payload: any, test: any) {
+  console.log("first");
   if (!test) return;
+  console.log("second");
   const testId = test.id;
-  let res = await API_TESTS().post(
-    `/test/submit`,
-    {
-      user: payload.user,
-      test: {
-        id: test.id,
-        sections: test.sections,
-        status: "submitted",
-        validity: test.validity,
-        createdAt: test.createdAt,
-        modifiedAt: test.modifiedAt,
-      },
+  let res = await API_TESTS().post(`/test/submit`, {
+    user: payload.user,
+    test: {
+      id: test.id,
+      sections: test.sections,
+      status: "submitted",
+      validity: test.validity,
+      createdAt: test.createdAt,
+      modifiedAt: test.modifiedAt,
     },
-    {
-      headers: {
-        "Content-Type": "application/json",
-        "x-access-token": `Bearer ${payload.token}`,
-      },
-    }
-  );
-  if (res.status === 200) {
+  });
+  if (res.status?.toString().includes("20")) {
     alert("Submitted succesfully");
     localStorage.setItem("result", res.data.result.totalMarks);
     payload.cb();

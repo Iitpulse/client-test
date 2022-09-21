@@ -70,7 +70,7 @@ const RenderWithLatex: React.FC<Props> = ({ quillString }) => {
   ) : (
     <div
       dangerouslySetInnerHTML={{ __html: previewHTML }}
-      style={{ maxHeight: "550PX", overflowY: "auto", overflowX: "hidden" }}
+      // style={{ maxHeight: "550PX", overflowY: "auto", overflowX: "hidden" }}
     ></div>
   );
 };

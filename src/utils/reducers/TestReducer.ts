@@ -343,6 +343,7 @@ export default function TestReducer(
         })),
       };
       console.log({ finalTest });
+      localStorage.setItem("test", JSON.stringify(finalTest));
       submitTest(payload, finalTest);
       return state;
     }

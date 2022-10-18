@@ -9,17 +9,17 @@ interface Props {
 }
 
 type RemainingTime = {
-  hours: number;
-  minutes: number;
-  seconds: number;
+  hours: string;
+  minutes: string;
+  seconds: string;
 };
 
 const StudentProfile = (props: Props) => {
   const { name, exam, image } = props;
   const [timer, setTimer] = useState<RemainingTime>({
-    hours: 3,
-    minutes: 0,
-    seconds: 0,
+    hours: "03",
+    minutes: "00",
+    seconds: "00",
   });
 
   useEffect(() => {
@@ -36,15 +36,23 @@ const StudentProfile = (props: Props) => {
 
       let distance = countDownDate - now;
 
-      let h = Math.floor(distance / (1000 * 60 * 60));
-      let m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-      let s = Math.floor((distance % (1000 * 60)) / 1000);
+      let intHr = Math.floor(distance / (1000 * 60 * 60));
+      let intMin = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      let intSec = Math.floor((distance % (1000 * 60)) / 1000);
 
-      setTimer({ hours: h ?? 0, minutes: m ?? 0, seconds: s ?? 0 });
+      let s = intSec.toString();
+      let h = intHr.toString();
+      let m = intMin.toString();
+
+      if (intSec < 10) s = "0" + s;
+      if (intMin < 10) m = "0" + m;
+      // if (intHr < 10) s = "0" + s;
+
+      setTimer({ hours: h ?? "00", minutes: m ?? "00", seconds: s ?? "00" });
 
       if (distance < 0) {
         clearInterval(x);
-        setTimer({ hours: 0, minutes: 0, seconds: 0 });
+        setTimer({ hours: "00", minutes: "00", seconds: "00" });
       }
     }, 1000); // update every one second
   }, []);

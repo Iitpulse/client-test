@@ -40,7 +40,11 @@
       @extend .flexRow;
       margin: 1rem 0;
       input {
-        margin-right: 10px;
+        cursor: pointer;
+      }
+      label {
+        padding-left: 10px;
+        cursor: pointer;
       }
     }
   }

@@ -46,7 +46,11 @@ const Home = () => {
   const [questionPaperModal, setQuestionPaperModal] = useState<boolean>(false);
   const [exitFullScreenModal, setExitFullScreenModal] =
     useState<boolean>(false);
-
+  const [alertModal, setAlertModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({ open: false, title: "", message: "" });
   const mainRef = useRef<HTMLDivElement>(null);
 
   function handleScreen() {
@@ -74,9 +78,14 @@ const Home = () => {
       payload: currentQuestion,
     });
   }
-
+  // PENDING
   function handleClickSaveAndNext(option: string | null) {
-    if (!option) return alert("Please select an option");
+    if (!option)
+      return setAlertModal({
+        open: true,
+        title: "Warning",
+        message: "Please Select an option!",
+      });
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_NEXT,
       payload: { currentQuestion, selectedOption: option },
@@ -91,7 +100,12 @@ const Home = () => {
   }
 
   function handleClickSaveAndMarkForReview(option: string | null) {
-    if (!option) return alert("Please select an option");
+    if (!option)
+      setAlertModal({
+        open: true,
+        title: "Warning",
+        message: "Please Select an option!",
+      });
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW,
       payload: { currentQuestion, selectedOption: option },
@@ -351,6 +365,14 @@ const Home = () => {
           </Button>
         </div>
       </Modal>
+      <Modal
+        isOpen={alertModal?.open}
+        title={alertModal?.title}
+        onClose={() => setAlertModal({ open: false, title: "", message: "" })}
+        backdrop
+      >
+        <p>{alertModal?.message}</p>
+      </Modal>
     </div>
   );
 };
@@ -384,12 +406,23 @@ const QuestionPaper: React.FC<{ questions: Array<IQuestionWithID> }> = ({
   questions,
 }) => {
   console.log(questions[0]?.id);
+  const marking = ["a", "b", "c", "d"];
   return (
     <div className={styles.questions}>
       {questions.map((question, i) => (
         <div key={"QUES_" + question.id} className={styles.question}>
-          <span>{i + 1}. </span>
-          <RenderWithLatex quillString={question?.en?.question} />
+          <div className={styles.questionWrapper}>
+            <span>{i + 1}. </span>
+            <RenderWithLatex quillString={question?.en?.question} />
+          </div>
+          <div className={styles.optionWrapper}>
+            {question.en.options.map((option, ind) => (
+              <div className={styles.option}>
+                <span>{marking[ind] + "."}</span>
+                <RenderWithLatex quillString={option.value} />
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>

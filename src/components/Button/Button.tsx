@@ -3,7 +3,7 @@ import clsx from "clsx";
 import styles from "./Button.module.scss";
 
 interface ButtonProps {
-  children: React.ReactNode | string;
+  children?: React.ReactNode | string;
   title?: string;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   classes?: Array<string>;
@@ -41,7 +41,6 @@ const Button = (props: ButtonProps) => {
       {...rest}
     >
       <span>
-        {" "}
         {Icon && <span className={styles.icon}>{Icon}</span>}
         {children}
       </span>

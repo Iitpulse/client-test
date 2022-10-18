@@ -42,7 +42,7 @@ const Modal: React.FC<ModalProps> = ({
         <div className={styles.header}>
           <h3>{title}</h3>
           <Button icon={<>x</>} type="button" onClick={onClose}>
-            ""
+            {""}
           </Button>
         </div>
         <div className={styles.content}>{children}</div>

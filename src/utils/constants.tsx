@@ -2,6 +2,8 @@ import { InstructionType } from "./interfaces";
 import styles from "../pages/Instructions/Instructions.module.scss";
 import arrowDown from "../assets/icons/arrowDown.svg";
 
+export const ENV_PROD = "ENV_PROD";
+
 export const APIS = {
   USERS_API:
     "https://iitpulse.in" ||

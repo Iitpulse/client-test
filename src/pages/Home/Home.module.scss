@@ -13,7 +13,8 @@
     .leftContainer {
       width: 60%;
       .actionButtonsContainer {
-        margin: 5px;
+        margin: 5px 0px;
+        display: flex;
         > button {
           margin-right: 20px;
         }
@@ -22,7 +23,7 @@
         @extend .flexRow;
         justify-content: space-between;
         .navigationBtns {
-          margin: 0px 5px;
+          // margin: 0px 5px;
           button:nth-child(2) {
             margin-left: 10px;
           }
@@ -128,9 +129,38 @@
     .question {
       margin: 1rem 0;
       padding: 1rem 0;
-      @extend .flexRow;
-      p {
-        margin-left: 0.2rem;
+      @extend .flexCol;
+      align-items: flex-start;
+      .questionWrapper {
+        align-items: flex-start;
+
+        @extend .flexRow;
+        > span {
+          margin-top: 0.2rem;
+        }
+        p {
+          margin-left: 0.2rem;
+        }
+      }
+      .optionWrapper {
+        @extend .flexCol;
+        justify-content: flex-start;
+        padding: 0.5rem 1rem;
+        width: 100%;
+        .option {
+          @extend .flexRow;
+          width: 100%;
+
+          margin-right: 1rem;
+          margin-top: 0.5rem;
+          > span {
+            margin-top: 0.2rem;
+            font-size: 1rem;
+          }
+          p {
+            margin-left: 0.5rem;
+          }
+        }
       }
       border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }

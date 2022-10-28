@@ -382,26 +382,28 @@ async function submitTest(payload: any, test: any) {
   if (!test) return;
   console.log("second");
   const testId = test.id;
-  console.log(test.sections);
-  let res = await API_TESTS().post(`/test/submit`, {
-    user: payload.user,
-    test: {
-      id: test.id,
-      sections: test.sections,
-      status: "submitted",
-      validity: test.validity,
-      createdAt: test.createdAt,
-      modifiedAt: test.modifiedAt,
-    },
-  });
-  if (res.status?.toString().includes("20")) {
+  try {
+    let res = await API_TESTS().post(`/test/submit`, {
+      user: payload.user,
+      test: {
+        id: test.id,
+        sections: test.sections,
+        status: "submitted",
+        validity: test.validity,
+        createdAt: test.createdAt,
+        modifiedAt: test.modifiedAt,
+      },
+    });
     alert("Submitted succesfully");
     localStorage.setItem("result", res.data.result.totalMarks);
     payload.cb();
-  } else {
-    alert("Some error occured");
+    return console.log({ res });
+  } catch (error) {
+    // @ts-ignore
+    console.log(error?.response);
+    // @ts-ignore
+    payload.cb(error?.response?.data?.message);
   }
-  return console.log({ res });
 }
 
 function isQuestionVisited(question: IQuestionWithID): boolean {

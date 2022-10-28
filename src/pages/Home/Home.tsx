@@ -157,7 +157,14 @@ const Home = () => {
           instituteId: currentUser.instituteId,
         },
         token: localStorage.getItem(AUTH_TOKEN),
-        cb: () => {
+        cb: (error: any) => {
+          if (error) {
+            return setAlertModal({
+              open: true,
+              title: "Error",
+              message: error,
+            });
+          }
           handleScreen();
           navigate("/result");
         },

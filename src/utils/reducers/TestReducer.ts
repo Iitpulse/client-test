@@ -363,6 +363,7 @@ function getSubSectionQuestions(
   //   qs[key] = questions.find((q: any) => q.subSectionId === subSectionId);
   // }
   questions.forEach((question: any) => {
+    console.log(question);
     if (
       question.subSectionId === subSectionId &&
       question.sectionId === sectionId
@@ -381,6 +382,7 @@ async function submitTest(payload: any, test: any) {
   if (!test) return;
   console.log("second");
   const testId = test.id;
+  console.log(test.sections);
   let res = await API_TESTS().post(`/test/submit`, {
     user: payload.user,
     test: {

@@ -80,6 +80,8 @@ const Home = () => {
   }
   // PENDING
   function handleClickSaveAndNext(option: string | null) {
+    console.log(option);
+    console.log(question.selectedOptions);
     if (!option)
       return setAlertModal({
         open: true,
@@ -114,6 +116,7 @@ const Home = () => {
 
   function handleClickOption(option: string) {
     console.log({ option });
+    console.log(question);
     if (question.type === "single") {
       setQuestion((curr) => ({
         ...curr,
@@ -123,7 +126,7 @@ const Home = () => {
       setQuestion((curr) => ({
         ...curr,
         selectedOptions: curr.selectedOptions.includes(option)
-          ? curr.selectedOptions.filter((o) => o! === option)
+          ? curr.selectedOptions.filter((o) => o !== option)
           : [...curr.selectedOptions, option],
       }));
     }

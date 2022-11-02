@@ -51,6 +51,7 @@ const Home = () => {
     title: string;
     message: string;
   }>({ open: false, title: "", message: "" });
+  const [isExpanded, setIsExpanded] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
   function handleScreen() {
@@ -101,7 +102,7 @@ const Home = () => {
 
   function handleClickSaveAndMarkForReview(option: string | null) {
     if (!option)
-      setAlertModal({
+      return setAlertModal({
         open: true,
         title: "Warning",
         message: "Please Select an option!",
@@ -123,7 +124,7 @@ const Home = () => {
       setQuestion((curr) => ({
         ...curr,
         selectedOptions: curr.selectedOptions.includes(option)
-          ? curr.selectedOptions.filter((o) => o! === option)
+          ? curr.selectedOptions.filter((o) => o !== option)
           : [...curr.selectedOptions, option],
       }));
     }
@@ -218,7 +219,12 @@ const Home = () => {
         onChangeLanguage={(e: any) => setLanguage(e.target.value)}
       />
       <section className={styles.mainContainer}>
-        <main className={styles.leftContainer}>
+        <main
+          className={clsx(
+            styles.leftContainer,
+            isExpanded && styles.maxWidthLeftContainer
+          )}
+        >
           <Question
             question={{
               en: question.en,
@@ -314,29 +320,38 @@ const Home = () => {
             </Button>
           </div>
         </main>
-        <aside className={styles.rightContainer}>
-          <Button className={styles.expandRight}>
+        <aside
+          className={
+            !isExpanded ? styles.rightContainer : styles.hideRightContainer
+          }
+        >
+          <Button
+            className={styles.expandRight}
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
             <img src={expandRight} alt="Expand Right" />
           </Button>
-          <div className={styles.mainContent}>
-            <Legend status={status} />
-            <div className={styles.questionButtonsContainer}>
-              {questions?.map((question, i) => (
-                <QuestionButton
-                  key={"QBTN_" + question.id}
-                  status={question.status.status}
-                  onClick={() =>
-                    dispatch({
-                      type: TEST_ACTION_TYPES.GO_TO_QUESTION,
-                      payload: i,
-                    })
-                  }
-                >
-                  {i + 1}
-                </QuestionButton>
-              ))}
+          {!isExpanded && (
+            <div className={styles.mainContent}>
+              <Legend status={status} />
+              <div className={styles.questionButtonsContainer}>
+                {questions?.map((question, i) => (
+                  <QuestionButton
+                    key={"QBTN_" + question.id}
+                    status={question.status.status}
+                    onClick={() =>
+                      dispatch({
+                        type: TEST_ACTION_TYPES.GO_TO_QUESTION,
+                        payload: i,
+                      })
+                    }
+                  >
+                    {i + 1}
+                  </QuestionButton>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </aside>
       </section>
 

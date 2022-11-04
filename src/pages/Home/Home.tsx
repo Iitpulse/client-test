@@ -91,7 +91,7 @@ const Home = () => {
       });
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_NEXT,
-      payload: { currentQuestion, selectedOption: option },
+      payload: { currentQuestion, selectedOption: question.selectedOptions },
     });
   }
 
@@ -111,7 +111,7 @@ const Home = () => {
       });
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW,
-      payload: { currentQuestion, selectedOption: option },
+      payload: { currentQuestion, selectedOption: question.selectedOptions },
     });
   }
 

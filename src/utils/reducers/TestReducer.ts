@@ -363,6 +363,7 @@ function getSubSectionQuestions(
   //   qs[key] = questions.find((q: any) => q.subSectionId === subSectionId);
   // }
   questions.forEach((question: any) => {
+    console.log(question);
     if (
       question.subSectionId === subSectionId &&
       question.sectionId === sectionId
@@ -413,7 +414,7 @@ function markQuestionWithStatus(
   questions: Array<IQuestionWithID>,
   qIdx: number,
   status: string,
-  selectedOption?: IOption
+  selectedOption?: IOption[]
 ): Array<IQuestionWithID> {
   return questions.map((question, index) => {
     if (index === qIdx) {
@@ -441,7 +442,7 @@ function markQuestionWithStatus(
               : question.status.markedForReviewAt,
         },
         selectedOptions: selectedOption
-          ? uniqueValuesOnly([...question.selectedOptions, selectedOption])
+          ? uniqueValuesOnly(selectedOption)
           : question.selectedOptions,
       };
     }

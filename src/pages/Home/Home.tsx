@@ -81,6 +81,8 @@ const Home = () => {
   }
   // PENDING
   function handleClickSaveAndNext(option: string | null) {
+    console.log(option);
+    console.log(question.selectedOptions);
     if (!option)
       return setAlertModal({
         open: true,
@@ -89,7 +91,7 @@ const Home = () => {
       });
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_NEXT,
-      payload: { currentQuestion, selectedOption: option },
+      payload: { currentQuestion, selectedOption: question.selectedOptions },
     });
   }
 
@@ -109,12 +111,13 @@ const Home = () => {
       });
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW,
-      payload: { currentQuestion, selectedOption: option },
+      payload: { currentQuestion, selectedOption: question.selectedOptions },
     });
   }
 
   function handleClickOption(option: string) {
     console.log({ option });
+    console.log(question);
     if (question.type === "single") {
       setQuestion((curr) => ({
         ...curr,

@@ -30,11 +30,11 @@ export default function TestReducer(
       const allQuestionsExtracted = payload
         ? flattenQuestions(payload)
         : questions;
-      const allQuestionsShuffled = shuffleQuestions(allQuestionsExtracted);
+      // const allQuestionsShuffled = shuffleQuestions(allQuestionsExtracted);
       return {
         ...state,
         test: payload,
-        questions: allQuestionsShuffled.map((question, idx) => {
+        questions: allQuestionsExtracted.map((question, idx) => {
           if (idx === 0) {
             return {
               ...question,
@@ -49,10 +49,10 @@ export default function TestReducer(
         }),
         status: {
           ...state.status,
-          notVisited: allQuestionsShuffled
+          notVisited: allQuestionsExtracted
             .map((question) => question.id)
             .filter((_, i) => i !== 0),
-          notAnswered: [allQuestionsShuffled[0].id],
+          notAnswered: [allQuestionsExtracted[0].id],
         },
       };
     }

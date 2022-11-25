@@ -397,7 +397,8 @@ async function submitTest(payload: any, test: any) {
     alert("Submitted succesfully");
     localStorage.setItem("result", res.data.result.totalMarks);
     payload.cb();
-    return console.log({ res });
+    // console.log({ res });
+    return;
   } catch (error) {
     // @ts-ignore
     console.log(error?.response);

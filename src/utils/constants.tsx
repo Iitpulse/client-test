@@ -8,15 +8,15 @@ export const APIS = {
   USERS_API:
     "https://iitpulse.in" ||
     process.env.REACT_APP_USERS_API ||
-    "http://localhost:5000",
+    "http://localhost:8080",
   QUESTIONS_API:
     "https://questions.iitpulse.in" ||
     process.env.REACT_APP_QUESTIONS_API ||
-    "http://localhost:5001",
+    "http://localhost:8081",
   TESTS_API:
     "https://tests.iitpulse.in" ||
     process.env.REACT_APP_TESTS_API ||
-    "http://localhost:5002",
+    "http://localhost:8082",
 };
 
 export const ROLES = {

@@ -39,7 +39,7 @@ export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
     section.subSections.forEach((subSection) => {
       console.log({ some: subSection.questions });
       questions = questions.concat(
-        Object.values(subSection.questions).map((question, i) => ({
+        subSection.questions?.map((question, i) => ({
           ...question,
           id: question.id,
           en: question.en,

@@ -1,9 +1,20 @@
 import { useRef, useContext, useEffect, useState } from "react";
-import { Question, Header, Button, Legend, Modal } from "../../components";
+import {
+  QuestionObjective,
+  QuestionInteger,
+  Header,
+  Button,
+  Legend,
+  Modal,
+} from "../../components";
 import styles from "./Home.module.scss";
 import expandRight from "../../assets/icons/greaterThan.svg";
 import { TestsContext } from "../../utils/contexts/TestsContext";
-import { IQuestion, IQuestionWithID } from "../../utils/interfaces";
+import {
+  IQuestionInteger,
+  IQuestionObjective,
+  IQuestionWithID,
+} from "../../utils/interfaces";
 import clsx from "clsx";
 import { TEST_ACTION_TYPES } from "../../utils/actions";
 import { AuthContext } from "../../utils/auth/AuthContext";
@@ -19,29 +30,8 @@ const Home = () => {
   const [language, setLanguage] = useState<string>("en");
 
   const { state, dispatch } = useContext(TestsContext);
-
   const { questions, currentQuestion, test, status } = state;
-
-  const [question, setQuestion] = useState<IQuestion>({
-    id: "",
-    en: {
-      question: "",
-      options: [],
-      solution: "",
-    },
-    hi: {
-      question: "",
-      options: [],
-      solution: "",
-    },
-    options: [],
-    selectedOptions: [],
-    type: "mcq",
-    markingScheme: {
-      correct: [4],
-      incorrect: -1,
-    },
-  });
+  const [question, setQuestion] = useState<any>({} as any);
 
   const [questionPaperModal, setQuestionPaperModal] = useState<boolean>(false);
   const [exitFullScreenModal, setExitFullScreenModal] =
@@ -79,7 +69,7 @@ const Home = () => {
       payload: currentQuestion,
     });
   }
-  // PENDING
+
   function handleClickSaveAndNext(option: string | null) {
     console.log(option);
     console.log(question.selectedOptions);
@@ -119,15 +109,15 @@ const Home = () => {
     console.log({ option });
     console.log(question);
     if (question.type === "single") {
-      setQuestion((curr) => ({
+      setQuestion((curr: any) => ({
         ...curr,
         selectedOptions: curr.selectedOptions.includes(option) ? [] : [option],
       }));
     } else {
-      setQuestion((curr) => ({
+      setQuestion((curr: any) => ({
         ...curr,
         selectedOptions: curr.selectedOptions.includes(option)
-          ? curr.selectedOptions.filter((o) => o !== option)
+          ? curr.selectedOptions.filter((o: any) => o !== option)
           : [...curr.selectedOptions, option],
       }));
     }
@@ -228,19 +218,39 @@ const Home = () => {
             isExpanded && styles.maxWidthLeftContainer
           )}
         >
-          <Question
-            question={{
-              en: question.en,
-              hi: question.hi,
-            }}
-            options={question.options}
-            index={currentQuestion}
-            selectedOptions={question.selectedOptions}
-            key={question.id}
-            type={question.type}
-            onClickOption={handleClickOption}
-            language={language}
-          />
+          {(question?.type === "single" || question?.type === "multiple") && (
+            <QuestionObjective
+              question={{
+                en: question.en,
+                hi: question.hi,
+              }}
+              integerTypeAnswer={question.integerTypeAnswer}
+              index={currentQuestion}
+              selectedOptions={question.selectedOptions}
+              key={question.id}
+              type={question.type}
+              onClickOption={handleClickOption}
+              language={language}
+            />
+          )}
+          {question?.type === "integer" && (
+            <QuestionInteger
+              question={{
+                en: question.en,
+                hi: question.hi,
+              }}
+              userAnswer={question.userAnswer}
+              index={currentQuestion}
+              key={question.id}
+              language={language}
+              onChangeValue={(e: any) => {
+                setQuestion({
+                  ...question,
+                  userAnswer: e.target.value,
+                });
+              }}
+            />
+          )}
           <div className={styles.actionButtonsContainer}>
             <Button
               style={{
@@ -432,9 +442,37 @@ const QuestionPaper: React.FC<{ questions: Array<IQuestionWithID> }> = ({
 }) => {
   console.log(questions[0]?.id);
   const marking = ["a", "b", "c", "d"];
+  function getCombinedQuestion(question: any) {
+    if (question.type === "single" || question.type === "multiple") {
+      return (
+        question?.en?.question +
+        question?.en?.options
+          .map(
+            (op: any, idx: number) =>
+              `<span style='display:flex;justify-content:flex-start;margin:1rem 0;background:${
+                question.correctAnswers?.includes(op.id)
+                  ? "rgba(85, 188, 126, 0.3)"
+                  : "transparent"
+              };border-radius:5px;padding:0.4rem 0.6rem;'> ${String.fromCharCode(
+                idx + 65
+              )}. <span style='margin-left:1rem;'>${op.value}</span></span>`
+          )
+          .join("")
+      );
+    } else if (question.type === "integer") {
+      return (
+        question?.en?.question +
+        "<br />From: " +
+        question?.correctAnswer?.from +
+        " | To: " +
+        question?.correctAnswer?.to
+      );
+    }
+    return "";
+  }
   return (
     <div className={styles.questions}>
-      {questions.map((question, i) => (
+      {/* {questions.map((question, i) => (
         <div key={"QUES_" + question.id} className={styles.question}>
           <div className={styles.questionWrapper}>
             <span>{i + 1}. </span>
@@ -449,7 +487,16 @@ const QuestionPaper: React.FC<{ questions: Array<IQuestionWithID> }> = ({
             ))}
           </div>
         </div>
-      ))}
+      ))} */}
+      {questions.map((question, i) => {
+        console.log({ question });
+        return (
+          <RenderWithLatex
+            key={i}
+            quillString={getCombinedQuestion(question)}
+          />
+        );
+      })}
     </div>
   );
 };

@@ -1,29 +1,28 @@
 import clsx from "clsx";
 import { IOption } from "../../utils/interfaces";
 import { isValidUrl } from "../../utils/utils";
-import { Button } from "../../components";
 import arrowDown from "../../assets/icons/arrowDown.svg";
 import styles from "./Question.module.scss";
 import RenderWithLatex from "../RenderWithLatex/RenderWithLatex";
 
 interface Props {
   question: any;
-  options: Array<IOption>;
   selectedOptions: Array<string>;
-  type: "single" | "multiple" | "numerical" | string;
+  type: "single" | "multiple";
   index: number;
   language: string;
   onClickOption: (option: string) => void;
+  integerTypeAnswer: string;
 }
 
 const Question: React.FC<Props> = ({
   index,
   question,
-  options,
   selectedOptions,
   type,
   onClickOption,
   language,
+  integerTypeAnswer,
 }) => {
   return (
     <div id="container" className={styles.container}>
@@ -43,6 +42,7 @@ const Question: React.FC<Props> = ({
               <RenderWithLatex quillString={question[language].question} />
             )}
           </div>
+
           <ul className={styles.options}>
             {question[language].options?.map((option: IOption, i: number) => (
               <li
@@ -72,7 +72,7 @@ const Question: React.FC<Props> = ({
               </li>
             ))}
           </ul>
-          <div className={styles.buttonContainer}>
+          <div style={{ marginTop: "1rem" }} className={styles.buttonContainer}>
             <a id="bottom" href="#top">
               <img src={arrowDown} alt="Arrow Up" />
             </a>

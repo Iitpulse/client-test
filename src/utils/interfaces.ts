@@ -51,7 +51,7 @@ export interface ISubSection {
   type: string;
   totalQuestions: number;
   toBeAttempted: number;
-  questions: Array<IQuestion>;
+  questions: Array<IQuestionObjective>;
 }
 
 interface IStudentResult {
@@ -72,7 +72,21 @@ interface IMarkingScheme {
   incorrect: number; // -1
 }
 
-export interface IQuestion {
+interface IQuestionCore {
+  id: string; // QT_MCQ123
+  en: {
+    question: string;
+    solution: string;
+  };
+  hi: {
+    question: string;
+    solution: string;
+  };
+  markingScheme: IMarkingScheme;
+  type: string;
+}
+
+export interface IQuestionObjective extends IQuestionCore {
   id: string; // QT_MCQ123
   en: {
     question: string;
@@ -84,13 +98,26 @@ export interface IQuestion {
     options: Array<IOption>;
     solution: string;
   };
-  options: Array<IOption>;
   markingScheme: IMarkingScheme;
   selectedOptions: Array<string>;
-  type: string;
+  type: "single" | "multiple";
 }
 
-export interface IQuestionWithID extends IQuestion {
+export interface IQuestionInteger {
+  id: string; // QT_MCQ123
+  en: {
+    question: string;
+    solution: string;
+  };
+  hi: {
+    question: string;
+    solution: string;
+  };
+  userAnswer: number;
+  type: "integer";
+}
+
+export interface IQuestionWithID extends IQuestionObjective {
   sectionId: string;
   subSectionId: string;
   status: IStatus;

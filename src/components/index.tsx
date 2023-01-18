@@ -1,5 +1,6 @@
 export { default as Button } from "./Button/Button";
-export { default as Question } from "./Question/Question";
+export { default as QuestionObjective } from "./Question/QuestionObjective";
+export { default as QuestionInteger } from "./Question/QuestionInteger";
 export { default as StudentProfile } from "./StudentProfile/StudentProfile";
 export { default as TestInfo } from "./TestInfo/TestInfo";
 export { default as Header } from "./Header/Header";

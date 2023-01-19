@@ -47,9 +47,9 @@ const Home = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
-  // useEffect(() => {
-  //   console.log({ timeTakenAllQuestions });
-  // }, [timeTakenAllQuestions]);
+  useEffect(() => {
+    console.log({ timeTakenAllQuestions });
+  }, [timeTakenAllQuestions]);
 
   function handleScreen() {
     if (!document.fullscreenElement) {
@@ -264,7 +264,9 @@ const Home = () => {
               type={question.type}
               onClickOption={handleClickOption}
               language={language}
-              timeTakenInSeconds={question.status.timeTakenInSeconds}
+              timeTakenInSeconds={
+                questions[currentQuestion].status.timeTakenInSeconds
+              }
               setTimeTakenAllQuestions={setTimeTakenAllQuestions}
             />
           )}
@@ -279,7 +281,9 @@ const Home = () => {
               index={currentQuestion}
               key={question.id}
               language={language}
-              timeTakenInSeconds={question.status.timeTakenInSeconds}
+              timeTakenInSeconds={
+                questions[currentQuestion].status.timeTakenInSeconds
+              }
               setTimeTakenAllQuestions={setTimeTakenAllQuestions}
               onChangeValue={(e: any) => {
                 setQuestion({

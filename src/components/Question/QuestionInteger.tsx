@@ -30,20 +30,16 @@ const QuestionInteger: React.FC<Props> = ({
   timeTakenInSeconds,
   userAnswer,
 }) => {
-  const [timeTaken, setTimeTaken] = useState(timeTakenInSeconds || 0);
-
   // handle timeTakenInSeconds using time intervals
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimeTaken((curr: number) => curr + 1);
       setTimeTakenAllQuestions((curr: any) => ({
         ...curr,
-        [id]: timeTaken + 1,
+        [id]: curr[id] >= 0 ? curr[id] + 1 : 0,
       }));
     }, 1000);
     return () => {
-      // dispatch event to update timeTakenInSeconds
       clearInterval(interval);
     };
   }, [question, id]);

@@ -1,9 +1,6 @@
 export interface IStatus {
   status: string;
-  visitedAt: string | null;
-  answeredAt: string | null;
-  answeredAndMarkedForReviewAt: string | null;
-  markedForReviewAt: string | null;
+  timeTakenInSeconds: number;
 }
 
 export interface IOption {

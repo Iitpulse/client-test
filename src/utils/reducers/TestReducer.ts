@@ -327,6 +327,12 @@ export default function TestReducer(
         },
       };
     }
+    case TEST_ACTION_TYPES.UPDATE_TIME_TAKEN: {
+      return {
+        ...state,
+        questions: updateQuestionTimeTaken(questions, payload),
+      };
+    }
     case TEST_ACTION_TYPES.SUBMIT_TEST: {
       let finalTest = {
         ...state.test,
@@ -377,6 +383,18 @@ function getSubSectionQuestions(
   return qs;
 }
 
+function updateQuestionTimeTaken(questions: any, payload: any) {
+  return questions?.map((question: any) => {
+    if (question.id === payload.id) {
+      return {
+        ...question,
+        timeTakenInSeconds: payload.timeTakenInSeconds,
+      };
+    }
+    return question;
+  });
+}
+
 async function submitTest(payload: any, test: any) {
   console.log("first");
   if (!test) return;
@@ -399,10 +417,8 @@ async function submitTest(payload: any, test: any) {
     payload.cb();
     // console.log({ res });
     return;
-  } catch (error) {
-    // @ts-ignore
+  } catch (error: any) {
     console.log(error?.response);
-    // @ts-ignore
     payload.cb(error?.response?.data?.message);
   }
 }
@@ -424,23 +440,7 @@ function markQuestionWithStatus(
         status: {
           ...question.status,
           status,
-          visitedAt: question.status.visitedAt || new Date().toISOString(),
-          answeredAt:
-            selectedOption &&
-            !question.status.answeredAt &&
-            status === "answered"
-              ? new Date().toISOString()
-              : question.status.answeredAt,
-          answeredAndMarkedForReviewAt:
-            selectedOption &&
-            !question.status.answeredAndMarkedForReviewAt &&
-            status === "answeredAndMarkedForReview"
-              ? new Date().toISOString()
-              : question.status.answeredAndMarkedForReviewAt,
-          markedForReviewAt:
-            !question.status.markedForReviewAt && status === "markedForReview"
-              ? new Date().toISOString()
-              : question.status.markedForReviewAt,
+          timeTakenInSeconds: question.status.timeTakenInSeconds,
         },
         selectedOptions: selectedOption
           ? uniqueValuesOnly(selectedOption)
@@ -488,9 +488,7 @@ function clearOptionSelection(
         status: {
           ...question.status,
           status: "notAnswered",
-          answeredAt: null,
-          markedForReviewAt: null,
-          answeredAndMarkedForReviewAt: null,
+          timeTakenInSeconds: question.status.timeTakenInSeconds,
         },
         selectedOptions: [],
       };

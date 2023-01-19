@@ -22,6 +22,7 @@ import { uniqueValuesOnly } from "../../utils/reducers/TestReducer";
 import { useNavigate } from "react-router-dom";
 import { AUTH_TOKEN } from "src/utils/constants";
 import RenderWithLatex from "src/components/RenderWithLatex/RenderWithLatex";
+import QuestionPaper from "./components/QuestionPaper";
 
 const Home = () => {
   const { currentUser } = useContext(AuthContext);
@@ -106,8 +107,6 @@ const Home = () => {
   }
 
   function handleClickOption(option: string) {
-    console.log({ option });
-    console.log(question);
     if (question.type === "single") {
       setQuestion((curr: any) => ({
         ...curr,
@@ -124,6 +123,7 @@ const Home = () => {
   }
 
   function handleClickClear() {
+    if (question.type !== "single" || question.type !== "multiple") return;
     if (!question.selectedOptions?.length) return;
     setQuestion({
       ...question,
@@ -165,23 +165,27 @@ const Home = () => {
 
   useEffect(() => {
     if (test) {
-      console.log({ questions, test, currentQuestion });
       if (questions?.length) {
         let quest: any = questions[currentQuestion];
         if (quest) {
-          console.log({ quest });
-          setQuestion({
-            ...questions[currentQuestion],
-            options: quest[language].options,
-          });
+          if (quest.type === "single" || quest.type === "multiple") {
+            setQuestion({
+              ...questions[currentQuestion],
+              options: quest[language].options,
+            });
+          } else if (quest.type === "integer") {
+            setQuestion({
+              ...questions[currentQuestion],
+            });
+          }
         }
       }
     }
   }, [currentQuestion, questions, test, language]);
 
   useEffect(() => {
-    console.log({ status });
-  }, [status]);
+    console.log({ status, question });
+  }, [status, question]);
 
   // fullScreen even listener
   useEffect(() => {
@@ -224,13 +228,14 @@ const Home = () => {
                 en: question.en,
                 hi: question.hi,
               }}
-              integerTypeAnswer={question.integerTypeAnswer}
+              id={question.id}
               index={currentQuestion}
               selectedOptions={question.selectedOptions}
               key={question.id}
               type={question.type}
               onClickOption={handleClickOption}
               language={language}
+              timeTakenInSeconds={question.status.timeTakenInSeconds}
             />
           )}
           {question?.type === "integer" && (
@@ -239,10 +244,12 @@ const Home = () => {
                 en: question.en,
                 hi: question.hi,
               }}
+              id={question.id}
               userAnswer={question.userAnswer}
               index={currentQuestion}
               key={question.id}
               language={language}
+              timeTakenInSeconds={question.status.timeTakenInSeconds}
               onChangeValue={(e: any) => {
                 setQuestion({
                   ...question,
@@ -376,7 +383,9 @@ const Home = () => {
         title="Question Paper"
         backdrop
       >
-        {questions?.length && <QuestionPaper questions={questions} />}
+        {questions?.length && questionPaperModal && (
+          <QuestionPaper questions={questions} />
+        )}
       </Modal>
       <Modal
         isOpen={exitFullScreenModal}
@@ -434,69 +443,5 @@ const QuestionButton = (props: QuestionButtonProps) => {
     >
       {props.children}
     </button>
-  );
-};
-
-const QuestionPaper: React.FC<{ questions: Array<IQuestionWithID> }> = ({
-  questions,
-}) => {
-  console.log(questions[0]?.id);
-  const marking = ["a", "b", "c", "d"];
-  function getCombinedQuestion(question: any) {
-    if (question.type === "single" || question.type === "multiple") {
-      return (
-        question?.en?.question +
-        question?.en?.options
-          .map(
-            (op: any, idx: number) =>
-              `<span style='display:flex;justify-content:flex-start;margin:1rem 0;background:${
-                question.correctAnswers?.includes(op.id)
-                  ? "rgba(85, 188, 126, 0.3)"
-                  : "transparent"
-              };border-radius:5px;padding:0.4rem 0.6rem;'> ${String.fromCharCode(
-                idx + 65
-              )}. <span style='margin-left:1rem;'>${op.value}</span></span>`
-          )
-          .join("")
-      );
-    } else if (question.type === "integer") {
-      return (
-        question?.en?.question +
-        "<br />From: " +
-        question?.correctAnswer?.from +
-        " | To: " +
-        question?.correctAnswer?.to
-      );
-    }
-    return "";
-  }
-  return (
-    <div className={styles.questions}>
-      {/* {questions.map((question, i) => (
-        <div key={"QUES_" + question.id} className={styles.question}>
-          <div className={styles.questionWrapper}>
-            <span>{i + 1}. </span>
-            <RenderWithLatex quillString={question?.en?.question} />
-          </div>
-          <div className={styles.optionWrapper}>
-            {question.en.options.map((option, ind) => (
-              <div className={styles.option}>
-                <span>{marking[ind] + "."}</span>
-                <RenderWithLatex quillString={option.value} />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))} */}
-      {questions.map((question, i) => {
-        console.log({ question });
-        return (
-          <RenderWithLatex
-            key={i}
-            quillString={getCombinedQuestion(question)}
-          />
-        );
-      })}
-    </div>
   );
 };

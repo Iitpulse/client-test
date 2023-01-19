@@ -49,10 +49,7 @@ export function flattenQuestions(test: ITest): Array<IQuestionWithID> {
           selectedOptions: [],
           status: {
             status: "notVisited",
-            visitedAt: null,
-            answeredAt: null,
-            answeredAndMarkedForReviewAt: null,
-            markedForReviewAt: null,
+            timeTakenInSeconds: 0,
           },
         }))
       );

@@ -5,7 +5,7 @@ import { Button } from "..";
 import arrowDown from "../../assets/icons/arrowDown.svg";
 import styles from "./Question.module.scss";
 import RenderWithLatex from "../RenderWithLatex/RenderWithLatex";
-import { memo, useContext, useEffect, useState } from "react";
+import { memo, useCallback, useContext, useEffect, useState } from "react";
 import { TestsContext } from "src/utils/contexts/TestsContext";
 import { TEST_ACTION_TYPES } from "src/utils/actions";
 
@@ -14,6 +14,7 @@ interface Props {
   id: string;
   index: number;
   language: string;
+  setTimeTakenAllQuestions: any;
   timeTakenInSeconds: number;
   onChangeValue: (e: React.ChangeEvent<HTMLInputElement>) => void;
   userAnswer: string;
@@ -25,30 +26,27 @@ const QuestionInteger: React.FC<Props> = ({
   id,
   language,
   onChangeValue,
+  setTimeTakenAllQuestions,
   timeTakenInSeconds,
   userAnswer,
 }) => {
   const [timeTaken, setTimeTaken] = useState(timeTakenInSeconds || 0);
 
-  const { dispatch } = useContext(TestsContext);
-
   // handle timeTakenInSeconds using time intervals
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeTaken((curr: number) => curr + 1);
+      setTimeTakenAllQuestions((curr: any) => ({
+        ...curr,
+        [id]: timeTaken + 1,
+      }));
     }, 1000);
     return () => {
       // dispatch event to update timeTakenInSeconds
-      dispatch({
-        type: TEST_ACTION_TYPES.UPDATE_TIME_TAKEN,
-        payload: {
-          id,
-          timeTakenInSeconds: timeTaken,
-        },
-      });
       clearInterval(interval);
     };
-  }, [question, id, TEST_ACTION_TYPES.UPDATE_TIME_TAKEN]);
+  }, [question, id]);
 
   return (
     <div id="container" className={styles.container}>

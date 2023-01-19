@@ -114,7 +114,7 @@ export interface IQuestionInteger {
   type: "integer";
 }
 
-export interface IQuestionWithID extends IQuestionObjective {
+export interface IQuestionWithID extends IQuestionCore {
   sectionId: string;
   subSectionId: string;
   status: IStatus;

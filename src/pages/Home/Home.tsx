@@ -33,7 +33,9 @@ const Home = () => {
   const { state, dispatch } = useContext(TestsContext);
   const { questions, currentQuestion, test, status } = state;
   const [question, setQuestion] = useState<any>({} as any);
-
+  const [timeTakenAllQuestions, setTimeTakenAllQuestions] = useState<{
+    [key: string]: number;
+  }>({});
   const [questionPaperModal, setQuestionPaperModal] = useState<boolean>(false);
   const [exitFullScreenModal, setExitFullScreenModal] =
     useState<boolean>(false);
@@ -44,6 +46,10 @@ const Home = () => {
   }>({ open: false, title: "", message: "" });
   const [isExpanded, setIsExpanded] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  // useEffect(() => {
+  //   console.log({ timeTakenAllQuestions });
+  // }, [timeTakenAllQuestions]);
 
   function handleScreen() {
     if (!document.fullscreenElement) {
@@ -59,7 +65,11 @@ const Home = () => {
     if (currentQuestion === questions.length - 1) return;
     dispatch({
       type: TEST_ACTION_TYPES.NEXT_QUESTION,
-      payload: currentQuestion,
+      payload: {
+        currentQuestion,
+        timeTakenInSeconds:
+          timeTakenAllQuestions[questions[currentQuestion].id],
+      },
     });
   }
 
@@ -67,7 +77,11 @@ const Home = () => {
     if (currentQuestion === 0) return;
     dispatch({
       type: TEST_ACTION_TYPES.PREVIOUS_QUESTION,
-      payload: currentQuestion,
+      payload: {
+        currentQuestion,
+        timeTakenInSeconds:
+          timeTakenAllQuestions[questions[currentQuestion].id],
+      },
     });
   }
 
@@ -82,14 +96,23 @@ const Home = () => {
       });
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_NEXT,
-      payload: { currentQuestion, selectedOption: question.selectedOptions },
+      payload: {
+        currentQuestion,
+        selectedOption: question.selectedOptions,
+        timeTakenInSeconds:
+          timeTakenAllQuestions[questions[currentQuestion].id],
+      },
     });
   }
 
   function handleClickMarkForReview() {
     dispatch({
       type: TEST_ACTION_TYPES.MARK_FOR_REVIEW_AND_NEXT,
-      payload: currentQuestion,
+      payload: {
+        currentQuestion,
+        timeTakenInSeconds:
+          timeTakenAllQuestions[questions[currentQuestion].id],
+      },
     });
   }
 
@@ -102,7 +125,12 @@ const Home = () => {
       });
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW,
-      payload: { currentQuestion, selectedOption: question.selectedOptions },
+      payload: {
+        currentQuestion,
+        selectedOption: question.selectedOptions,
+        timeTakenInSeconds:
+          timeTakenAllQuestions[questions[currentQuestion].id],
+      },
     });
   }
 
@@ -167,6 +195,7 @@ const Home = () => {
     if (test) {
       if (questions?.length) {
         let quest: any = questions[currentQuestion];
+
         if (quest) {
           if (quest.type === "single" || quest.type === "multiple") {
             setQuestion({
@@ -236,6 +265,7 @@ const Home = () => {
               onClickOption={handleClickOption}
               language={language}
               timeTakenInSeconds={question.status.timeTakenInSeconds}
+              setTimeTakenAllQuestions={setTimeTakenAllQuestions}
             />
           )}
           {question?.type === "integer" && (
@@ -250,6 +280,7 @@ const Home = () => {
               key={question.id}
               language={language}
               timeTakenInSeconds={question.status.timeTakenInSeconds}
+              setTimeTakenAllQuestions={setTimeTakenAllQuestions}
               onChangeValue={(e: any) => {
                 setQuestion({
                   ...question,
@@ -362,7 +393,11 @@ const Home = () => {
                     onClick={() =>
                       dispatch({
                         type: TEST_ACTION_TYPES.GO_TO_QUESTION,
-                        payload: i,
+                        payload: {
+                          currentQuestion: i,
+                          timeTakenInSeconds:
+                            timeTakenAllQuestions[questions[i].id],
+                        },
                       })
                     }
                   >

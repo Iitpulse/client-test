@@ -64,7 +64,13 @@ export default function TestReducer(
         ...state,
         currentQuestion: nextIdx,
         questions: !questionVisited
-          ? markQuestionWithStatus(questions, nextIdx, "notAnswered")
+          ? markQuestionWithStatus(
+              questions,
+              nextIdx,
+              "notAnswered",
+              undefined,
+              payload.timeTakenInSeconds
+            )
           : questions,
         status: {
           ...state.status,
@@ -91,7 +97,13 @@ export default function TestReducer(
         ...state,
         currentQuestion: nextIdx,
         questions: !questionVisited
-          ? markQuestionWithStatus(questions, nextIdx, "notAnswered")
+          ? markQuestionWithStatus(
+              questions,
+              nextIdx,
+              "notAnswered",
+              undefined,
+              payload.timeTakenInSeconds
+            )
           : questions,
         status: {
           ...state.status,
@@ -112,27 +124,35 @@ export default function TestReducer(
       };
     }
     case TEST_ACTION_TYPES.GO_TO_QUESTION: {
-      let questionVisited = isQuestionVisited(questions[payload]);
+      let questionVisited = isQuestionVisited(
+        questions[payload.currentQuestion]
+      );
       return {
         ...state,
-        currentQuestion: payload,
+        currentQuestion: payload.currentQuestion,
         questions:
-          !questionVisited && payload !== currentQuestion
-            ? markQuestionWithStatus(questions, payload, "notAnswered")
+          !questionVisited && payload.currentQuestion !== currentQuestion
+            ? markQuestionWithStatus(
+                questions,
+                payload.currentQuestion,
+                "notAnswered",
+                undefined,
+                payload.timeTakenInSeconds
+              )
             : questions,
         status: {
           ...state.status,
           notVisited:
-            !questionVisited && payload !== currentQuestion
+            !questionVisited && payload.currentQuestion !== currentQuestion
               ? state.status.notVisited.filter(
-                  (id) => id !== questions[payload].id
+                  (id) => id !== questions[payload.currentQuestion].id
                 )
               : state.status.notVisited,
           notAnswered:
-            !questionVisited && payload !== currentQuestion
+            !questionVisited && payload.currentQuestion !== currentQuestion
               ? uniqueValuesOnly([
                   ...state.status.notAnswered,
-                  questions[payload].id,
+                  questions[payload.currentQuestion].id,
                 ])
               : state.status.notAnswered,
         },
@@ -152,7 +172,8 @@ export default function TestReducer(
             questions,
             currentQuestion,
             "answered",
-            payload.selectedOption
+            payload.selectedOption,
+            payload.timeTakenInSeconds
           ),
           nextIdx,
           statusForNextQuestion(
@@ -205,10 +226,16 @@ export default function TestReducer(
         ...state,
         currentQuestion: nextIdx,
         questions: markQuestionWithStatus(
-          markQuestionWithStatus(questions, currentQuestion, "markedForReview"),
+          markQuestionWithStatus(
+            questions,
+            payload.currentQuestion,
+            "markedForReview",
+            undefined,
+            payload.timeTakenInSeconds
+          ),
           nextIdx,
           statusForNextQuestion(
-            { currentQuestion: payload },
+            { currentQuestion: payload.currentQuestion },
             nextIdx,
             questions,
             questionVisited,
@@ -228,19 +255,19 @@ export default function TestReducer(
             !questionVisited && nextIdx !== currentQuestion
               ? uniqueValuesOnly([
                   ...state.status.notAnswered.filter(
-                    (id) => id !== questions[payload].id
+                    (id) => id !== questions[payload.currentQuestion].id
                   ),
                   questions[nextIdx].id,
                 ])
               : state.status.notAnswered.filter(
-                  (id) => id !== questions[payload].id
+                  (id) => id !== questions[payload.currentQuestion].id
                 ),
           answered: state.status.answered.filter(
-            (id) => id !== questions[payload].id
+            (id) => id !== questions[payload.currentQuestion].id
           ),
           markedForReview: uniqueValuesOnly([
             ...state.status.markedForReview,
-            questions[payload].id,
+            questions[payload.currentQuestion].id,
           ]),
         },
       };
@@ -260,7 +287,8 @@ export default function TestReducer(
             questions,
             currentQuestion,
             "answeredAndMarkedForReview",
-            payload.selectedOption
+            payload.selectedOption,
+            payload.timeTakenInSeconds
           ),
           nextIdx,
           statusForNextQuestion(
@@ -431,21 +459,32 @@ function markQuestionWithStatus(
   questions: Array<IQuestionWithID>,
   qIdx: number,
   status: string,
-  selectedOption?: IOption[]
+  selectedOption?: IOption[],
+  timeTakenInSeconds: number = 0
 ): Array<IQuestionWithID> {
-  return questions.map((question, index) => {
+  console.log({ timeTakenInSeconds });
+  return questions.map((question: any, index) => {
     if (index === qIdx) {
-      return {
-        ...question,
-        status: {
-          ...question.status,
-          status,
-          timeTakenInSeconds: question.status.timeTakenInSeconds,
-        },
-        selectedOptions: selectedOption
-          ? uniqueValuesOnly(selectedOption)
-          : question.selectedOptions,
-      };
+      return question.type === "single" || question.type === "multiple"
+        ? {
+            ...question,
+            status: {
+              ...question.status,
+              status,
+              timeTakenInSeconds,
+            },
+            selectedOptions: selectedOption
+              ? uniqueValuesOnly(selectedOption)
+              : question.selectedOptions,
+          }
+        : {
+            ...question,
+            status: {
+              ...question.status,
+              status,
+              timeTakenInSeconds,
+            },
+          };
     }
     return question;
   });

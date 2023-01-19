@@ -4,9 +4,8 @@ import { isValidUrl } from "../../utils/utils";
 import arrowDown from "../../assets/icons/arrowDown.svg";
 import styles from "./Question.module.scss";
 import RenderWithLatex from "../RenderWithLatex/RenderWithLatex";
-import { memo, useContext, useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { TEST_ACTION_TYPES } from "src/utils/actions";
-import { TestsContext } from "src/utils/contexts/TestsContext";
 
 interface Props {
   question: any;
@@ -15,6 +14,7 @@ interface Props {
   type: "single" | "multiple";
   index: number;
   language: string;
+  setTimeTakenAllQuestions: any;
   timeTakenInSeconds: number;
   onClickOption: (option: string) => void;
 }
@@ -27,29 +27,24 @@ const QuestionObjective: React.FC<Props> = ({
   type,
   onClickOption,
   timeTakenInSeconds,
+  setTimeTakenAllQuestions,
   language,
 }) => {
-  const [timeTaken, setTimeTaken] = useState(question?.timeTakenInSeconds || 0);
-
-  const { dispatch } = useContext(TestsContext);
+  const [timeTaken, setTimeTaken] = useState(timeTakenInSeconds || 0);
 
   // handle timeTakenInSeconds using time intervals
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeTaken((curr: number) => curr + 1);
+      setTimeTakenAllQuestions((curr: any) => ({
+        ...curr,
+        [id]: timeTaken + 1,
+      }));
     }, 1000);
     return () => {
-      // dispatch event to update timeTakenInSeconds
-      dispatch({
-        type: TEST_ACTION_TYPES.UPDATE_TIME_TAKEN,
-        payload: {
-          id,
-          timeTakenInSeconds: timeTaken,
-        },
-      });
       clearInterval(interval);
     };
-  }, [question, id, TEST_ACTION_TYPES.UPDATE_TIME_TAKEN]);
+  }, [question, id]);
 
   return (
     <div id="container" className={styles.container}>

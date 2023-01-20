@@ -279,7 +279,6 @@ export default function TestReducer(
         payload.currentQuestion < questions.length - 1
           ? payload.currentQuestion + 1
           : payload.currentQuestion;
-      console.log({ cq: payload.currentQuestion, nextIdx });
       let questionVisited = isQuestionVisited(questions[nextIdx]);
       return {
         ...state,

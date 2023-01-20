@@ -17,7 +17,7 @@ interface Props {
   setTimeTakenAllQuestions: any;
   timeTakenInSeconds: number;
   onChangeValue: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  userAnswer: string;
+  enteredAnswer: string;
 }
 
 const QuestionInteger: React.FC<Props> = ({
@@ -28,7 +28,7 @@ const QuestionInteger: React.FC<Props> = ({
   onChangeValue,
   setTimeTakenAllQuestions,
   timeTakenInSeconds,
-  userAnswer,
+  enteredAnswer,
 }) => {
   // handle timeTakenInSeconds using time intervals
 
@@ -74,7 +74,7 @@ const QuestionInteger: React.FC<Props> = ({
           title="answer"
           type="number"
           onChange={onChangeValue}
-          value={userAnswer}
+          value={enteredAnswer}
           name="numerical"
           id="numerical"
         />

@@ -58,7 +58,9 @@ export default function TestReducer(
     }
     case TEST_ACTION_TYPES.NEXT_QUESTION: {
       const nextIdx =
-        currentQuestion < questions.length - 1 ? payload + 1 : payload;
+        currentQuestion < questions.length - 1
+          ? payload.currentQuestion + 1
+          : payload.currentQuestion;
       let questionVisited = isQuestionVisited(questions[nextIdx]);
       return {
         ...state,
@@ -91,7 +93,8 @@ export default function TestReducer(
       };
     }
     case TEST_ACTION_TYPES.PREVIOUS_QUESTION: {
-      const nextIdx = currentQuestion > 0 ? payload - 1 : currentQuestion;
+      const nextIdx =
+        currentQuestion > 0 ? payload.currentQuestion - 1 : currentQuestion;
       let questionVisited = isQuestionVisited(questions[nextIdx]);
       return {
         ...state,
@@ -183,7 +186,9 @@ export default function TestReducer(
             questionVisited,
             "answered",
             "notAnswered"
-          )
+          ),
+          undefined,
+          questions[nextIdx].status.timeTakenInSeconds
         ),
         status: {
           ...state.status,
@@ -243,7 +248,9 @@ export default function TestReducer(
             questionVisited,
             "markedForReview",
             "notAnswered"
-          )
+          ),
+          undefined,
+          questions[nextIdx].status.timeTakenInSeconds
         ),
         status: {
           ...state.status,
@@ -299,7 +306,9 @@ export default function TestReducer(
             questionVisited,
             "answeredAndMarkedForReview",
             "notAnswered"
-          )
+          ),
+          undefined,
+          questions[nextIdx].status.timeTakenInSeconds
         ),
         status: {
           ...state.status,
@@ -485,7 +494,7 @@ function markQuestionWithStatus(
               status,
               timeTakenInSeconds,
             },
-            enteredAnswer: selectedOption,
+            enteredAnswer: selectedOption as number,
           };
     }
     return question;

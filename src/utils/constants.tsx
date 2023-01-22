@@ -4,6 +4,8 @@ import arrowDown from "../assets/icons/arrowDown.svg";
 
 export const ENV_PROD = "ENV_PROD";
 
+export const TIME_INTERVAL = 100; //in ms
+
 export const APIS = {
   USERS_API:
     "https://iitpulse.in" ||

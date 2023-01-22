@@ -8,6 +8,7 @@ import RenderWithLatex from "../RenderWithLatex/RenderWithLatex";
 import { memo, useCallback, useContext, useEffect, useState } from "react";
 import { TestsContext } from "src/utils/contexts/TestsContext";
 import { TEST_ACTION_TYPES } from "src/utils/actions";
+import { TIME_INTERVAL } from "src/utils/constants";
 
 interface Props {
   question: any;
@@ -36,9 +37,12 @@ const QuestionInteger: React.FC<Props> = ({
     const interval = setInterval(() => {
       setTimeTakenAllQuestions((curr: any) => ({
         ...curr,
-        [id]: curr[id] >= 0 ? curr[id] + 1 : 0,
+        [id]:
+          curr[id] >= 0
+            ? Math.round((curr[id] + TIME_INTERVAL / 1000) * 100) / 100
+            : 0,
       }));
-    }, 1000);
+    }, TIME_INTERVAL);
     return () => {
       clearInterval(interval);
     };

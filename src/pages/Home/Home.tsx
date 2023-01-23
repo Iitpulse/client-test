@@ -88,17 +88,28 @@ const Home = () => {
   function handleClickSaveAndNext(option: string | null) {
     console.log(option);
     console.log(question.selectedOptions);
-    if (!option)
+    if (!option?.length) {
+      if (question.type === "integer") {
+        return setAlertModal({
+          open: true,
+          title: "Warning",
+          message: "Please enter a valid number!",
+        });
+      }
       return setAlertModal({
         open: true,
         title: "Warning",
         message: "Please Select an option!",
       });
+    }
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_NEXT,
       payload: {
         currentQuestion,
-        selectedOption: question.selectedOptions,
+        selectedOption:
+          question.type === "integer"
+            ? question.enteredAnswer
+            : question.selectedOptions,
         timeTakenInSeconds:
           timeTakenAllQuestions[questions[currentQuestion].id],
       },
@@ -117,17 +128,28 @@ const Home = () => {
   }
 
   function handleClickSaveAndMarkForReview(option: string | null) {
-    if (!option)
+    if (!option?.length) {
+      if (question.type === "integer") {
+        return setAlertModal({
+          open: true,
+          title: "Warning",
+          message: "Please enter a valid number!",
+        });
+      }
       return setAlertModal({
         open: true,
         title: "Warning",
         message: "Please Select an option!",
       });
+    }
     dispatch({
       type: TEST_ACTION_TYPES.SAVE_AND_MARK_FOR_REVIEW,
       payload: {
         currentQuestion,
-        selectedOption: question.selectedOptions,
+        selectedOption:
+          question.type === "integer"
+            ? question.enteredAnswer
+            : question.selectedOptions,
         timeTakenInSeconds:
           timeTakenAllQuestions[questions[currentQuestion].id],
       },
@@ -277,7 +299,7 @@ const Home = () => {
                 hi: question.hi,
               }}
               id={question.id}
-              userAnswer={question.userAnswer}
+              enteredAnswer={question.enteredAnswer}
               index={currentQuestion}
               key={question.id}
               language={language}
@@ -288,7 +310,7 @@ const Home = () => {
               onChangeValue={(e: any) => {
                 setQuestion({
                   ...question,
-                  userAnswer: e.target.value,
+                  enteredAnswer: e.target.value,
                 });
               }}
             />
@@ -302,9 +324,11 @@ const Home = () => {
               color="success"
               onClick={() =>
                 handleClickSaveAndNext(
-                  question.selectedOptions[
-                    question.selectedOptions.length - 1
-                  ] || null
+                  question.type === "integer"
+                    ? question.enteredAnswer
+                    : question.selectedOptions[
+                        question.selectedOptions.length - 1
+                      ] || null
                 )
               }
             >
@@ -328,7 +352,11 @@ const Home = () => {
               color="warning"
               onClick={() =>
                 handleClickSaveAndMarkForReview(
-                  question.selectedOptions[question.selectedOptions.length - 1]
+                  question.type === "integer"
+                    ? question.enteredAnswer
+                    : question.selectedOptions[
+                        question.selectedOptions.length - 1
+                      ]
                 )
               }
             >
@@ -461,6 +489,18 @@ const Home = () => {
 };
 
 export default Home;
+
+function getUserAnswerByType(question: any) {
+  switch (question.type) {
+    case "integer":
+      return question.enteredAnswer;
+    case "single":
+    case "multiple":
+      return question.selectedOptions[question.selectedOptions.length - 1];
+    default:
+      return null;
+  }
+}
 
 interface QuestionButtonProps {
   children: number;

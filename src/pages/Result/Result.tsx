@@ -3,15 +3,20 @@ import styles from "./Result.module.scss";
 import logo from "../../assets/images/logo.svg";
 
 const Result = () => {
-  const [result, setResult] = useState("");
-
+  const [timeTaken, setTimeTaken] = useState(5);
   useEffect(() => {
-    const res = localStorage.getItem("result");
-    if (res) {
-      setResult(res);
-    }
+    const timer = setInterval(() => {
+      setTimeTaken((prevTimeTaken) => prevTimeTaken - 1);
+    }, 1000);
+    return () => {
+      clearInterval(timer);
+    };
   }, []);
-
+  useEffect(() => {
+    if (timeTaken < 1) {
+      window.close();
+    }
+  });
   return (
     <div className={styles.container}>
       <section className={styles.logoSection}>
@@ -20,8 +25,10 @@ const Result = () => {
         </div>
       </section>
       <section className={styles.main}>
-        <h1>Result</h1>
-        <p>Total marks obtained: {result}</p>
+        <h1 style={{ lineHeight: "300%" }}>
+          Thank you for submitting the test
+        </h1>
+        <p>This window will close in {timeTaken} sec</p>
       </section>
     </div>
   );

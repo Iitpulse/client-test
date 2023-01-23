@@ -387,7 +387,7 @@ export default function TestReducer(
         })),
       };
       console.log({ finalTest });
-      localStorage.setItem("test", JSON.stringify(finalTest));
+      // localStorage.setItem("test", JSON.stringify(finalTest));
       submitTest(payload, finalTest);
       return state;
     }
@@ -450,7 +450,7 @@ async function submitTest(payload: any, test: any) {
         modifiedAt: test.modifiedAt,
       },
     });
-    alert("Submitted succesfully");
+    // alert("Submitted succesfully");
     localStorage.setItem("result", res.data.result.totalMarks);
     payload.cb();
     // console.log({ res });

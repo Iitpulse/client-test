@@ -42,10 +42,7 @@ const Header: React.FC<IHeaderProps> = ({
               View Question Paper
             </Button>
             <Button
-              onClick={() => {
-                navigate("/login");
-                localStorage.removeItem(AUTH_TOKEN);
-              }}
+              onClick={onClickViewQuestionPaper}
               icon={<img src={info} alt="List" />}
             >
               View Instruction

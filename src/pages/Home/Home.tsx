@@ -48,7 +48,7 @@ const Home = () => {
   const mainRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    console.log({ timeTakenAllQuestions });
+    // console.log({ timeTakenAllQuestions });
   }, [timeTakenAllQuestions]);
 
   function handleScreen() {
@@ -173,16 +173,30 @@ const Home = () => {
   }
 
   function handleClickClear() {
-    if (question.type !== "single" || question.type !== "multiple") return;
-    if (!question.selectedOptions?.length) return;
-    setQuestion({
-      ...question,
-      selectedOptions: [],
-    });
-    dispatch({
-      type: TEST_ACTION_TYPES.CLEAR_SELECTION,
-      payload: currentQuestion,
-    });
+    console.log(question);
+    if (question.type === "single" || question.type === "multiple") {
+      if (question.selectedOptions?.length === 0) return;
+      console.log("hey");
+      setQuestion({
+        ...question,
+        selectedOptions: [],
+      });
+      dispatch({
+        type: TEST_ACTION_TYPES.CLEAR_SELECTION,
+        payload: currentQuestion,
+      });
+    } else if (question.type === "integer") {
+      //Dont know why but this is making the entered answer undefined
+      setQuestion({
+        ...question,
+        enteredAnswer: "",
+      });
+
+      dispatch({
+        type: TEST_ACTION_TYPES.CLEAR_SELECTION,
+        payload: currentQuestion,
+      });
+    }
   }
 
   async function handleClickSubmit() {

@@ -478,7 +478,7 @@ const Home = () => {
         backdrop
       >
         <div className={styles.flexRow}>
-          <Button color="error">Yes, Submit Test</Button>&nbsp;
+          <Button color="error" onClick={handleClickSubmit}>Yes, Submit Test</Button>&nbsp;
           <Button
             color="primary"
             onClick={() => {

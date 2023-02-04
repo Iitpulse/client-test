@@ -374,7 +374,7 @@ export default function TestReducer(
     case TEST_ACTION_TYPES.SUBMIT_TEST: {
       let finalTest = {
         ...state.test,
-        sections: state.test?.sections.map((section) => ({
+        sections: state.test?.sections?.map((section) => ({
           ...section,
           subSections: section.subSections.map((subSection) => ({
             ...subSection,

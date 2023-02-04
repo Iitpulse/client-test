@@ -2,7 +2,7 @@
 
 .btn {
   color: white;
-  padding: calc(0.5rem + 2px) 1.5rem;
+  padding: calc(0.5rem + 2px) 1rem;
   border: none;
   outline: none;
   border-radius: 0.5rem;
@@ -10,13 +10,14 @@
   -webkit-user-select: none;
   -ms-user-select: none;
   user-select: none;
-  margin: 0.5rem 0;
-  > span {
-    @extend .flexRow;
-    span {
-      margin-right: 0.3rem;
-    }
-  }
+  margin: 0.6rem;
+  margin-right: 0.2rem;
+  // > span {
+  //   @extend .flexRow;
+  //   span {
+  //     margin-right: 0.3rem;
+  //   }
+  // }
 }
 
 .clrPrimary {

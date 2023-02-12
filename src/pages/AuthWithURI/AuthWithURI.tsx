@@ -30,6 +30,7 @@ const AuthWithURI = () => {
             instituteId: decoded.instituteId,
           });
           setTestId(testId);
+          console.log(testId);
           localStorage.setItem(AUTH_TOKEN, token);
           setKeyRequiredForTest(keyRequired);
           navigate(keyRequired ? "/login-key" : `/instructions`);

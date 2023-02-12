@@ -51,11 +51,13 @@ export const TestsContext = createContext<{
 
 const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(TestReducer, defaultTestContext);
-  const [testId, setTestId] = useState("IITP_AB123");
+  const [testId, setTestId] = useState("");
   const { currentUser } = useContext(AuthContext);
 
-  async function fetchTest(testId: string) {
-    let test = await API_TESTS().get(`/test/student/${testId}`);
+  async function fetchTest(tempTestId: string) {
+    console.log({ tempTestId });
+    if (!tempTestId || tempTestId.length === 0) return;
+    let test = await API_TESTS().get(`/test/student/${tempTestId}`);
     console.log({ data: test.data });
     if (test?.data) {
       dispatch({
@@ -66,8 +68,8 @@ const TestsContextProvider: React.FC<ITestProviderProps> = ({ children }) => {
   }
 
   useEffect(() => {
-    if (currentUser?.id && testId) {
-      console.log({ testId });
+    console.log({ testId });
+    if (currentUser?.id && testId.length) {
       fetchTest(testId);
     }
   }, [currentUser, testId]);

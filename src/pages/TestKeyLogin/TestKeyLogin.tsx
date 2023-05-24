@@ -7,7 +7,7 @@ import logo from "../../assets/images/logo.svg";
 import axios from "axios";
 import { decodeToken } from "react-jwt";
 import { APIS, AUTH_TOKEN } from "src/utils/constants";
-import { API_USERS } from "src/utils/api";
+import { API_USERS } from "src/utils/api/config";
 
 const TestKeyLogin = () => {
   const navigate = useNavigate();

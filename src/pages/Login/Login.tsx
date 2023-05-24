@@ -6,7 +6,7 @@ import { AuthContext } from "../../utils/auth/AuthContext";
 import logo from "../../assets/images/logo.svg";
 import axios from "axios";
 import { decodeToken } from "react-jwt";
-import { API_USERS } from "src/utils/api";
+import { API_USERS } from "src/utils/api/config";
 import { AUTH_TOKEN } from "src/utils/constants";
 
 const Login = () => {

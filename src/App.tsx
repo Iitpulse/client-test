@@ -17,10 +17,9 @@ import { ENV_PROD } from "./utils/constants";
 const App = () => {
   useEffect(() => {
     let env = process.env.REACT_APP_ENV;
-    if(env === ENV_PROD) {
-      
+    if (env === ENV_PROD) {
     }
-  }, [])
+  }, []);
   return (
     <div className={styles.container}>
       <Router>

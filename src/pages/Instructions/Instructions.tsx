@@ -15,7 +15,7 @@ import {
 import { InstructionType } from "src/utils/interfaces";
 import { TestsContext } from "src/utils/contexts/TestsContext";
 
-const Instructions = () => {
+const Instructions = ({ viewOnly }: { viewOnly?: boolean }) => {
   const navigate = useNavigate();
   const [confirmCheck, setConfirmCheck] = useState(false);
   const [locale, setLocale] = useState<string>("en");
@@ -93,25 +93,31 @@ const Instructions = () => {
           {INSTRUCTIONS_WARNING[locale] || INSTRUCTIONS_WARNING.en}
         </p>
         <hr />
-        <label>
-          <input
-            style={{ marginTop: "2rem" }}
-            type="checkbox"
-            checked={confirmCheck}
-            placeholder="Agree"
-            onChange={(e) => setConfirmCheck(e.target.checked)}
-          />
-          &nbsp;&nbsp;
-          {INSTRUCTIONS_CONFIRMATION[locale] || INSTRUCTIONS_CONFIRMATION.en}
-        </label>
-        <Button
-          onClick={handleClickContinue}
-          classes={[styles.continueBtn]}
-          color="warning"
-          disabled={!confirmCheck}
-        >
-          PROCEED
-        </Button>
+        {!viewOnly && (
+          <>
+            {" "}
+            <label>
+              <input
+                style={{ marginTop: "2rem" }}
+                type="checkbox"
+                checked={confirmCheck}
+                placeholder="Agree"
+                onChange={(e) => setConfirmCheck(e.target.checked)}
+              />
+              &nbsp;&nbsp;
+              {INSTRUCTIONS_CONFIRMATION[locale] ||
+                INSTRUCTIONS_CONFIRMATION.en}
+            </label>
+            <Button
+              onClick={handleClickContinue}
+              classes={[styles.continueBtn]}
+              color="warning"
+              disabled={!confirmCheck}
+            >
+              PROCEED
+            </Button>
+          </>
+        )}
       </section>
     </div>
   );

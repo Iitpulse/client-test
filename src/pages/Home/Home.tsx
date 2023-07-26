@@ -6,6 +6,7 @@ import {
   Button,
   Legend,
   Modal,
+  Loader,
 } from "../../components";
 import styles from "./Home.module.scss";
 import expandRight from "../../assets/icons/greaterThan.svg";
@@ -23,13 +24,14 @@ import { useNavigate } from "react-router-dom";
 import { AUTH_TOKEN } from "src/utils/constants";
 import RenderWithLatex from "src/components/RenderWithLatex/RenderWithLatex";
 import QuestionPaper from "./components/QuestionPaper";
+import Instructions from "../Instructions/Instructions";
 
 const Home = () => {
   const { currentUser } = useContext(AuthContext);
 
   const navigate = useNavigate();
   const [language, setLanguage] = useState<string>("en");
-
+  const [loading, setLoading] = useState<boolean>(false);
   const { state, dispatch } = useContext(TestsContext);
   const { questions, currentQuestion, test, status } = state;
   const [question, setQuestion] = useState<any>({} as any);
@@ -37,6 +39,8 @@ const Home = () => {
     [key: string]: number;
   }>({});
   const [questionPaperModal, setQuestionPaperModal] = useState<boolean>(false);
+  const [viewInstructionsModal, setViewInstructionsModal] =
+    useState<boolean>(false);
   const [exitFullScreenModal, setExitFullScreenModal] =
     useState<boolean>(false);
   const [alertModal, setAlertModal] = useState<{
@@ -201,7 +205,7 @@ const Home = () => {
 
   async function handleClickSubmit() {
     if (!currentUser) return alert("No valid user found");
-
+    setLoading(true);
     dispatch({
       type: TEST_ACTION_TYPES.SUBMIT_TEST,
       payload: {
@@ -222,6 +226,7 @@ const Home = () => {
           }
           handleScreen();
           navigate("/result");
+          setLoading(false);
         },
       },
     });
@@ -273,10 +278,13 @@ const Home = () => {
       document.removeEventListener("fullscreenchange", manageFullScreen);
     };
   }, []);
-
+  if (loading) {
+    return <Loader />;
+  }
   return (
     <div ref={mainRef} className={styles.container}>
       <Header
+        onClickViewInstructions={() => setViewInstructionsModal(true)}
         onClickViewQuestionPaper={() => setQuestionPaperModal(true)}
         onChangeLanguage={(e: any) => setLanguage(e.target.value)}
       />
@@ -459,6 +467,14 @@ const Home = () => {
       {/* <Button onClick={handleScreen}>Toggle Screen</Button> */}
       <section className={styles.instructionContainer}></section>
       <Modal
+        isOpen={viewInstructionsModal}
+        onClose={() => setViewInstructionsModal(false)}
+        title="Instructions"
+        backdrop
+      >
+        <Instructions viewOnly={true} />
+      </Modal>
+      <Modal
         isOpen={questionPaperModal}
         onClose={() => setQuestionPaperModal(false)}
         title="Question Paper"
@@ -478,7 +494,10 @@ const Home = () => {
         backdrop
       >
         <div className={styles.flexRow}>
-          <Button color="error" onClick={handleClickSubmit}>Yes, Submit Test</Button>&nbsp;
+          <Button color="error" onClick={handleClickSubmit}>
+            Yes, Submit Test
+          </Button>
+          &nbsp;
           <Button
             color="primary"
             onClick={() => {

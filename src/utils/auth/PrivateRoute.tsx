@@ -5,7 +5,7 @@ import { AUTH_TOKEN } from "../constants";
 import { AuthContext } from "./AuthContext";
 
 interface Props {
-  component: React.ComponentType;
+  component: React.ComponentType<any>;
   path?: string;
 }
 const PrivateRoute: React.FC<Props> = ({ component: RouteComponent }) => {

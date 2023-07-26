@@ -19,6 +19,7 @@ interface IHeaderProps {
 
 const Header: React.FC<IHeaderProps> = ({
   onClickViewQuestionPaper,
+  onClickViewInstructions,
   rightComp: RightComp,
   testInfoLeftComp: TestInfoLeftComp,
   testInfoRightComp: TestInfoRightComp,
@@ -42,7 +43,7 @@ const Header: React.FC<IHeaderProps> = ({
               View Question Paper
             </Button>
             <Button
-              onClick={onClickViewQuestionPaper}
+              onClick={onClickViewInstructions}
               icon={<img src={info} alt="List" />}
             >
               View Instruction

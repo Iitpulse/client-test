@@ -1,10 +1,13 @@
 import styles from "./StudentProfile.module.scss";
 import profilePlaceholderImage from "../../assets/images/profilePlaceholderImage.jpg";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import { TEST_ACTION_TYPES } from "../../utils/actions";
+import { AuthContext } from "../../utils/auth/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { AUTH_TOKEN } from "src/utils/constants";
+import { TestsContext } from "../../utils/contexts/TestsContext";
 
 interface Props {
-  name: string;
-  exam: string;
   image?: string;
 }
 
@@ -15,12 +18,39 @@ type RemainingTime = {
 };
 
 const StudentProfile = (props: Props) => {
-  const { name, exam, image } = props;
+  const { currentUser, userDetails } = useContext(AuthContext);
+  const { state, dispatch } = useContext(TestsContext);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState<boolean>(false);
+  const { image } = props;
+  const [Name, SetName] = useState<string>("");
+  const [Exam, SetExam] = useState<string>("");
   const [timer, setTimer] = useState<RemainingTime>({
     hours: "03",
     minutes: "00",
     seconds: "00",
   });
+  const [alertModal, setAlertModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+  }>({ open: false, title: "", message: "" });
+
+  function handleScreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  }
+
+  useEffect(()=>{
+    console.log(userDetails);
+    SetName(userDetails?.name);
+    SetExam(userDetails?.exam);
+  },[userDetails])
 
   useEffect(() => {
     let remTime = localStorage.getItem("remainingTime");
@@ -53,23 +83,50 @@ const StudentProfile = (props: Props) => {
       if (distance < 0) {
         clearInterval(x);
         setTimer({ hours: "00", minutes: "00", seconds: "00" });
+        if (!currentUser) return alert("No valid user found");
+        setLoading(true);
+        dispatch({
+          type: TEST_ACTION_TYPES.SUBMIT_TEST,
+          payload: {
+            test,
+            user: {
+              id: currentUser.id,
+              type: currentUser.userType,
+              instituteId: currentUser.instituteId,
+            },
+            token: localStorage.getItem(AUTH_TOKEN),
+            cb: (error: any) => {
+              if (error) {
+                return setAlertModal({
+                  open: true,
+                  title: "Error",
+                  message: error,
+                });
+              }
+              handleScreen();
+              navigate("/result");
+              setLoading(false);
+            },
+          },
+        });
       }
     }, 1000); // update every one second
+
   }, []);
 
   return (
     <div className={styles.container}>
       <div className={styles.imageContainer}>
-        <img src={image ? image : profilePlaceholderImage} alt={name} />
+        <img src={image ? image : profilePlaceholderImage} alt={userDetails.name} />
       </div>
       <div className={styles.textContainer}>
         <p>
           <span>Name : </span>
-          <span className={styles.fieldAnswerTextual}>{name}</span>
+          <span className={styles.fieldAnswerTextual}>{userDetails.name}</span>
         </p>
         <p>
           <span>Exam : </span>
-          <span className={styles.fieldAnswerTextual}>{exam}</span>
+          <span className={styles.fieldAnswerTextual}>{userDetails.exam}</span>
         </p>
         <p>
           <span>Time Remaining : </span>

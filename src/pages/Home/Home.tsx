@@ -288,6 +288,9 @@ const Home = () => {
         onClickViewQuestionPaper={() => setQuestionPaperModal(true)}
         onChangeLanguage={(e: any) => setLanguage(e.target.value)}
       />
+      {questions.length === 0 && (
+        <Loader/>
+      )}
       <section className={styles.mainContainer}>
         <main
           className={clsx(

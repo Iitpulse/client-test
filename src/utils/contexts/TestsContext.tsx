@@ -1,13 +1,11 @@
 import { createContext, useEffect, useReducer } from "react";
 import { TEST_ACTION, TEST_ACTION_TYPES } from "../actions";
-import { SAMPLE_TEST } from "../constants";
 import { IQuestionWithID, ITest, ITestStatus } from "../interfaces";
 import TestReducer from "../reducers/TestReducer";
-import axios from "axios";
 import { AuthContext } from "../auth/AuthContext";
 import { useContext } from "react";
 import { useState } from "react";
-import { API_TESTS } from "../api";
+import { API_TESTS } from "../api/config";
 
 export interface ITestsContext {
   globalTest: ITest | null;

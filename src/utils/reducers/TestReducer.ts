@@ -1,9 +1,9 @@
 import { TEST_ACTION, TEST_ACTION_TYPES } from "../actions";
+import { API_TESTS } from "../api/config";
 import { ITestsContext } from "../contexts/TestsContext";
 import { IOption, IQuestionWithID, ITest } from "../interfaces";
 import { flattenQuestions, shuffleQuestions } from "../utils";
 import axios from "axios";
-import { API_TESTS } from "../api";
 
 export default function TestReducer(
   state: ITestsContext,

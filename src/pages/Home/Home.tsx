@@ -11,17 +11,12 @@ import {
 import styles from "./Home.module.scss";
 import expandRight from "../../assets/icons/greaterThan.svg";
 import { TestsContext } from "../../utils/contexts/TestsContext";
-import {
-  IQuestionInteger,
-  IQuestionObjective,
-  IQuestionWithID,
-} from "../../utils/interfaces";
 import clsx from "clsx";
 import { TEST_ACTION_TYPES } from "../../utils/actions";
 import { AuthContext } from "../../utils/auth/AuthContext";
 import { uniqueValuesOnly } from "../../utils/reducers/TestReducer";
 import { useNavigate } from "react-router-dom";
-import { AUTH_TOKEN } from "src/utils/constants";
+import { AUTH_TOKEN, TEST_SUBMITTED } from "src/utils/constants";
 import RenderWithLatex from "src/components/RenderWithLatex/RenderWithLatex";
 import QuestionPaper from "./components/QuestionPaper";
 import Instructions from "../Instructions/Instructions";
@@ -54,6 +49,13 @@ const Home = () => {
   useEffect(() => {
     // console.log({ timeTakenAllQuestions });
   }, [timeTakenAllQuestions]);
+
+  useEffect(() => {
+    const isSubmitted = localStorage.getItem(TEST_SUBMITTED) === "true";
+    if (isSubmitted) {
+      navigate("/result");
+    }
+  }, [navigate]);
 
   function handleScreen() {
     if (!document.fullscreenElement) {
@@ -225,6 +227,7 @@ const Home = () => {
             });
           }
           handleScreen();
+          localStorage.setItem(TEST_SUBMITTED, "true");
           navigate("/result");
           setLoading(false);
         },

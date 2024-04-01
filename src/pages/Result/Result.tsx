@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
 import styles from "./Result.module.scss";
 import logo from "../../assets/images/logo.svg";
+import { TEST_SUBMITTED } from "src/utils/constants";
+import { useNavigate } from "react-router-dom";
 
 const Result = () => {
   const [timeTaken, setTimeTaken] = useState(5);
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const isSubmitted = localStorage.getItem(TEST_SUBMITTED) === "true";
+    if (!isSubmitted) {
+      navigate("/");
+    }
+  }, [navigate]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeTaken((prevTimeTaken) => prevTimeTaken - 1);
@@ -12,11 +24,13 @@ const Result = () => {
       clearInterval(timer);
     };
   }, []);
+
   useEffect(() => {
     if (timeTaken < 1) {
       window.close();
     }
   });
+
   return (
     <div className={styles.container}>
       <section className={styles.logoSection}>

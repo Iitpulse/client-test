@@ -22,7 +22,7 @@ const App = () => {
   }, []);
   return (
     <div className={styles.container}>
-      <Router>
+      <Router basename="/">
         <AuthContextProvider>
           <Routes>
             <Route path="/login" element={<Login />} />

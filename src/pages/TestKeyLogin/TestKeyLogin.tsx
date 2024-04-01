@@ -3,10 +3,8 @@ import styles from "../Login/Login.module.scss";
 import { Button, Header, InputField } from "../../components";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../utils/auth/AuthContext";
-import logo from "../../assets/images/logo.svg";
-import axios from "axios";
 import { decodeToken } from "react-jwt";
-import { APIS, AUTH_TOKEN } from "src/utils/constants";
+import { AUTH_TOKEN } from "src/utils/constants";
 import { API_USERS } from "src/utils/api/config";
 
 const TestKeyLogin = () => {

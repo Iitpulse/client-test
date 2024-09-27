@@ -128,6 +128,20 @@ export interface ITestStatus {
   answeredAndMarkedForReview: Array<string>;
 }
 
+export interface IUserDetails {
+  _id: string;
+  email: string;
+  userType: string;
+  institute: string;
+  batch: string;
+  roles: {
+    [key: string]: {
+      id: string;
+      permissions: string[];
+    };
+  };
+}
+
 export interface ICurrentUser {
   id: string;
   email: string;
@@ -137,6 +151,7 @@ export interface ICurrentUser {
 
 export interface IAuthContext {
   currentUser: ICurrentUser | null;
+  userDetails: any | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<ICurrentUser | null>>;
   keyRequiredForTest: boolean;
   setKeyRequiredForTest: React.Dispatch<React.SetStateAction<boolean>>;

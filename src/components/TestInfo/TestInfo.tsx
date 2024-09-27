@@ -13,12 +13,14 @@ const TestInfo: React.FC<Props> = ({
   testInfoRightComp: RightComp,
   onChangeLanguage,
 }) => {
+
+
+
+
   return (
     <div className={styles.container}>
       {LeftComp || (
         <StudentProfile
-          name="Deepak Kewadia"
-          exam="JEE ADVANCED 2022"
           image={currentUserImage}
         />
       )}

@@ -45,7 +45,9 @@ const QuestionObjective: React.FC<Props> = ({
     return () => {
       clearInterval(interval);
     };
-  }, [question, id]);
+  }, [id]);
+
+  console.log("Rendering again", { question, id });
 
   return (
     <div id="container" className={styles.container}>

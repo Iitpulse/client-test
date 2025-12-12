@@ -48,6 +48,8 @@ const QuestionInteger: React.FC<Props> = ({
     };
   }, [question, id]);
 
+  console.log("Integer");
+
   return (
     <div id="container" className={styles.container}>
       <div className={styles.header}>

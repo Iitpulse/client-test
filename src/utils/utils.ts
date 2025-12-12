@@ -88,3 +88,40 @@ export function splitAndKeepDelimiters(
     return splitAndKeep(str, separator, method);
   }
 }
+
+export function preventUserFromExtraActionsAndLeaving() {
+  window.onbeforeunload = function () {
+    return true;
+  };
+  window.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+  });
+
+  // prevent user from using right click
+  window.addEventListener("mousedown", (e) => {
+    if (e.button === 2) {
+      e.preventDefault();
+    }
+  });
+
+  // prevent user from using anything that starts with command
+  window.addEventListener("keydown", (e) => {
+    if (e.metaKey) {
+      e.preventDefault();
+    }
+  });
+
+  // prevent user from using anything that starts with control
+  window.addEventListener("keydown", (e) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+    }
+  });
+
+  // prevent user from using anything that starts with shift
+  window.addEventListener("keydown", (e) => {
+    if (e.shiftKey) {
+      e.preventDefault();
+    }
+  });
+}

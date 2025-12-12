@@ -14,12 +14,11 @@ import { TestsContext } from "../../utils/contexts/TestsContext";
 import clsx from "clsx";
 import { TEST_ACTION_TYPES } from "../../utils/actions";
 import { AuthContext } from "../../utils/auth/AuthContext";
-import { uniqueValuesOnly } from "../../utils/reducers/TestReducer";
 import { useNavigate } from "react-router-dom";
 import { AUTH_TOKEN, TEST_SUBMITTED } from "src/utils/constants";
-import RenderWithLatex from "src/components/RenderWithLatex/RenderWithLatex";
 import QuestionPaper from "./components/QuestionPaper";
 import Instructions from "../Instructions/Instructions";
+import { preventUserFromExtraActionsAndLeaving } from "src/utils/utils";
 
 const Home = () => {
   const { currentUser } = useContext(AuthContext);
@@ -45,10 +44,6 @@ const Home = () => {
   }>({ open: false, title: "", message: "" });
   const [isExpanded, setIsExpanded] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // console.log({ timeTakenAllQuestions });
-  }, [timeTakenAllQuestions]);
 
   useEffect(() => {
     const isSubmitted = localStorage.getItem(TEST_SUBMITTED) === "true";
@@ -256,10 +251,6 @@ const Home = () => {
     }
   }, [currentQuestion, questions, test, language]);
 
-  useEffect(() => {
-    console.log({ status, question });
-  }, [status, question]);
-
   // fullScreen even listener
   useEffect(() => {
     function manageFullScreen(e: any) {
@@ -281,9 +272,21 @@ const Home = () => {
       document.removeEventListener("fullscreenchange", manageFullScreen);
     };
   }, []);
+
+  useEffect(() => {
+    // prevent user from using back button
+    window.history.pushState(null, "", window.location.href);
+    window.onpopstate = function () {
+      window.history.pushState(null, "", window.location.href);
+    };
+    // preventn user from using context menu
+    preventUserFromExtraActionsAndLeaving();
+  }, []);
+
   if (loading) {
     return <Loader />;
   }
+
   return (
     <div ref={mainRef} className={styles.container}>
       <Header

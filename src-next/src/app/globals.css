@@ -221,3 +221,131 @@
   bottom: 0;
   right: 0;
 }
+
+/* Test Page Layout Styles */
+.test-header {
+  padding: 10px calc((100% - 1200px) / 2);
+}
+
+.test-info-bar {
+  padding: 8px calc((100% - 1200px) / 2);
+}
+
+.test-main-container {
+  max-width: 1200px;
+  width: 90%;
+  margin: 2rem auto;
+}
+
+.question-container {
+  height: 50vh;
+  max-height: 500px;
+}
+
+.question-buttons-container {
+  height: 40vh;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+
+/* Action Button Styles */
+.btn-save-next {
+  background: #55bc7e;
+  border: 1px solid #55bc7e;
+  color: white;
+}
+
+.btn-save-next:hover {
+  background: #4aa96c;
+}
+
+.btn-clear {
+  background: white;
+  color: black;
+  border: 1px solid black;
+}
+
+.btn-clear:hover {
+  background: #f5f5f5;
+}
+
+.btn-save-mark-review {
+  background: #3a1772;
+  border: 1px solid #3a1772;
+  color: white;
+}
+
+.btn-save-mark-review:hover {
+  background: #2d1159;
+}
+
+.btn-mark-review-next {
+  background: #61b4f1;
+  border: 1px solid #61b4f1;
+  color: white;
+}
+
+.btn-mark-review-next:hover {
+  background: #4da3e0;
+}
+
+.btn-nav {
+  background: white;
+  color: black;
+  border: 1px solid black;
+}
+
+.btn-nav:hover {
+  background: #f5f5f5;
+}
+
+.btn-nav:disabled {
+  opacity: 0.5;
+}
+
+.btn-header-green {
+  background: #22c55e;
+  color: white;
+}
+
+.btn-header-green:hover {
+  background: #16a34a;
+}
+
+.btn-header-blue {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-header-blue:hover {
+  background: #2563eb;
+}
+
+/* Expand button rotation */
+.expand-btn-rotated {
+  transform: rotate(180deg);
+}
+
+/* Instructions page styles */
+.instructions-main {
+  width: var(--fixed-width, 1200px);
+  max-width: 90%;
+  margin: 2rem auto;
+  padding: 1rem 0;
+}
+
+.btn-proceed {
+  background: #f0ad4e;
+  color: white;
+  border: none;
+}
+
+.btn-proceed:disabled {
+  background: #ccc;
+  color: #666;
+}
+
+.btn-proceed:not(:disabled):hover {
+  background: #ec971f;
+}

@@ -4,6 +4,14 @@ import { create } from "zustand";
 import { ITest, IQuestionWithStatus, ITestStatus, QuestionStatus } from "@/types";
 import { api } from "@/lib/api";
 
+// Attempt info from backend
+export interface ITestAttempt {
+  startedAt: string;
+  expiresAt: string;
+  remainingTimeInSeconds: number;
+  durationInMinutes: number;
+}
+
 interface TestState {
   test: ITest | null;
   questions: IQuestionWithStatus[];
@@ -13,6 +21,7 @@ interface TestState {
   error: string | null;
   isSubmitted: boolean;
   totalMarks: number | null;
+  attempt: ITestAttempt | null;
 
   // Actions
   fetchTest: (testId: string) => Promise<void>;
@@ -35,11 +44,33 @@ interface TestState {
 function flattenQuestions(test: ITest): IQuestionWithStatus[] {
   const questions: IQuestionWithStatus[] = [];
 
+  // Safely handle undefined or empty sections
+  if (!test.sections || !Array.isArray(test.sections)) {
+    console.warn("Test has no sections or sections is not an array");
+    return questions;
+  }
+
+  let questionIndex = 0;
   test.sections.forEach((section) => {
+    if (!section.subSections || !Array.isArray(section.subSections)) {
+      return;
+    }
+
     section.subSections.forEach((subSection) => {
-      Object.values(subSection.questions).forEach((q) => {
+      // Handle both array format (from backend) and Record format
+      const questionsArray = Array.isArray(subSection.questions)
+        ? subSection.questions
+        : Object.values(subSection.questions || {});
+
+      questionsArray.forEach((q) => {
+        // Handle both 'id' and '_id' (MongoDB style) and generate fallback if neither exists
+        const rawQ = q as Record<string, unknown>;
+        const questionId = (rawQ.id || rawQ._id || `Q_${section.id}_${subSection.id}_${questionIndex}`) as string;
+        questionIndex++;
+
         questions.push({
           ...q,
+          id: questionId,
           sectionId: section.id,
           subSectionId: subSection.id,
           type: subSection.type,
@@ -79,12 +110,16 @@ export const useTestStore = create<TestState>((set, get) => ({
   error: null,
   isSubmitted: false,
   totalMarks: null,
+  attempt: null,
 
   fetchTest: async (testId: string) => {
     set({ isLoading: true, error: null });
     try {
       const response = await api.tests.getForStudent(testId);
-      const test = response.data;
+      // Backend returns { success: true, data: test, attempt: {...} }, axios wraps in { data: ... }
+      const responseData = response.data;
+      const test = responseData?.data || responseData;
+      const attempt = responseData?.attempt || null;
 
       if (test) {
         const questions = flattenQuestions(test);
@@ -105,6 +140,7 @@ export const useTestStore = create<TestState>((set, get) => ({
             markedForReview: [],
             answeredAndMarkedForReview: [],
           },
+          attempt,
           isLoading: false,
         });
       }
@@ -425,6 +461,7 @@ export const useTestStore = create<TestState>((set, get) => ({
       error: null,
       isSubmitted: false,
       totalMarks: null,
+      attempt: null,
     });
   },
 }));

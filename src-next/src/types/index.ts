@@ -54,7 +54,8 @@ export interface ISubSection {
   type: "single" | "multiple" | "integer";
   totalQuestions: number;
   toBeAttempted: number;
-  questions: Record<string, IQuestion>;
+  // Backend returns array, but submission format uses Record
+  questions: IQuestion[] | Record<string, IQuestion>;
 }
 
 export interface ISection {
@@ -68,7 +69,8 @@ export interface ITest {
   id: string;
   name: string;
   description?: string;
-  duration?: number;
+  duration?: number; // Legacy field
+  durationInMinutes?: number; // Backend field name
   sections: ISection[];
   exam?: string;
   status: string;

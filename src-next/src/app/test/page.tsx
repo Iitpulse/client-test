@@ -11,28 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useAuthStore, useTestStore } from "@/stores";
 import { QuestionObjective } from "@/components/question-objective";
 import { QuestionInteger } from "@/components/question-integer";
-import { QuestionPalette } from "@/components/question-palette";
-import {
-  FileText,
-  Info,
-  ChevronLeft,
-  ChevronRight,
-  PanelRightClose,
-  PanelRightOpen,
-} from "lucide-react";
+import { Legend } from "@/components/legend";
 import { cn } from "@/lib/utils";
 import {
   GENERAL_INSTRUCTIONS,
@@ -40,6 +22,7 @@ import {
   ANSWERING_INSTRUCTIONS,
   SECTION_INSTRUCTIONS,
 } from "@/lib/constants";
+import { RenderLatex } from "@/components/render-latex";
 
 export default function TestPage() {
   const router = useRouter();
@@ -61,12 +44,12 @@ export default function TestPage() {
     previousQuestion,
     goToQuestion,
     submitTest,
-    updateTimeTaken,
+    attempt,
   } = useTestStore();
 
   const [language, setLanguage] = useState<"en" | "hi">("en");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isPaletteExpanded, setIsPaletteExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [questionPaperModal, setQuestionPaperModal] = useState(false);
   const [instructionsModal, setInstructionsModal] = useState(false);
   const [exitFullscreenModal, setExitFullscreenModal] = useState(false);
@@ -75,9 +58,15 @@ export default function TestPage() {
     title: string;
     message: string;
   }>({ open: false, title: "", message: "" });
-  const [submitConfirmModal, setSubmitConfirmModal] = useState(false);
+  const [timer, setTimer] = useState<{ hours: string; minutes: string; seconds: string }>({
+    hours: "00",
+    minutes: "00",
+    seconds: "00",
+  });
 
   const timeTakenRef = useRef<Record<string, number>>({});
+  const timerEndTimeRef = useRef<number | null>(null);
+  const autoSubmitTriggeredRef = useRef(false);
 
   // Check if test was already submitted
   useEffect(() => {
@@ -109,6 +98,101 @@ export default function TestPage() {
       });
     }
   }, [questions]);
+
+  // Timer countdown effect - uses server-provided expiresAt for accuracy
+  useEffect(() => {
+    // Use server-provided attempt info if available (preferred)
+    // Falls back to localStorage for backwards compatibility
+    let endTime: number;
+
+    // Debug: Log attempt info
+    console.log("[Timer] Attempt data:", attempt);
+    console.log("[Timer] Test duration:", test?.durationInMinutes || test?.duration);
+
+    if (attempt?.expiresAt) {
+      // Server-provided expiry time - most accurate and secure
+      console.log("[Timer] Using server-provided expiresAt:", attempt.expiresAt);
+      endTime = new Date(attempt.expiresAt).getTime();
+    } else {
+      // Fallback: use test duration from test object
+      const testDuration = test?.durationInMinutes || test?.duration;
+      if (!testDuration) {
+        console.warn("No test duration or attempt info found");
+        return;
+      }
+
+      // Check localStorage as last resort (for backwards compatibility)
+      const storageKey = `IITP_TEST_END_TIME_${testId}`;
+      const storedEndTime = localStorage.getItem(storageKey);
+
+      if (storedEndTime) {
+        endTime = parseInt(storedEndTime, 10);
+        // Validate stored time
+        const maxPastTime = Date.now() - testDuration * 60 * 1000;
+        if (endTime < maxPastTime) {
+          endTime = Date.now() + testDuration * 60 * 1000;
+          localStorage.setItem(storageKey, endTime.toString());
+        }
+      } else {
+        endTime = Date.now() + testDuration * 60 * 1000;
+        localStorage.setItem(storageKey, endTime.toString());
+      }
+    }
+
+    timerEndTimeRef.current = endTime;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const distance = (timerEndTimeRef.current || endTime) - now;
+
+      if (distance <= 0) {
+        setTimer({ hours: "00", minutes: "00", seconds: "00" });
+        // Set flag for auto-submit (handled separately)
+        if (!autoSubmitTriggeredRef.current) {
+          autoSubmitTriggeredRef.current = true;
+        }
+        return;
+      }
+
+      const hours = Math.floor(distance / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+      setTimer({
+        hours: hours.toString().padStart(2, "0"),
+        minutes: minutes.toString().padStart(2, "0"),
+        seconds: seconds.toString().padStart(2, "0"),
+      });
+    };
+
+    // Initial update
+    updateTimer();
+
+    // Update every second
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [attempt?.expiresAt, test?.durationInMinutes, test?.duration, testId]);
+
+  // Auto-submit when timer reaches zero
+  useEffect(() => {
+    if (autoSubmitTriggeredRef.current && timer.hours === "00" && timer.minutes === "00" && timer.seconds === "00" && currentUser && testId) {
+      autoSubmitTriggeredRef.current = false; // Reset to prevent multiple submissions
+      // Trigger submission
+      (async () => {
+        try {
+          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId);
+          localStorage.removeItem(`IITP_TEST_END_TIME_${testId}`);
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          }
+          router.push("/result");
+        } catch (error) {
+          console.error("Auto-submit failed:", error);
+        }
+      })();
+    }
+  }, [timer, currentUser, submitTest, router, testId]);
 
   // Fullscreen change listener
   useEffect(() => {
@@ -142,7 +226,6 @@ export default function TestPage() {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
       if (
         e.key === "F12" ||
         (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J")) ||
@@ -243,6 +326,10 @@ export default function TestPage() {
     setIsSubmitting(true);
     try {
       await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId);
+      // Clear the timer end time from localStorage
+      if (testId) {
+        localStorage.removeItem(`IITP_TEST_END_TIME_${testId}`);
+      }
       handleFullscreen();
       router.push("/result");
     } catch (error) {
@@ -253,7 +340,6 @@ export default function TestPage() {
       });
     } finally {
       setIsSubmitting(false);
-      setSubmitConfirmModal(false);
     }
   };
 
@@ -263,10 +349,10 @@ export default function TestPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
-          <p className="text-muted-foreground">Loading test...</p>
+          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent mx-auto" />
+          <p className="text-gray-500">Loading test...</p>
         </div>
       </div>
     );
@@ -274,12 +360,16 @@ export default function TestPage() {
 
   if (!questions.length) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <p className="text-muted-foreground">No questions found</p>
-          <Button className="mt-4" onClick={() => router.push("/instructions")}>
+          <p className="text-gray-500">No questions found</p>
+          <button
+            type="button"
+            onClick={() => router.push("/instructions")}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
             Go Back
-          </Button>
+          </button>
         </div>
       </div>
     );
@@ -288,178 +378,221 @@ export default function TestPage() {
   const question = questions[currentQuestion];
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      {/* Header */}
-      <header className="flex h-14 items-center justify-between border-b bg-white px-4 shadow-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-primary">IITP</span>
-          <span className="text-sm text-muted-foreground hidden sm:inline">
-            {test?.name}
-          </span>
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header - Logo Section */}
+      <header className="flex items-center justify-between px-4 py-2 border-b bg-white test-header">
+        <div className="flex items-center">
+          <div className="h-12 flex items-center">
+            <span className="text-2xl font-bold text-blue-600">IIT Pulse</span>
+          </div>
         </div>
-
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
             onClick={() => setQuestionPaperModal(true)}
-            className="hidden sm:flex"
+            className="flex items-center gap-2 px-4 py-2 btn-header-green rounded text-sm"
           >
-            <FileText className="mr-2 h-4 w-4" />
-            Question Paper
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            View Question Paper
+          </button>
+          <button
+            type="button"
             onClick={() => setInstructionsModal(true)}
+            className="flex items-center gap-2 px-4 py-2 btn-header-blue rounded text-sm"
           >
-            <Info className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Instructions</span>
-          </Button>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as "en" | "hi")}
-            className="rounded-md border px-2 py-1 text-sm"
-          >
-            <option value="en">English</option>
-            <option value="hi">Hindi</option>
-          </select>
-          <span className="text-xs text-muted-foreground hidden md:inline">
-            {currentUser?.email}
-          </span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            View Instruction
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Question Area */}
-        <main
-          className={cn(
-            "flex-1 flex flex-col overflow-hidden transition-all duration-300",
-            isPaletteExpanded ? "mr-0" : "mr-0"
-          )}
-        >
-          {/* Question Display */}
-          <div className="flex-1 overflow-auto p-4">
-            <div className="mx-auto max-w-3xl rounded-lg bg-white p-6 shadow-sm">
-              {(question.type === "single" || question.type === "multiple") && (
-                <QuestionObjective
-                  question={{
-                    en: question.en,
-                    hi: question.hi,
-                  }}
-                  id={question.id}
-                  index={currentQuestion}
-                  selectedOptions={question.selectedOptions}
-                  type={question.type}
-                  language={language}
-                  timeTakenInSeconds={question.status.timeTakenInSeconds}
-                  onClickOption={selectOption}
-                  onTimeUpdate={handleTimeUpdate}
-                />
-              )}
-              {question.type === "integer" && (
-                <QuestionInteger
-                  question={{
-                    en: question.en,
-                    hi: question.hi,
-                  }}
-                  id={question.id}
-                  index={currentQuestion}
-                  enteredAnswer={question.enteredAnswer || ""}
-                  language={language}
-                  timeTakenInSeconds={question.status.timeTakenInSeconds}
-                  onChangeValue={setIntegerAnswer}
-                  onTimeUpdate={handleTimeUpdate}
-                />
-              )}
+      {/* Test Info Bar */}
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b test-info-bar">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden">
+            <div className="w-full h-full flex items-center justify-center text-gray-600 font-bold">
+              {currentUser?.name?.[0]?.toUpperCase() || "U"}
             </div>
+          </div>
+          <div>
+            <div className="font-medium text-sm">
+              <span className="text-gray-500">Name : </span>
+              {currentUser?.name || "Student"}
+            </div>
+            <div className="text-sm">
+              <span className="text-gray-500">Exam : </span>
+              {test?.name || "Test"}
+            </div>
+            <div className="text-sm">
+              <span className="text-gray-500">Time Remaining : </span>
+              <span className="font-mono bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                {timer.hours} : {timer.minutes} : {timer.seconds}
+              </span>
+            </div>
+          </div>
+        </div>
+        <select
+          title="Select Language"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as "en" | "hi")}
+          className="px-3 py-1 border rounded text-sm"
+        >
+          <option value="en">English</option>
+          <option value="hi">Hindi</option>
+        </select>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-1 overflow-hidden test-main-container">
+        {/* Left Container - Question Area */}
+        <main className={cn("flex flex-col", isExpanded ? "w-full" : "w-[60%]")}>
+          {/* Question Display */}
+          <div className="flex-1 overflow-auto border rounded p-4 mb-4 question-container">
+            {(question.type === "single" || question.type === "multiple") && (
+              <QuestionObjective
+                question={{
+                  en: question.en,
+                  hi: question.hi,
+                }}
+                id={question.id}
+                index={currentQuestion}
+                selectedOptions={question.selectedOptions}
+                type={question.type}
+                language={language}
+                timeTakenInSeconds={question.status.timeTakenInSeconds}
+                onClickOption={selectOption}
+                onTimeUpdate={handleTimeUpdate}
+              />
+            )}
+            {question.type === "integer" && (
+              <QuestionInteger
+                question={{
+                  en: question.en,
+                  hi: question.hi,
+                }}
+                id={question.id}
+                index={currentQuestion}
+                enteredAnswer={question.enteredAnswer || ""}
+                language={language}
+                timeTakenInSeconds={question.status.timeTakenInSeconds}
+                onChangeValue={setIntegerAnswer}
+                onTimeUpdate={handleTimeUpdate}
+              />
+            )}
           </div>
 
           {/* Action Buttons */}
-          <div className="border-t bg-white p-4">
-            <div className="mx-auto max-w-3xl">
-              {/* Main Actions */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                <Button onClick={handleSaveAndNext} className="bg-green-600 hover:bg-green-700">
-                  Save & Next
-                </Button>
-                <Button variant="outline" onClick={clearSelection}>
-                  Clear
-                </Button>
-                <Button
-                  onClick={handleSaveAndMarkForReview}
-                  className="bg-purple-700 hover:bg-purple-800"
-                >
-                  Save & Mark For Review
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => markForReview(getCurrentTimeTaken())}
-                >
-                  Mark For Review & Next
-                </Button>
-              </div>
+          <div className="flex flex-wrap gap-5 mb-4">
+            <button
+              type="button"
+              onClick={handleSaveAndNext}
+              className="px-4 py-2 rounded text-sm btn-save-next"
+            >
+              Save &amp; Next
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="px-4 py-2 rounded text-sm btn-clear"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAndMarkForReview}
+              className="px-4 py-2 rounded text-sm btn-save-mark-review"
+            >
+              Save &amp; Mark For Review
+            </button>
+            <button
+              type="button"
+              onClick={() => markForReview(getCurrentTimeTaken())}
+              className="px-4 py-2 rounded text-sm btn-mark-review-next"
+            >
+              Mark For Review &amp; Next
+            </button>
+          </div>
 
-              {/* Navigation */}
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => previousQuestion(getCurrentTimeTaken())}
-                    disabled={currentQuestion === 0}
-                  >
-                    <ChevronLeft className="mr-1 h-4 w-4" />
-                    Back
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => nextQuestion(getCurrentTimeTaken())}
-                    disabled={currentQuestion === questions.length - 1}
-                  >
-                    Next
-                    <ChevronRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </div>
-                <Button
-                  onClick={() => setSubmitConfirmModal(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  Submit Test
-                </Button>
-              </div>
+          {/* Navigation Buttons */}
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => previousQuestion(getCurrentTimeTaken())}
+                disabled={currentQuestion === 0}
+                className="px-4 py-2 rounded text-sm btn-nav"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={() => nextQuestion(getCurrentTimeTaken())}
+                disabled={currentQuestion === questions.length - 1}
+                className="px-4 py-2 rounded text-sm btn-nav"
+              >
+                Next
+              </button>
             </div>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
+            >
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </button>
           </div>
         </main>
 
-        {/* Question Palette Sidebar */}
-        <aside
-          className={cn(
-            "border-l bg-white transition-all duration-300 relative",
-            isPaletteExpanded ? "w-64" : "w-0"
-          )}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute -left-10 top-4 z-10"
-            onClick={() => setIsPaletteExpanded(!isPaletteExpanded)}
-          >
-            {isPaletteExpanded ? (
-              <PanelRightClose className="h-5 w-5" />
-            ) : (
-              <PanelRightOpen className="h-5 w-5" />
+        {/* Right Container - Question Palette */}
+        <aside className={cn(
+          "flex items-start",
+          isExpanded ? "w-[10%]" : "w-[40%]"
+        )}>
+          <button
+            type="button"
+            title="Toggle question palette"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className={cn(
+              "mx-2 p-2 rounded-full border border-gray-400 bg-white hover:bg-gray-100",
+              isExpanded && "expand-btn-rotated"
             )}
-          </Button>
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
 
-          {isPaletteExpanded && (
-            <div className="h-full overflow-auto p-4">
-              <QuestionPalette
-                questions={questions}
-                currentQuestion={currentQuestion}
-                status={status}
-                onQuestionClick={handleGoToQuestion}
-              />
+          {!isExpanded && (
+            <div className="flex-1 min-w-[250px]">
+              {/* Legend */}
+              <Legend status={status} />
+
+              {/* Question Buttons */}
+              <div className="overflow-y-auto question-buttons-container">
+                {questions.map((q, i) => (
+                  <button
+                    type="button"
+                    key={`QBTN_${q.id}`}
+                    onClick={() => handleGoToQuestion(i)}
+                    className={cn(
+                      "question-btn m-[3px]",
+                      q.status.status === "notVisited" && "question-btn-not-visited",
+                      q.status.status === "notAnswered" && "question-btn-not-answered",
+                      q.status.status === "answered" && "question-btn-answered",
+                      q.status.status === "markedForReview" && "question-btn-marked-for-review",
+                      q.status.status === "answeredAndMarkedForReview" && "question-btn-answered-and-marked",
+                      currentQuestion === i && "ring-2 ring-blue-500"
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </aside>
@@ -467,13 +600,14 @@ export default function TestPage() {
 
       {/* Instructions Modal */}
       <Dialog open={instructionsModal} onOpenChange={setInstructionsModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Instructions</DialogTitle>
+            <DialogDescription>Review the test instructions below.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6">
             <InstructionSection
-              title="General Instructions"
+              title="General Instructions:"
               instructions={GENERAL_INSTRUCTIONS}
               language={language}
             />
@@ -488,7 +622,7 @@ export default function TestPage() {
               language={language}
             />
             <InstructionSection
-              title="Navigating Through Sections"
+              title="Navigation through sections"
               instructions={SECTION_INSTRUCTIONS}
               language={language}
             />
@@ -501,13 +635,14 @@ export default function TestPage() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>Question Paper</DialogTitle>
+            <DialogDescription>View all questions in this test.</DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
             {questions.map((q, i) => (
               <div key={q.id} className="border-b pb-4 last:border-b-0">
                 <h4 className="font-medium mb-2">Question {i + 1}</h4>
-                <div className="text-sm text-muted-foreground">
-                  {q[language]?.question?.substring(0, 200)}...
+                <div className="text-sm text-gray-600">
+                  <RenderLatex content={q[language]?.question || ""} />
                 </div>
               </div>
             ))}
@@ -516,61 +651,33 @@ export default function TestPage() {
       </Dialog>
 
       {/* Exit Fullscreen Modal */}
-      <AlertDialog open={exitFullscreenModal} onOpenChange={setExitFullscreenModal}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Exit Fullscreen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have exited fullscreen mode. Would you like to submit your test or
-              continue in fullscreen?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
+      <Dialog open={exitFullscreenModal} onOpenChange={setExitFullscreenModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure you want to exit full screen?</DialogTitle>
+            <DialogDescription>Exiting full screen mode will submit your test.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+            >
+              Yes, Submit Test
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 handleFullscreen();
                 setExitFullscreenModal(false);
               }}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              Continue Test
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleSubmit}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Submit Test
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Submit Confirmation Modal */}
-      <AlertDialog open={submitConfirmModal} onOpenChange={setSubmitConfirmModal}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Submit Test?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to submit your test? This action cannot be undone.
-              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                <div>Answered: {status.answered.length}</div>
-                <div>Not Answered: {status.notAnswered.length}</div>
-                <div>Marked for Review: {status.markedForReview.length}</div>
-                <div>Not Visited: {status.notVisited.length}</div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {isSubmitting ? "Submitting..." : "Confirm Submit"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Cancel
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Alert Modal */}
       <Dialog
@@ -601,11 +708,11 @@ interface InstructionSectionProps {
 
 function InstructionSection({ title, instructions, language }: InstructionSectionProps) {
   return (
-    <div>
-      <h3 className="font-medium text-primary mb-2">{title}</h3>
-      <ol className="list-decimal space-y-1 pl-6 text-sm text-muted-foreground">
+    <div className="mb-6">
+      <h4 className="text-base font-medium underline mb-3">{title}</h4>
+      <ol className="list-decimal space-y-2 pl-6 text-sm text-gray-600">
         {instructions.map((instruction, index) => (
-          <li key={index}>{instruction.content[language]}</li>
+          <li key={index} className="ml-4">{instruction.content[language]}</li>
         ))}
       </ol>
     </div>

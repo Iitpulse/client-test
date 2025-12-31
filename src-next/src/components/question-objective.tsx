@@ -3,10 +3,6 @@
 import { memo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { RenderLatex } from "./render-latex";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface Option {
   id: string;
@@ -71,91 +67,77 @@ function QuestionObjectiveComponent({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div id="container" className="scroll-smooth select-none">
       {/* Question Header */}
-      <div className="flex items-center justify-between border-b pb-3 mb-4">
+      <div className="flex items-center justify-between my-3 sticky top-0 bg-white">
         <h3 className="text-lg font-semibold">Question {index + 1}</h3>
-        <a href="#bottom" title="Go to bottom" className="text-muted-foreground hover:text-foreground">
-          <ChevronDown className="h-5 w-5" />
+        <a
+          id="top"
+          href="#bottom"
+          title="Go to bottom"
+          className="ml-auto bg-blue-500 rounded-full p-1"
+        >
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </a>
       </div>
 
-      {/* Question Content */}
-      <div className="flex-1 overflow-auto mb-6">
-        <div className="mb-6">
-          {isUrl(currentQuestion.question) ? (
-            <img src={currentQuestion.question} alt="question" className="max-w-full" />
-          ) : (
-            <RenderLatex content={currentQuestion.question} />
-          )}
-        </div>
+      {/* Divider */}
+      <div className="w-full bg-gray-200 h-px my-3" />
 
-        {/* Options */}
-        <div className="space-y-3">
-          {type === "single" ? (
-            <RadioGroup
-              value={selectedOptions[0] || ""}
-              onValueChange={(value) => onClickOption(value)}
-            >
-              {currentQuestion.options?.map((option, i) => (
-                <div
-                  key={`${option.id}-${i}`}
-                  className={cn(
-                    "flex items-start space-x-3 rounded-lg border p-4 cursor-pointer transition-colors",
-                    selectedOptions.includes(option.id)
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted/50"
-                  )}
-                  onClick={() => onClickOption(option.id)}
-                >
-                  <RadioGroupItem value={option.id} id={option.id} className="mt-1" />
-                  <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                    {isUrl(option.value) ? (
-                      <img src={option.value} alt="option" className="max-w-full" />
-                    ) : (
-                      <RenderLatex content={option.value} />
-                    )}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          ) : (
-            <div className="space-y-3">
-              {currentQuestion.options?.map((option, i) => (
-                <div
-                  key={`${option.id}-${i}`}
-                  className={cn(
-                    "flex items-start space-x-3 rounded-lg border p-4 cursor-pointer transition-colors",
-                    selectedOptions.includes(option.id)
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-muted/50"
-                  )}
-                  onClick={() => onClickOption(option.id)}
-                >
-                  <Checkbox
-                    id={option.id}
-                    checked={selectedOptions.includes(option.id)}
-                    onCheckedChange={() => onClickOption(option.id)}
-                    className="mt-1"
-                  />
-                  <Label htmlFor={option.id} className="flex-1 cursor-pointer">
-                    {isUrl(option.value) ? (
-                      <img src={option.value} alt="option" className="max-w-full" />
-                    ) : (
-                      <RenderLatex content={option.value} />
-                    )}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Question Content */}
+      <div className="text-gray-700 leading-6">
+        {isUrl(currentQuestion.question) ? (
+          <img src={currentQuestion.question} alt="question" className="max-w-full" />
+        ) : (
+          <RenderLatex content={currentQuestion.question} />
+        )}
       </div>
 
+      {/* Options */}
+      <ul className="py-2">
+        {currentQuestion.options?.map((option, i) => (
+          <li
+            key={`${option.id}-${i}`}
+            className={cn(
+              "flex items-start my-4 cursor-pointer",
+              selectedOptions.includes(option.id) && "bg-blue-50"
+            )}
+          >
+            <input
+              type={type === "single" ? "radio" : "checkbox"}
+              name="options"
+              id={option.id}
+              onChange={() => onClickOption(option.id)}
+              checked={selectedOptions.includes(option.id)}
+              className="mt-1 cursor-pointer"
+            />
+            <label
+              htmlFor={option.id}
+              className="pl-2 cursor-pointer flex-1"
+            >
+              {isUrl(option.value) ? (
+                <img src={option.value} alt="option" className="max-w-full" />
+              ) : (
+                <RenderLatex content={option.value} />
+              )}
+            </label>
+          </li>
+        ))}
+      </ul>
+
       {/* Bottom anchor */}
-      <div id="bottom" className="flex justify-end">
-        <a href="#top" title="Go to top" className="text-muted-foreground hover:text-foreground">
-          <ChevronUp className="h-5 w-5" />
+      <div className="mt-4 flex justify-end">
+        <a
+          id="bottom"
+          href="#top"
+          title="Go to top"
+          className="ml-auto bg-blue-500 rounded-full p-1"
+        >
+          <svg className="w-4 h-4 text-white transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </a>
       </div>
     </div>

@@ -1,4 +1,7 @@
 # IITP Student Test Interface - Next.js + Bun
+#
+# In Coolify, set Base Directory to: src-next
+#
 FROM oven/bun:1 AS base
 WORKDIR /app
 
@@ -15,6 +18,9 @@ COPY . .
 # Set build-time environment variables
 ARG NEXT_PUBLIC_API_GATEWAY
 ENV NEXT_PUBLIC_API_GATEWAY=${NEXT_PUBLIC_API_GATEWAY}
+
+# Ensure public folder exists for build
+RUN mkdir -p public
 
 # Build Next.js app
 RUN bun run build

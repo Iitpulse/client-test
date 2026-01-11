@@ -392,51 +392,60 @@ export const useTestStore = create<TestState>((set, get) => ({
     get().nextQuestion();
   },
 
-  submitTest: async (userId: string, userType: string, instituteId?: string) => {
+  submitTest: async (_userId: string, _userType: string, _instituteId?: string) => {
     const { test, questions } = get();
     if (!test) throw new Error("No test loaded");
 
-    // Reconstruct test with answers
-    const finalTest = {
-      ...test,
-      sections: test.sections.map((section) => ({
-        ...section,
-        subSections: section.subSections.map((subSection) => {
-          const subSectionQuestions: Record<string, IQuestionWithStatus> = {};
-          questions
-            .filter((q) => q.sectionId === section.id && q.subSectionId === subSection.id)
-            .forEach((q) => {
-              subSectionQuestions[q.id] = q;
-            });
-          return {
-            ...subSection,
-            questions: subSectionQuestions,
-          };
-        }),
-      })),
-    };
+    // Get testId from test object - handle both 'id' and '_id' formats
+    const testId = (test as { id?: string; _id?: string }).id ||
+                   (test as { id?: string; _id?: string })._id;
+    if (!testId) throw new Error("Test ID not found");
+
+    // Reconstruct sections with question responses in the format expected by backend
+    const sections = test.sections.map((section) => ({
+      id: section.id,
+      subSections: section.subSections.map((subSection) => {
+        // Build questions object with responses
+        const questionsRecord: Record<string, {
+          selectedOptions?: string[];
+          enteredAnswer?: number;
+          timeTakenInSeconds?: number;
+          status?: string;
+        }> = {};
+
+        questions
+          .filter((q) => q.sectionId === section.id && q.subSectionId === subSection.id)
+          .forEach((q) => {
+            questionsRecord[q.id] = {
+              selectedOptions: q.selectedOptions,
+              enteredAnswer: q.enteredAnswer ? parseFloat(q.enteredAnswer) : undefined,
+              timeTakenInSeconds: q.status.timeTakenInSeconds,
+              status: q.status.status,
+            };
+          });
+
+        return {
+          id: subSection.id,
+          questions: questionsRecord,
+        };
+      }),
+    }));
 
     try {
       const response = await api.tests.submit({
-        user: { id: userId, type: userType, instituteId },
-        test: {
-          id: test.id,
-          sections: finalTest.sections,
-          status: "submitted",
-          validity: test.validity,
-          createdAt: test.createdAt,
-          modifiedAt: test.modifiedAt,
-        },
+        testId,
+        sections,
       });
 
-      const totalMarks = response.data?.result?.totalMarks || 0;
+      const totalMarks = response.data?.data?.totalMarks || 0;
       localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
       localStorage.setItem("result", String(totalMarks));
 
       set({ isSubmitted: true, totalMarks });
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to submit test";
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      const message = axiosError?.response?.data?.message ||
+        (error instanceof Error ? error.message : "Failed to submit test");
       throw new Error(message);
     }
   },

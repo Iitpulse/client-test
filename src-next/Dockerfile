@@ -29,6 +29,7 @@ RUN bun run build
 FROM base AS release
 ENV NODE_ENV=production
 ENV PORT=3001
+ENV HOSTNAME=0.0.0.0
 
 # Copy standalone build
 COPY --from=build /app/.next/standalone ./

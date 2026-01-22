@@ -32,6 +32,14 @@ export interface IQuestion {
   hi?: IQuestionContent;
   sectionId: string;
   subSectionId: string;
+  // Section info for display
+  sectionName?: string;
+  sectionSubject?: string;
+  subSectionName?: string;
+  subSectionDescription?: string;
+  // toBeAttempted limit for the subsection
+  toBeAttempted?: number;
+  totalQuestionsInSubSection?: number;
   markingScheme?: {
     correct: number[];
     incorrect: number;
@@ -54,6 +62,7 @@ export interface ISubSection {
   type: "single" | "multiple" | "integer";
   totalQuestions: number;
   toBeAttempted: number;
+  description?: string;
   // Backend returns array, but submission format uses Record
   questions: IQuestion[] | Record<string, IQuestion>;
 }

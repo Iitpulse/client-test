@@ -40,6 +40,7 @@ export default function TestPage() {
     saveAndNext,
     markForReview,
     saveAndMarkForReview,
+    saveProgress,
     nextQuestion,
     previousQuestion,
     goToQuestion,
@@ -53,6 +54,7 @@ export default function TestPage() {
   const [questionPaperModal, setQuestionPaperModal] = useState(false);
   const [instructionsModal, setInstructionsModal] = useState(false);
   const [exitFullscreenModal, setExitFullscreenModal] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [alertModal, setAlertModal] = useState<{
     open: boolean;
     title: string;
@@ -63,10 +65,45 @@ export default function TestPage() {
     minutes: "00",
     seconds: "00",
   });
+  const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
 
   const timeTakenRef = useRef<Record<string, number>>({});
   const timerEndTimeRef = useRef<number | null>(null);
   const autoSubmitTriggeredRef = useRef(false);
+
+  // Get fullscreen policy from test
+  const fullscreenPolicy = (test as { fullscreenPolicy?: { enabled: boolean; maxExits: number; action: "warn" | "submit" } })?.fullscreenPolicy || {
+    enabled: false,
+    maxExits: 3,
+    action: "warn" as const,
+  };
+
+  // Auto-submit when max exits reached with submit action
+  useEffect(() => {
+    if (
+      fullscreenPolicy.enabled &&
+      fullscreenPolicy.action === "submit" &&
+      fullscreenExitCount >= fullscreenPolicy.maxExits &&
+      currentUser &&
+      testId &&
+      !isSubmitting
+    ) {
+      // Auto-submit after max exits
+      setIsSubmitting(true);
+      (async () => {
+        try {
+          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId);
+          localStorage.removeItem(`IITP_TEST_END_TIME_${testId}`);
+          localStorage.removeItem(`IITP_FULLSCREEN_EXITS_${testId}`);
+          localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
+          router.push("/result");
+        } catch (error) {
+          console.error("Auto-submit on max exits failed:", error);
+          setIsSubmitting(false);
+        }
+      })();
+    }
+  }, [fullscreenPolicy, fullscreenExitCount, currentUser, testId, isSubmitting, submitTest, router]);
 
   // Check if test was already submitted
   useEffect(() => {
@@ -174,6 +211,17 @@ export default function TestPage() {
     return () => clearInterval(interval);
   }, [attempt?.expiresAt, test?.durationInMinutes, test?.duration, testId]);
 
+  // Auto-save progress every 30 seconds
+  useEffect(() => {
+    if (!test || !questions.length) return;
+
+    const saveInterval = setInterval(() => {
+      saveProgress();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(saveInterval);
+  }, [test, questions.length, saveProgress]);
+
   // Auto-submit when timer reaches zero
   useEffect(() => {
     if (autoSubmitTriggeredRef.current && timer.hours === "00" && timer.minutes === "00" && timer.seconds === "00" && currentUser && testId) {
@@ -183,8 +231,17 @@ export default function TestPage() {
         try {
           await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId);
           localStorage.removeItem(`IITP_TEST_END_TIME_${testId}`);
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
+          // Exit fullscreen (with Safari webkit support)
+          const doc = document as Document & {
+            webkitFullscreenElement?: Element | null;
+            webkitExitFullscreen?: () => Promise<void>;
+          };
+          if (document.fullscreenElement || doc.webkitFullscreenElement) {
+            if (document.exitFullscreen) {
+              document.exitFullscreen();
+            } else if (doc.webkitExitFullscreen) {
+              doc.webkitExitFullscreen();
+            }
           }
           router.push("/result");
         } catch (error) {
@@ -194,25 +251,52 @@ export default function TestPage() {
     }
   }, [timer, currentUser, submitTest, router, testId]);
 
-  // Fullscreen change listener
+  // Fullscreen change listener (with Safari webkit support)
   useEffect(() => {
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+    };
+
     function handleFullscreenChange() {
-      if (!document.fullscreenElement) {
+      const isFullscreen = document.fullscreenElement || doc.webkitFullscreenElement;
+      if (!isFullscreen) {
+        // User exited fullscreen - increment counter
+        setFullscreenExitCount((prev) => {
+          const newCount = prev + 1;
+          // Store in localStorage to persist across refreshes
+          if (testId) {
+            localStorage.setItem(`IITP_FULLSCREEN_EXITS_${testId}`, String(newCount));
+          }
+          return newCount;
+        });
         setExitFullscreenModal(true);
       } else {
         setExitFullscreenModal(false);
       }
     }
 
-    if (!document.fullscreenElement) {
+    // Check initial state
+    const isFullscreen = document.fullscreenElement || doc.webkitFullscreenElement;
+    if (!isFullscreen) {
       setExitFullscreenModal(true);
     }
 
+    // Restore exit count from localStorage
+    if (testId) {
+      const savedCount = localStorage.getItem(`IITP_FULLSCREEN_EXITS_${testId}`);
+      if (savedCount) {
+        setFullscreenExitCount(parseInt(savedCount, 10) || 0);
+      }
+    }
+
+    // Listen for both standard and webkit fullscreen events
     document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
     };
-  }, []);
+  }, [testId]);
 
   // Prevent back button and context menu
   useEffect(() => {
@@ -235,16 +319,23 @@ export default function TestPage() {
       }
     };
 
+    // Save progress when user tries to leave
+    const handleBeforeUnload = () => {
+      saveProgress();
+    };
+
     window.addEventListener("popstate", handlePopState);
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, []);
+  }, [saveProgress]);
 
   const handleTimeUpdate = useCallback(
     (time: number) => {
@@ -262,11 +353,54 @@ export default function TestPage() {
   };
 
   const handleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
+    const elem = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>;
+    };
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void>;
+    };
+
+    const isFullscreen = document.fullscreenElement || doc.webkitFullscreenElement;
+
+    if (!isFullscreen) {
+      // Enter fullscreen - try standard first, then webkit for Safari
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      }
     } else {
-      document.exitFullscreen();
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (doc.webkitExitFullscreen) {
+        doc.webkitExitFullscreen();
+      }
     }
+  };
+
+  // Check if saving an answer would exceed toBeAttempted limit
+  const checkToBeAttemptedLimit = (q: typeof questions[0]): boolean => {
+    const subSectionKey = `${q.sectionId}:${q.subSectionId}`;
+    // Count currently answered questions in this subsection
+    const answered = questions.filter(
+      (x) =>
+        x.sectionId === q.sectionId &&
+        x.subSectionId === q.subSectionId &&
+        (x.status.status === "answered" || x.status.status === "answeredAndMarkedForReview")
+    ).length;
+    const limit = q.toBeAttempted || 999;
+    const total = q.totalQuestionsInSubSection || 999;
+    // Only enforce if toBeAttempted is less than total (i.e., there's a limit)
+    if (limit < total && answered >= limit) {
+      // Check if this question is already answered (then it's okay to re-save)
+      if (q.status.status === "answered" || q.status.status === "answeredAndMarkedForReview") {
+        return false; // Already answered, can re-save
+      }
+      return true; // Limit reached
+    }
+    return false;
   };
 
   const handleSaveAndNext = () => {
@@ -284,6 +418,16 @@ export default function TestPage() {
           question.type === "integer"
             ? "Please enter a valid number!"
             : "Please select an option!",
+      });
+      return;
+    }
+
+    // Check toBeAttempted limit
+    if (checkToBeAttemptedLimit(question)) {
+      setAlertModal({
+        open: true,
+        title: "Limit Reached",
+        message: `You have already answered the maximum allowed questions (${question.toBeAttempted}) in this section. You cannot answer more questions here.`,
       });
       return;
     }
@@ -306,6 +450,16 @@ export default function TestPage() {
           question.type === "integer"
             ? "Please enter a valid number!"
             : "Please select an option!",
+      });
+      return;
+    }
+
+    // Check toBeAttempted limit
+    if (checkToBeAttemptedLimit(question)) {
+      setAlertModal({
+        open: true,
+        title: "Limit Reached",
+        message: `You have already answered the maximum allowed questions (${question.toBeAttempted}) in this section. You cannot answer more questions here.`,
       });
       return;
     }
@@ -346,6 +500,48 @@ export default function TestPage() {
   const handleGoToQuestion = (index: number) => {
     goToQuestion(index, getCurrentTimeTaken());
   };
+
+  // Get unique sections from questions
+  const sections = questions.reduce((acc, q, idx) => {
+    if (!acc.find(s => s.id === q.sectionId)) {
+      acc.push({
+        id: q.sectionId,
+        name: q.sectionName || q.sectionSubject || `Section ${acc.length + 1}`,
+        subject: q.sectionSubject || "",
+        startIndex: idx,
+      });
+    }
+    return acc;
+  }, [] as Array<{ id: string; name: string; subject: string; startIndex: number }>);
+
+  // Get questions for selected section (or all if none selected)
+  const filteredQuestions = selectedSection
+    ? questions.filter(q => q.sectionId === selectedSection)
+    : questions;
+
+  // Get question indices for display in palette
+  const getGlobalIndex = (q: typeof questions[0]) => questions.findIndex(x => x.id === q.id);
+
+  // Compute answered questions per subsection for toBeAttempted enforcement
+  const answeredPerSubSection = questions.reduce((acc, q) => {
+    const key = `${q.sectionId}:${q.subSectionId}`;
+    if (!acc[key]) {
+      acc[key] = { answered: 0, toBeAttempted: q.toBeAttempted || 999, total: q.totalQuestionsInSubSection || 999 };
+    }
+    if (q.status.status === "answered" || q.status.status === "answeredAndMarkedForReview") {
+      acc[key].answered++;
+    }
+    return acc;
+  }, {} as Record<string, { answered: number; toBeAttempted: number; total: number }>);
+
+  // Check if current question's subsection has reached toBeAttempted limit
+  const currentSubSectionKey = question ? `${question.sectionId}:${question.subSectionId}` : "";
+  const currentSubSectionStats = currentSubSectionKey ? answeredPerSubSection[currentSubSectionKey] : null;
+  const isCurrentQuestionLocked = currentSubSectionStats &&
+    currentSubSectionStats.toBeAttempted < currentSubSectionStats.total &&
+    currentSubSectionStats.answered >= currentSubSectionStats.toBeAttempted &&
+    question?.status.status !== "answered" &&
+    question?.status.status !== "answeredAndMarkedForReview";
 
   if (isLoading) {
     return (
@@ -450,8 +646,64 @@ export default function TestPage() {
       <div className="flex flex-1 overflow-hidden test-main-container">
         {/* Left Container - Question Area */}
         <main className={cn("flex flex-col", isExpanded ? "w-full" : "w-[60%]")}>
+          {/* Section/Subject Info Bar */}
+          <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border border-blue-200 rounded-t mb-0">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-blue-800">
+                {question.sectionSubject || question.sectionName || "Section"}
+              </span>
+              {question.sectionName && question.sectionSubject && question.sectionName !== question.sectionSubject && (
+                <span className="text-sm text-blue-600">
+                  {question.sectionName}
+                </span>
+              )}
+              {question.subSectionName && (
+                <span className="text-xs text-gray-500">
+                  • {question.subSectionName}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {/* toBeAttempted indicator */}
+              {currentSubSectionStats && currentSubSectionStats.toBeAttempted < currentSubSectionStats.total && (
+                <span className={cn(
+                  "px-2 py-0.5 text-xs font-medium rounded",
+                  currentSubSectionStats.answered >= currentSubSectionStats.toBeAttempted
+                    ? "bg-red-100 text-red-700"
+                    : "bg-blue-100 text-blue-700"
+                )}>
+                  {currentSubSectionStats.answered}/{currentSubSectionStats.toBeAttempted} answered
+                </span>
+              )}
+              <span className={cn(
+                "px-2 py-0.5 text-xs font-medium rounded",
+                question.type === "single" && "bg-green-100 text-green-700",
+                question.type === "multiple" && "bg-purple-100 text-purple-700",
+                question.type === "integer" && "bg-orange-100 text-orange-700"
+              )}>
+                {question.type === "single" && "Single Choice"}
+                {question.type === "multiple" && "Multiple Choice"}
+                {question.type === "integer" && "Numerical"}
+              </span>
+            </div>
+          </div>
+
+          {/* Warning when toBeAttempted limit reached */}
+          {isCurrentQuestionLocked && (
+            <div className="px-4 py-2 bg-amber-50 border-x border-amber-200 text-amber-800 text-sm">
+              <strong>Note:</strong> You have already answered the maximum allowed questions ({currentSubSectionStats?.toBeAttempted}) in this section.
+              You can only view this question but cannot submit an answer.
+            </div>
+          )}
+
           {/* Question Display */}
-          <div className="flex-1 overflow-auto border rounded p-4 mb-4 question-container">
+          <div className="flex-1 overflow-auto border border-t-0 rounded-b p-4 mb-4 question-container">
+            {/* Subsection Description */}
+            {question.subSectionDescription && (
+              <div className="mb-4 p-3 bg-gray-50 border-l-4 border-gray-300 text-sm text-gray-600">
+                <RenderLatex content={question.subSectionDescription} />
+              </div>
+            )}
             {(question.type === "single" || question.type === "multiple") && (
               <QuestionObjective
                 question={{
@@ -569,29 +821,67 @@ export default function TestPage() {
 
           {!isExpanded && (
             <div className="flex-1 min-w-[250px]">
+              {/* Section Tabs */}
+              {sections.length > 1 && (
+                <div className="mb-3 border-b">
+                  <div className="flex flex-wrap gap-1 pb-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSection(null)}
+                      className={cn(
+                        "px-3 py-1 text-xs rounded-t font-medium transition-colors",
+                        selectedSection === null
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      )}
+                    >
+                      All
+                    </button>
+                    {sections.map((section) => (
+                      <button
+                        type="button"
+                        key={section.id}
+                        onClick={() => setSelectedSection(section.id)}
+                        className={cn(
+                          "px-3 py-1 text-xs rounded-t font-medium transition-colors",
+                          selectedSection === section.id
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        )}
+                      >
+                        {section.subject || section.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Legend */}
               <Legend status={status} />
 
               {/* Question Buttons */}
               <div className="overflow-y-auto question-buttons-container">
-                {questions.map((q, i) => (
-                  <button
-                    type="button"
-                    key={`QBTN_${q.id}`}
-                    onClick={() => handleGoToQuestion(i)}
-                    className={cn(
-                      "question-btn m-[3px]",
-                      q.status.status === "notVisited" && "question-btn-not-visited",
-                      q.status.status === "notAnswered" && "question-btn-not-answered",
-                      q.status.status === "answered" && "question-btn-answered",
-                      q.status.status === "markedForReview" && "question-btn-marked-for-review",
-                      q.status.status === "answeredAndMarkedForReview" && "question-btn-answered-and-marked",
-                      currentQuestion === i && "ring-2 ring-blue-500"
-                    )}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+                {filteredQuestions.map((q) => {
+                  const globalIdx = getGlobalIndex(q);
+                  return (
+                    <button
+                      type="button"
+                      key={`QBTN_${q.id}`}
+                      onClick={() => handleGoToQuestion(globalIdx)}
+                      className={cn(
+                        "question-btn m-[3px]",
+                        q.status.status === "notVisited" && "question-btn-not-visited",
+                        q.status.status === "notAnswered" && "question-btn-not-answered",
+                        q.status.status === "answered" && "question-btn-answered",
+                        q.status.status === "markedForReview" && "question-btn-marked-for-review",
+                        q.status.status === "answeredAndMarkedForReview" && "question-btn-answered-and-marked",
+                        currentQuestion === globalIdx && "ring-2 ring-blue-500"
+                      )}
+                    >
+                      {globalIdx + 1}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -654,27 +944,67 @@ export default function TestPage() {
       <Dialog open={exitFullscreenModal} onOpenChange={setExitFullscreenModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Are you sure you want to exit full screen?</DialogTitle>
-            <DialogDescription>Exiting full screen mode will submit your test.</DialogDescription>
+            <DialogTitle>
+              {fullscreenPolicy.enabled && fullscreenExitCount >= fullscreenPolicy.maxExits
+                ? "Maximum fullscreen exits reached!"
+                : "Fullscreen Mode Required"}
+            </DialogTitle>
+            <DialogDescription>
+              {fullscreenPolicy.enabled ? (
+                fullscreenExitCount >= fullscreenPolicy.maxExits ? (
+                  fullscreenPolicy.action === "submit" ? (
+                    "You have exited fullscreen mode too many times. Your test will be submitted automatically."
+                  ) : (
+                    `You have exited fullscreen ${fullscreenExitCount} times (limit: ${fullscreenPolicy.maxExits}). Please continue in fullscreen mode.`
+                  )
+                ) : (
+                  <>
+                    <span className="font-medium text-amber-600">
+                      Warning {fullscreenExitCount} of {fullscreenPolicy.maxExits}:
+                    </span>{" "}
+                    You have exited fullscreen mode. This test requires fullscreen mode for integrity.
+                    {fullscreenPolicy.action === "submit" && (
+                      <span className="block mt-2 text-red-600">
+                        Your test will be auto-submitted after {fullscreenPolicy.maxExits} exits.
+                      </span>
+                    )}
+                  </>
+                )
+              ) : (
+                "Please return to fullscreen mode to continue your test."
+              )}
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Yes, Submit Test
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                handleFullscreen();
-                setExitFullscreenModal(false);
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Cancel
-            </button>
+            {fullscreenPolicy.enabled && fullscreenExitCount >= fullscreenPolicy.maxExits && fullscreenPolicy.action === "submit" ? (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Submit Test Now
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  Submit Test
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleFullscreen();
+                    setExitFullscreenModal(false);
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Return to Fullscreen
+                </button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

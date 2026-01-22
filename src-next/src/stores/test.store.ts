@@ -35,6 +35,7 @@ interface TestState {
   saveAndNext: (timeTaken?: number) => void;
   markForReview: (timeTaken?: number) => void;
   saveAndMarkForReview: (timeTaken?: number) => void;
+  saveProgress: () => Promise<void>;
   submitTest: (userId: string, userType: string, instituteId?: string) => Promise<void>;
   updateTimeTaken: (questionId: string, time: number) => void;
   reset: () => void;
@@ -74,6 +75,14 @@ function flattenQuestions(test: ITest): IQuestionWithStatus[] {
           sectionId: section.id,
           subSectionId: subSection.id,
           type: subSection.type,
+          // Section info for display
+          sectionName: section.name,
+          sectionSubject: section.subject,
+          subSectionName: subSection.name,
+          subSectionDescription: (subSection as { description?: string }).description,
+          // toBeAttempted limit
+          toBeAttempted: subSection.toBeAttempted,
+          totalQuestionsInSubSection: subSection.totalQuestions || questionsArray.length,
           status: {
             status: "notVisited",
             timeTakenInSeconds: 0,
@@ -390,6 +399,51 @@ export const useTestStore = create<TestState>((set, get) => ({
     });
 
     get().nextQuestion();
+  },
+
+  saveProgress: async () => {
+    const { test, questions } = get();
+    if (!test) return;
+
+    const testId = (test as { id?: string; _id?: string }).id ||
+                   (test as { id?: string; _id?: string })._id;
+    if (!testId) return;
+
+    // Reconstruct sections with current answers
+    const sections = test.sections.map((section) => ({
+      id: section.id,
+      subSections: section.subSections.map((subSection) => {
+        const questionsRecord: Record<string, {
+          selectedOptions?: string[];
+          enteredAnswer?: number;
+          timeTakenInSeconds?: number;
+          status?: string;
+        }> = {};
+
+        questions
+          .filter((q) => q.sectionId === section.id && q.subSectionId === subSection.id)
+          .forEach((q) => {
+            questionsRecord[q.id] = {
+              selectedOptions: q.selectedOptions,
+              enteredAnswer: q.enteredAnswer ? parseFloat(q.enteredAnswer) : undefined,
+              timeTakenInSeconds: q.status.timeTakenInSeconds,
+              status: q.status.status,
+            };
+          });
+
+        return {
+          id: subSection.id,
+          questions: questionsRecord,
+        };
+      }),
+    }));
+
+    try {
+      await api.tests.saveProgress({ testId, sections });
+    } catch (error) {
+      // Silent fail - auto-save should not interrupt user
+      console.warn("Failed to save progress:", error);
+    }
   },
 
   submitTest: async (_userId: string, _userType: string, _instituteId?: string) => {

@@ -78,6 +78,8 @@ export const api = {
     getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),
     submit: (data: { testId: string; sections: unknown[] }) =>
       apiTests.post("/test/submit", data),
+    saveProgress: (data: { testId: string; sections: unknown[] }) =>
+      apiTests.post("/test/save-progress", data),
   },
 };
 

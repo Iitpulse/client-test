@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores";
 
@@ -9,7 +9,11 @@ export default function HomePage() {
   const router = useRouter();
   const { checkAuth, isAuthenticated, testId } = useAuthStore();
 
+  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
+  useEffect(() => useAuthStore.persist.onFinishHydration(() => setHydrated(true)), []);
+
   useEffect(() => {
+    if (!hydrated) return;
     const isAuth = checkAuth();
 
     if (!isAuth || !isAuthenticated) {
@@ -22,7 +26,7 @@ export default function HomePage() {
       // Authenticated but no test picked yet: show the student's tests
       router.push("/tests");
     }
-  }, [checkAuth, isAuthenticated, testId, router]);
+  }, [hydrated, checkAuth, isAuthenticated, testId, router]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">

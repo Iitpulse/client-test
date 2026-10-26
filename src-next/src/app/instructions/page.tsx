@@ -20,7 +20,12 @@ export default function InstructionsPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [language, setLanguage] = useState<"en" | "hi">("en");
 
+  // The selected test lives in persisted store state; wait for rehydration before deciding there is none.
+  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
+  useEffect(() => useAuthStore.persist.onFinishHydration(() => setHydrated(true)), []);
+
   useEffect(() => {
+    if (!hydrated) return;
     // Check authentication
     if (!checkAuth() || !isAuthenticated) {
       router.push("/login");
@@ -36,7 +41,7 @@ export default function InstructionsPage() {
     if (!test) {
       fetchTest(testId);
     }
-  }, [checkAuth, isAuthenticated, testId, test, fetchTest, router]);
+  }, [hydrated, checkAuth, isAuthenticated, testId, test, fetchTest, router]);
 
   const handleProceed = () => {
     if (!confirmed) {

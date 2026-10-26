@@ -17,8 +17,10 @@ function RenderLatexComponent({ content }: RenderLatexProps) {
     setIsLoading(true);
 
     if (content?.length && content !== "<p><br></p>") {
+      // Bare strings (option text typed into a plain input) have no <p>; wrap them so math still renders.
+      const value = /<(p|div|ul|ol|li|table|h[1-6]|blockquote|pre)\b/i.test(content) ? content : `<p>${content}</p>`;
       const parser = new DOMParser();
-      const doc = parser.parseFromString(content, "text/html");
+      const doc = parser.parseFromString(value, "text/html");
 
       // Extract from all <p> tags
       const pTags = doc.getElementsByTagName("p");
@@ -41,10 +43,9 @@ function RenderLatexComponent({ content }: RenderLatexProps) {
             throwOnError: false,
           });
 
-          // Return the rendered HTML
-          return match.startsWith("$") && match.endsWith("$")
-            ? html + "<br>"
-            : html;
+          // Inline math stays inline (the admin preview does the same); the old forced <br>
+          // broke sentences after every $...$ in the student view.
+          return html;
         });
 
         p.innerHTML = newSentence;

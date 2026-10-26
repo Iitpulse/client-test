@@ -65,7 +65,7 @@ function flattenQuestions(test: ITest): IQuestionWithStatus[] {
 
       questionsArray.forEach((q) => {
         // Handle both 'id' and '_id' (MongoDB style) and generate fallback if neither exists
-        const rawQ = q as Record<string, unknown>;
+        const rawQ = q as unknown as Record<string, unknown>;
         const questionId = (rawQ.id || rawQ._id || `Q_${section.id}_${subSection.id}_${questionIndex}`) as string;
         questionIndex++;
 

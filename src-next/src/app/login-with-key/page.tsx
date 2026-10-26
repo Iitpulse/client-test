@@ -42,10 +42,13 @@ export default function LoginWithKeyPage() {
         key,
       });
 
-      if (response.status === 200 && response.data.token) {
+      const token = response.data?.data?.token ?? response.data?.token;
+      if (response.status === 200 && token) {
         // Store the test key token separately
-        localStorage.setItem("testKeyToken", response.data.token);
+        localStorage.setItem("testKeyToken", token);
         router.push("/instructions");
+      } else {
+        setError(response.data?.message || "Login failed: no token returned");
       }
     } catch (err: unknown) {
       const message =

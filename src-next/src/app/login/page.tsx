@@ -35,9 +35,13 @@ export default function LoginPage() {
     try {
       const response = await api.auth.login({ email, password });
 
-      if (response.status === 200 && response.data.token) {
-        login(response.data.token);
+      // The users service wraps payloads as { success, data: { token } }
+      const token = response.data?.data?.token ?? response.data?.token;
+      if (response.status === 200 && token) {
+        login(token);
         router.push("/instructions");
+      } else {
+        setError(response.data?.message || "Login failed: no token returned");
       }
     } catch (err: unknown) {
       const message =

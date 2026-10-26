@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { api, TestUITemplate } from "@/lib/api";
 
 // Default template values (Classic Blue)
@@ -63,8 +63,10 @@ export function UITemplateProvider({ children }: { children: React.ReactNode }) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load template by ID or default
-  const loadTemplate = async (templateId?: string) => {
+  // Load template by ID or default.
+  // Memoized: consumers put it in effect deps, and a fresh function per render caused an
+  // infinite reload loop (thousands of /ui-template/default requests per minute).
+  const loadTemplate = useCallback(async (templateId?: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -86,7 +88,7 @@ export function UITemplateProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Generate CSS variables from template
   const getCSSVariables = (): Record<string, string> => {

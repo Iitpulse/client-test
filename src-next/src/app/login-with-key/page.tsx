@@ -27,7 +27,7 @@ export default function LoginWithKeyPage() {
 
     // If key is not required for test, skip to instructions
     if (keyRequiredForTest === false) {
-      router.push("/instructions");
+      router.push("/tests");
       return;
     }
   }, [checkAuth, isAuthenticated, keyRequiredForTest, router]);
@@ -46,7 +46,7 @@ export default function LoginWithKeyPage() {
       if (response.status === 200 && token) {
         // Store the test key token separately
         localStorage.setItem("testKeyToken", token);
-        router.push("/instructions");
+        router.push("/tests");
       } else {
         setError(response.data?.message || "Login failed: no token returned");
       }

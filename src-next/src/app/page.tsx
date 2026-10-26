@@ -19,8 +19,8 @@ export default function HomePage() {
       // Authenticated with test, go to test page
       router.push("/test");
     } else {
-      // Authenticated but no test, go to login
-      router.push("/login");
+      // Authenticated but no test picked yet: show the student's tests
+      router.push("/tests");
     }
   }, [checkAuth, isAuthenticated, testId, router]);
 

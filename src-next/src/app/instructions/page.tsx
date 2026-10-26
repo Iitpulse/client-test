@@ -27,8 +27,13 @@ export default function InstructionsPage() {
       return;
     }
 
+    // No test chosen: go to the list instead of showing generic instructions
+    if (!testId) {
+      router.push("/tests");
+      return;
+    }
     // Fetch test if we have testId but no test loaded
-    if (testId && !test) {
+    if (!test) {
       fetchTest(testId);
     }
   }, [checkAuth, isAuthenticated, testId, test, fetchTest, router]);

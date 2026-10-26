@@ -23,7 +23,7 @@ export default function LoginPage() {
   useEffect(() => {
     // Check if already authenticated
     if (checkAuth() && isAuthenticated) {
-      router.push("/instructions");
+      router.push("/tests");
     }
   }, [checkAuth, isAuthenticated, router]);
 
@@ -39,7 +39,7 @@ export default function LoginPage() {
       const token = response.data?.data?.token ?? response.data?.token;
       if (response.status === 200 && token) {
         login(token);
-        router.push("/instructions");
+        router.push("/tests");
       } else {
         setError(response.data?.message || "Login failed: no token returned");
       }

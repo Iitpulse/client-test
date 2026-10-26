@@ -45,6 +45,19 @@ function createApiClient(service: "users" | "tests"): AxiosInstance {
   return client;
 }
 
+export interface AvailableTest {
+  _id: string;
+  name: string;
+  description?: string;
+  exam?: { id?: string; name?: string } | string;
+  durationInMinutes: number;
+  validity: { from: string; to: string };
+  totalMarks?: number;
+  totalQuestions: number;
+  state: "upcoming" | "live" | "in_progress" | "submitted" | "ended";
+  startedAt?: string;
+}
+
 // API clients
 export const apiUsers = createApiClient("users");
 export const apiTests = createApiClient("tests");
@@ -138,6 +151,7 @@ export const api = {
   },
   tests: {
     getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),
+    getAvailable: () => apiTests.get<{ success: boolean; data: AvailableTest[] }>("/test/available"),
     submit: (data: { testId: string; sections: unknown[] }) =>
       apiTests.post("/test/submit", data),
     saveProgress: (data: { testId: string; sections: unknown[] }) =>

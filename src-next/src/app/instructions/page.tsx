@@ -15,7 +15,7 @@ import {
 export default function InstructionsPage() {
   const router = useRouter();
   const { checkAuth, isAuthenticated, testId, currentUser } = useAuthStore();
-  const { test, fetchTest, isLoading } = useTestStore();
+  const { test, fetchTest, isLoading, error: testError } = useTestStore();
 
   const [confirmed, setConfirmed] = useState(false);
   const [language, setLanguage] = useState<"en" | "hi">("en");
@@ -56,6 +56,24 @@ export default function InstructionsPage() {
 
     router.push("/test");
   };
+
+  if (testError && !test) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="text-center max-w-md px-4">
+          <p className="text-gray-700 font-medium">{testError}</p>
+          <p className="text-gray-500 text-sm mt-1">This test cannot be opened right now.</p>
+          <button
+            type="button"
+            onClick={() => router.push("/tests")}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Back to your tests
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

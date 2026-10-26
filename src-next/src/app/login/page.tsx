@@ -44,8 +44,14 @@ export default function LoginPage() {
         setError(response.data?.message || "Login failed: no token returned");
       }
     } catch (err: unknown) {
+      // 401/404 both mean the credentials did not match; never surface raw axios text or whether the email exists
+      const status = (err as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
       const message =
-        err instanceof Error ? err.message : "Invalid email or password";
+        status === 401 || status === 404 || status === 400
+          ? "Invalid email or password"
+          : status === 429
+            ? "Too many attempts. Please wait a minute and try again."
+            : "Could not sign in right now. Please try again.";
       setError(message);
     } finally {
       setLoading(false);

@@ -152,7 +152,7 @@ export const api = {
   tests: {
     getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),
     getAvailable: () => apiTests.get<{ success: boolean; data: AvailableTest[] }>("/test/available"),
-    submit: (data: { testId: string; sections: unknown[] }) =>
+    submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean }) =>
       apiTests.post("/test/submit", data),
     saveProgress: (data: { testId: string; sections: unknown[] }) =>
       apiTests.post("/test/save-progress", data),

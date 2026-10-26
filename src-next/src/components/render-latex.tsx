@@ -8,6 +8,17 @@ interface RenderLatexProps {
   content: string;
 }
 
+// p.innerHTML re-encodes entities, so LaTeX like "a & b" arrives as "a &amp; b"; KaTeX needs the raw characters.
+function decodeEntities(tex: string): string {
+  return tex
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ");
+}
+
 function RenderLatexComponent({ content }: RenderLatexProps) {
   const [previewHTML, setPreviewHTML] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +50,7 @@ function RenderLatexComponent({ content }: RenderLatexProps) {
             .replace(/\\\]/g, "");
 
           // Parse the KaTeX string and render it as an HTML string
-          const html = katex.renderToString(innerHTML, {
+          const html = katex.renderToString(decodeEntities(innerHTML), {
             throwOnError: false,
           });
 

@@ -36,7 +36,7 @@ interface TestState {
   markForReview: (timeTaken?: number) => void;
   saveAndMarkForReview: (timeTaken?: number) => void;
   saveProgress: () => Promise<void>;
-  submitTest: (userId: string, userType: string, instituteId?: string) => Promise<void>;
+  submitTest: (userId: string, userType: string, instituteId?: string, options?: { isAutoSubmitted?: boolean }) => Promise<void>;
   updateTimeTaken: (questionId: string, time: number) => void;
   reset: () => void;
 }
@@ -155,7 +155,8 @@ export const useTestStore = create<TestState>((set, get) => ({
       }
     } catch (error) {
       console.error("Failed to fetch test:", error);
-      set({ error: "Failed to load test", isLoading: false });
+      const serverMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      set({ error: serverMessage || "Failed to load test", isLoading: false });
     }
   },
 
@@ -446,7 +447,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     }
   },
 
-  submitTest: async (_userId: string, _userType: string, _instituteId?: string) => {
+  submitTest: async (_userId: string, _userType: string, _instituteId?: string, options?: { isAutoSubmitted?: boolean }) => {
     const { test, questions } = get();
     if (!test) throw new Error("No test loaded");
 
@@ -486,10 +487,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     }));
 
     try {
-      const response = await api.tests.submit({
-        testId,
-        sections,
-      });
+      const response = await api.tests.submit({ testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true });
 
       const totalMarks = response.data?.data?.totalMarks || 0;
       localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");

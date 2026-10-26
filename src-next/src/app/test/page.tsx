@@ -48,6 +48,7 @@ export default function TestPage() {
     submitTest,
     attempt,
   } = useTestStore();
+  const storeError = useTestStore((state) => state.error);
 
   // UI Template hook for styling
   const { loadTemplate } = useUITemplate();
@@ -104,7 +105,7 @@ export default function TestPage() {
       setIsSubmitting(true);
       (async () => {
         try {
-          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId);
+          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId, { isAutoSubmitted: true });
           localStorage.removeItem(`IITP_TEST_END_TIME_${testId}`);
           localStorage.removeItem(`IITP_FULLSCREEN_EXITS_${testId}`);
           localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
@@ -255,7 +256,7 @@ export default function TestPage() {
       // Trigger submission
       (async () => {
         try {
-          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId);
+          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId, { isAutoSubmitted: true });
           localStorage.removeItem(`IITP_TEST_END_TIME_${testId}`);
           // Exit fullscreen (with Safari webkit support)
           const doc = document as Document & {
@@ -586,11 +587,12 @@ export default function TestPage() {
   if (!questions.length || !question) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
-        <div className="text-center">
-          <p className="text-gray-500">No questions found</p>
+        <div className="text-center max-w-md px-4">
+          <p className="text-gray-700 font-medium">{storeError || "No questions found"}</p>
+          {storeError && <p className="text-gray-500 text-sm mt-1">This test cannot be opened right now.</p>}
           <button
             type="button"
-            onClick={() => router.push("/instructions")}
+            onClick={() => router.push(storeError ? "/tests" : "/instructions")}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Go Back

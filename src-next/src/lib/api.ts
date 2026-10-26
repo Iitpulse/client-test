@@ -68,6 +68,68 @@ export const auth = {
   },
 };
 
+// UI Template types
+export interface ColorScheme {
+  primary: string;
+  secondary: string;
+  background: string;
+  surface: string;
+  text: string;
+  textSecondary: string;
+  accent: string;
+  success: string;
+  warning: string;
+  error: string;
+  border: string;
+}
+
+export interface Typography {
+  fontFamily: string;
+  questionFontSize: "small" | "medium" | "large";
+  optionFontSize: "small" | "medium" | "large";
+}
+
+export interface Layout {
+  questionPanelPosition: "left" | "center";
+  navigationPosition: "top" | "bottom" | "right";
+  showTimer: boolean;
+  showQuestionPalette: boolean;
+  compactMode: boolean;
+}
+
+export interface Branding {
+  logoUrl?: string;
+  instituteName?: string;
+  showLogo: boolean;
+  headerText?: string;
+  footerText?: string;
+}
+
+export interface ButtonStyles {
+  borderRadius: "none" | "small" | "medium" | "large" | "full";
+  variant: "solid" | "outline" | "ghost";
+}
+
+export interface Animations {
+  enableTransitions: boolean;
+  questionTransition: "none" | "fade" | "slide";
+}
+
+export interface TestUITemplate {
+  _id: string;
+  name: string;
+  description?: string;
+  isDefault?: boolean;
+  colorScheme: ColorScheme;
+  typography: Typography;
+  layout: Layout;
+  branding: Branding;
+  buttonStyles: ButtonStyles;
+  animations: Animations;
+  previewImageUrl?: string;
+  isPreset?: boolean;
+}
+
 // API endpoints
 export const api = {
   auth: {
@@ -80,6 +142,10 @@ export const api = {
       apiTests.post("/test/submit", data),
     saveProgress: (data: { testId: string; sections: unknown[] }) =>
       apiTests.post("/test/save-progress", data),
+  },
+  uiTemplates: {
+    getById: (id: string) => apiTests.get<{ success: boolean; data: TestUITemplate }>(`/ui-template/${id}`),
+    getDefault: () => apiTests.get<{ success: boolean; data: TestUITemplate }>("/ui-template/default"),
   },
 };
 

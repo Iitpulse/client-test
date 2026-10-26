@@ -23,6 +23,7 @@ import {
   SECTION_INSTRUCTIONS,
 } from "@/lib/constants";
 import { RenderLatex } from "@/components/render-latex";
+import { useUITemplate, useTemplateStyles } from "@/contexts/ui-template.context";
 
 export default function TestPage() {
   const router = useRouter();
@@ -47,6 +48,17 @@ export default function TestPage() {
     submitTest,
     attempt,
   } = useTestStore();
+
+  // UI Template hook for styling
+  const { loadTemplate } = useUITemplate();
+  const {
+    template,
+    containerStyle,
+    colors,
+    layout,
+    branding,
+    animations,
+  } = useTemplateStyles();
 
   const [language, setLanguage] = useState<"en" | "hi">("en");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,6 +136,20 @@ export default function TestPage() {
       fetchTest(testId);
     }
   }, [checkAuth, isAuthenticated, testId, test, fetchTest, router]);
+
+  // Load UI template when test is loaded
+  useEffect(() => {
+    if (test) {
+      // Load the template associated with this test, or default
+      const testWithUI = test as { uiTemplate?: { id: string; name: string } };
+      if (testWithUI.uiTemplate?.id) {
+        loadTemplate(testWithUI.uiTemplate.id);
+      } else {
+        // Load default template
+        loadTemplate();
+      }
+    }
+  }, [test, loadTemplate]);
 
   // Initialize time tracking
   useEffect(() => {
@@ -534,6 +560,9 @@ export default function TestPage() {
     return acc;
   }, {} as Record<string, { answered: number; toBeAttempted: number; total: number }>);
 
+  // Get current question (safely)
+  const question = questions.length > 0 ? questions[currentQuestion] : null;
+
   // Check if current question's subsection has reached toBeAttempted limit
   const currentSubSectionKey = question ? `${question.sectionId}:${question.subSectionId}` : "";
   const currentSubSectionStats = currentSubSectionKey ? answeredPerSubSection[currentSubSectionKey] : null;
@@ -554,7 +583,7 @@ export default function TestPage() {
     );
   }
 
-  if (!questions.length) {
+  if (!questions.length || !question) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
@@ -571,16 +600,43 @@ export default function TestPage() {
     );
   }
 
-  const question = questions[currentQuestion];
+  // Animation class based on template
+  const transitionClass = animations.enableTransitions
+    ? animations.questionTransition === "fade"
+      ? "transition-opacity duration-300"
+      : animations.questionTransition === "slide"
+      ? "transition-transform duration-300"
+      : ""
+    : "";
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        ...containerStyle,
+        fontFamily: template.typography.fontFamily,
+      }}
+    >
       {/* Header - Logo Section */}
-      <header className="flex items-center justify-between px-4 py-2 border-b bg-white test-header">
+      <header
+        className="flex items-center justify-between px-4 py-2 border-b test-header"
+        style={{
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+        }}
+      >
         <div className="flex items-center">
-          <div className="h-12 flex items-center">
-            <span className="text-2xl font-bold text-blue-600">IIT Pulse</span>
-          </div>
+          {branding.showLogo && (
+            <div className="h-12 flex items-center">
+              {branding.logoUrl ? (
+                <img src={branding.logoUrl} alt={branding.instituteName || "Logo"} className="h-10" />
+              ) : (
+                <span className="text-2xl font-bold" style={{ color: colors.primary }}>
+                  {branding.instituteName || "IIT Pulse"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -607,35 +663,50 @@ export default function TestPage() {
       </header>
 
       {/* Test Info Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b test-info-bar">
+      <div
+        className="flex items-center justify-between px-4 py-2 border-b test-info-bar"
+        style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+      >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden">
-            <div className="w-full h-full flex items-center justify-center text-gray-600 font-bold">
+          <div
+            className="w-10 h-10 rounded-full overflow-hidden"
+            style={{ backgroundColor: colors.border }}
+          >
+            <div
+              className="w-full h-full flex items-center justify-center font-bold"
+              style={{ color: colors.textSecondary }}
+            >
               {currentUser?.name?.[0]?.toUpperCase() || "U"}
             </div>
           </div>
           <div>
             <div className="font-medium text-sm">
-              <span className="text-gray-500">Name : </span>
+              <span style={{ color: colors.textSecondary }}>Name : </span>
               {currentUser?.name || "Student"}
             </div>
             <div className="text-sm">
-              <span className="text-gray-500">Exam : </span>
+              <span style={{ color: colors.textSecondary }}>Exam : </span>
               {test?.name || "Test"}
             </div>
-            <div className="text-sm">
-              <span className="text-gray-500">Time Remaining : </span>
-              <span className="font-mono bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
-                {timer.hours} : {timer.minutes} : {timer.seconds}
-              </span>
-            </div>
+            {layout.showTimer && (
+              <div className="text-sm">
+                <span style={{ color: colors.textSecondary }}>Time Remaining : </span>
+                <span
+                  className="font-mono px-2 py-0.5 rounded"
+                  style={{ backgroundColor: `${colors.primary}20`, color: colors.primary }}
+                >
+                  {timer.hours} : {timer.minutes} : {timer.seconds}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <select
           title="Select Language"
           value={language}
           onChange={(e) => setLanguage(e.target.value as "en" | "hi")}
-          className="px-3 py-1 border rounded text-sm"
+          className="px-3 py-1 rounded text-sm"
+          style={{ borderColor: colors.border, backgroundColor: colors.background }}
         >
           <option value="en">English</option>
           <option value="hi">Hindi</option>

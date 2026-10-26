@@ -111,14 +111,28 @@ export default function TestsPage() {
                     {formatWhen(t.validity.from)} to {formatWhen(t.validity.to)}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  disabled={!canOpen}
-                  onClick={() => open(t)}
-                  className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:bg-gray-300 disabled:text-gray-600"
-                >
-                  {t.state === "in_progress" ? "Resume" : t.state === "submitted" ? "Submitted" : t.state === "upcoming" ? "Not started" : t.state === "ended" ? "Ended" : "Start"}
-                </button>
+                {t.state === "submitted" ? (
+                  t.result?.visible ? (
+                    <button type="button" onClick={() => router.push(`/results/${t._id}`)} className="px-4 py-2 rounded border border-blue-600 text-blue-700 text-sm font-medium hover:bg-blue-50">
+                      View result
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-500 sm:text-right max-w-[180px]" title={t.result?.reason}>
+                      {t.result?.availableAt
+                        ? `Result on ${formatWhen(t.result.availableAt)}`
+                        : t.result?.reason || "Result not published yet"}
+                    </span>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!canOpen}
+                    onClick={() => open(t)}
+                    className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:bg-gray-300 disabled:text-gray-600"
+                  >
+                    {t.state === "in_progress" ? "Resume" : t.state === "upcoming" ? "Not started" : t.state === "ended" ? "Ended" : "Start"}
+                  </button>
+                )}
               </li>
             );
           })}

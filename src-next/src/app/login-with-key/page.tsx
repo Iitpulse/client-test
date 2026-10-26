@@ -1,124 +1,82 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuthStore } from "@/stores";
-import { apiUsers, auth } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuthStore, useTestStore } from "@/stores";
+import { api } from "@/lib/api";
 
+/**
+ * Manual entry for a test access key. Links of the form /auth/<key>/<testId> exchange the key
+ * automatically; this page is for students who were given the key by itself.
+ */
 export default function LoginWithKeyPage() {
   const router = useRouter();
-  const { keyRequiredForTest, currentUser, checkAuth, isAuthenticated } = useAuthStore();
-
+  const searchParams = useSearchParams();
+  const { login, setTestId } = useAuthStore();
+  const { reset } = useTestStore();
   const [key, setKey] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(searchParams.get("error") === "invalid" ? "That link's access key is not valid or has expired. Enter your key below or ask your institute for a new link." : "");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user is authenticated first
-    const isAuth = checkAuth();
-    if (!isAuth || !isAuthenticated) {
-      router.push("/login");
-      return;
-    }
-
-    // If key is not required for test, skip to instructions
-    if (keyRequiredForTest === false) {
-      router.push("/tests");
-      return;
-    }
-  }, [checkAuth, isAuthenticated, keyRequiredForTest, router]);
+    const k = searchParams.get("key");
+    if (k) setKey(k.toUpperCase());
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      const response = await apiUsers.post("/student/auth/login-with-key/", {
-        key,
-      });
-
-      const token = response.data?.data?.token ?? response.data?.token;
-      if (response.status === 200 && token) {
-        // Store the test key token separately
-        localStorage.setItem("testKeyToken", token);
-        router.push("/tests");
-      } else {
-        setError(response.data?.message || "Login failed: no token returned");
-      }
+      const response = await api.auth.loginWithKey(key.trim());
+      const data = response.data?.data;
+      if (!data?.token) throw new Error("No token returned");
+      reset();
+      login(data.token);
+      setTestId(data.testId);
+      router.push("/instructions");
     } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || "Invalid key. Please try again.";
-      setError(message);
+      const status = (err as { response?: { status?: number; data?: { error?: { message?: string } } } })?.response?.status;
+      const serverMessage = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message;
+      setError(status === 401 || status === 404 ? serverMessage || "This access key is not valid" : "Could not sign in right now. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      {/* Header - matching NTA portal style */}
-      <header className="flex h-16 items-center justify-between border-b bg-white px-6">
-        <div className="flex items-center gap-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-md rounded-lg border bg-white p-6 shadow-sm">
+        <h1 className="text-2xl font-bold text-blue-600 mb-1">IITP Test Portal</h1>
+        <h2 className="text-lg font-semibold mb-1">Enter your test key</h2>
+        <p className="text-sm text-gray-500 mb-6">Your institute gave you a 10-character key for one test. It signs you in and opens that test.</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <h4 className="text-sm text-muted-foreground">
-              Candidate Name:{" "}
-              <span className="font-medium text-foreground">
-                {currentUser?.email || "Student"}
-              </span>
-            </h4>
-            <h4 className="text-sm text-muted-foreground">
-              Paper: <span className="font-medium text-foreground">Paper</span>
-            </h4>
+            <label htmlFor="key" className="block text-sm font-medium mb-1">
+              Key
+            </label>
+            <input
+              id="key"
+              value={key}
+              onChange={(e) => setKey(e.target.value.toUpperCase())}
+              placeholder="e.g. K7PX4M2QHD"
+              autoComplete="off"
+              spellCheck={false}
+              className="w-full rounded border px-3 py-2 font-mono tracking-widest uppercase"
+            />
           </div>
-        </div>
-        <p className="text-sm text-muted-foreground">Test</p>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex flex-1 items-start justify-center p-6 pt-[10%]">
-        <Card className="w-full max-w-sm border-gray-300">
-          <CardHeader className="text-center pb-2">
-            <CardTitle className="text-xl font-medium">Login</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="key">Key</Label>
-                <Input
-                  id="key"
-                  type="text"
-                  placeholder="Enter your key"
-                  value={key}
-                  onChange={(e) => setKey(e.target.value)}
-                  required
-                  autoComplete="off"
-                  className="w-full"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={loading || !key.trim()}
-              >
-                {loading ? "Submitting..." : "Submit"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </main>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button type="submit" disabled={loading || !key.trim()} className="w-full rounded bg-blue-600 px-4 py-2 text-white font-medium disabled:bg-gray-300">
+            {loading ? "Signing in…" : "Open my test"}
+          </button>
+        </form>
+        <p className="mt-6 text-center text-sm text-gray-500">
+          Have an account instead?{" "}
+          <button type="button" onClick={() => router.push("/login")} className="text-blue-600 underline">
+            Sign in with email
+          </button>
+        </p>
+      </div>
     </div>
   );
 }

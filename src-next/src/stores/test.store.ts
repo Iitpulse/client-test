@@ -489,9 +489,20 @@ export const useTestStore = create<TestState>((set, get) => ({
     try {
       const response = await api.tests.submit({ testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true });
 
-      const totalMarks = response.data?.data?.totalMarks || 0;
+      const outcome = response.data?.data || {};
+      const totalMarks = outcome.totalMarks ?? 0;
       localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
-      localStorage.setItem("result", String(totalMarks));
+      // What the result screen shows: score only when the test's publish setting allows it now
+      localStorage.setItem(
+        "result",
+        JSON.stringify({
+          testId,
+          totalMarks: outcome.totalMarks,
+          resultVisible: outcome.resultVisible !== false,
+          resultReason: outcome.resultReason,
+          resultAvailableAt: outcome.resultAvailableAt,
+        })
+      );
 
       set({ isSubmitted: true, totalMarks });
     } catch (error: unknown) {

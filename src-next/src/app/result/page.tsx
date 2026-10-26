@@ -3,101 +3,99 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTestStore } from "@/stores";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { CheckCircle2 } from "lucide-react";
+
+interface StoredOutcome {
+  testId?: string;
+  totalMarks?: number;
+  resultVisible: boolean;
+  resultReason?: string;
+  resultAvailableAt?: string;
+}
+
+function readOutcome(): StoredOutcome | null {
+  try {
+    const raw = localStorage.getItem("result");
+    if (!raw) return null;
+    if (raw.startsWith("{")) return JSON.parse(raw) as StoredOutcome;
+    return { totalMarks: Number(raw), resultVisible: true }; // older format: just the score
+  } catch {
+    return null;
+  }
+}
 
 export default function ResultPage() {
   const router = useRouter();
-  const { totalMarks, reset } = useTestStore();
-  const [countdown, setCountdown] = useState(10);
+  const { reset } = useTestStore();
+  const [outcome, setOutcome] = useState<StoredOutcome | null>(null);
+  const [countdown, setCountdown] = useState(15);
 
-  // Check if test was submitted
   useEffect(() => {
     const isSubmitted = localStorage.getItem("IITP_TEST_SUBMITTED_KEY") === "true";
     if (!isSubmitted) {
-      router.push("/");
+      router.push("/tests");
+      return;
     }
+    setOutcome(readOutcome());
   }, [router]);
 
-  // Countdown timer
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => prev - 1);
-    }, 1000);
-
+    const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Close window when countdown reaches 0
-  useEffect(() => {
-    if (countdown < 1) {
-      // Clear local storage and reset store
-      localStorage.removeItem("IITP_TEST_SUBMITTED_KEY");
-      localStorage.removeItem("result");
-      reset();
-
-      // Try to close the window
-      window.close();
-
-      // If window.close() doesn't work (e.g., not opened by script),
-      // redirect to login
-      setTimeout(() => {
-        router.push("/login");
-      }, 500);
-    }
-  }, [countdown, reset, router]);
-
-  const handleClose = () => {
+  const leave = (to: string) => {
     localStorage.removeItem("IITP_TEST_SUBMITTED_KEY");
     localStorage.removeItem("result");
     reset();
-    window.close();
-    // Fallback if window.close() doesn't work
-    router.push("/login");
+    router.push(to);
   };
 
+  useEffect(() => {
+    if (countdown < 1) leave("/tests");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdown]);
+
+  const availableAt = outcome?.resultAvailableAt ? new Date(outcome.resultAvailableAt) : null;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-100 to-slate-200 p-4">
-      <Card className="w-full max-w-md text-center shadow-lg">
-        <CardHeader className="pb-2">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle2 className="h-10 w-10 text-green-600" />
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-md rounded-lg border bg-white p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+          <CheckCircle2 className="h-8 w-8 text-green-600" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Test submitted</h1>
+        <p className="text-gray-600 mb-6">Your answers have been recorded.</p>
+
+        {outcome?.resultVisible && typeof outcome.totalMarks === "number" ? (
+          <div className="rounded-md bg-gray-100 p-4 mb-6">
+            <p className="text-sm text-gray-500">Your score</p>
+            <p className="text-3xl font-bold">{outcome.totalMarks}</p>
           </div>
-          <CardTitle className="text-2xl">Test Submitted Successfully!</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <p className="text-lg text-muted-foreground">
-              Thank you for completing the test.
-            </p>
-            {totalMarks !== null && (
-              <div className="mt-4 rounded-lg bg-slate-100 p-4">
-                <p className="text-sm text-muted-foreground">Your Score</p>
-                <p className="text-3xl font-bold text-primary">{totalMarks}</p>
-              </div>
+        ) : (
+          <div className="rounded-md bg-blue-50 p-4 mb-6 text-blue-900">
+            <p className="font-medium">{outcome?.resultReason || "Results will be published later"}</p>
+            {availableAt && !Number.isNaN(availableAt.getTime()) && (
+              <p className="text-sm mt-1">
+                Available from {availableAt.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              </p>
             )}
+            <p className="text-sm mt-2 text-blue-800">You will find it under <strong>Your tests</strong> when it is ready.</p>
           </div>
+        )}
 
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              This window will close automatically in
-            </p>
-            <div className="flex items-center justify-center">
-              <span className="text-4xl font-bold text-primary">{countdown}</span>
-              <span className="ml-2 text-muted-foreground">seconds</span>
-            </div>
-          </div>
-
-          <Button onClick={handleClose} variant="outline" className="w-full">
-            Close Now
-          </Button>
-
-          <p className="text-xs text-muted-foreground">
-            Your responses have been recorded. You may close this window safely.
-          </p>
-        </CardContent>
-      </Card>
+        <div className="flex flex-col gap-2">
+          {outcome?.resultVisible && outcome.testId && (
+            <button type="button" onClick={() => leave(`/results/${outcome.testId}`)} className="w-full rounded bg-blue-600 px-4 py-2 text-white font-medium">
+              View detailed result
+            </button>
+          )}
+          <button type="button" onClick={() => leave("/tests")} className="w-full rounded border px-4 py-2 font-medium">
+            Back to your tests
+          </button>
+        </div>
+        <p className="mt-4 text-xs text-gray-400">Returning to your tests in {Math.max(countdown, 0)}s</p>
+      </div>
     </div>
   );
 }

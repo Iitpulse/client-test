@@ -32,7 +32,10 @@ function createApiClient(service: "users" | "tests"): AxiosInstance {
   client.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
-      if (error.response?.status === 401) {
+      // A 401 from the sign-in endpoints means bad credentials or a bad key: let the page show it.
+      const url = error.config?.url || "";
+      const isAuthCall = /\/auth\/(login|login-with-key)/.test(url);
+      if (error.response?.status === 401 && !isAuthCall) {
         if (typeof window !== "undefined") {
           localStorage.removeItem(AUTH_TOKEN_KEY);
           window.location.href = "/login";
@@ -56,6 +59,22 @@ export interface AvailableTest {
   totalQuestions: number;
   state: "upcoming" | "live" | "in_progress" | "submitted" | "ended";
   startedAt?: string;
+  /** Present for submitted tests: whether the result can be viewed now */
+  result?: ResultVisibility;
+}
+
+export interface ResultVisibility {
+  visible: boolean;
+  reason?: string;
+  availableAt?: string;
+  mode: string;
+}
+
+export interface StudentResult {
+  test: { _id: string; name: string; sections: unknown[] };
+  submission: { sections?: unknown[]; totalMarks?: number; totalTimeTakenInSeconds?: number; submittedAt?: string };
+  totalMarks?: number;
+  totalTimeTaken?: number;
 }
 
 // API clients
@@ -148,10 +167,17 @@ export const api = {
   auth: {
     login: (credentials: { email: string; password: string }) =>
       apiUsers.post("/auth/login", credentials),
+    /** Exchange a test access key (from a /auth/<key>/<testId> link or typed in) for a session */
+    loginWithKey: (key: string) =>
+      apiUsers.post<{ success: boolean; data: { token: string; testId: string; student: { id: string; name?: string; email?: string } } }>(
+        "/student/auth/login-with-key",
+        { key }
+      ),
   },
   tests: {
     getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),
     getAvailable: () => apiTests.get<{ success: boolean; data: AvailableTest[] }>("/test/available"),
+    getResult: (testId: string) => apiTests.get<{ success: boolean; data: StudentResult }>("/test/result/student", { params: { testId } }),
     submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean }) =>
       apiTests.post("/test/submit", data),
     saveProgress: (data: { testId: string; sections: unknown[] }) =>

@@ -3,6 +3,7 @@
 import { memo, useEffect, useState } from "react";
 import "katex/dist/katex.min.css";
 import katex from "katex";
+import DOMPurify from "dompurify";
 
 interface RenderLatexProps {
   content: string;
@@ -31,7 +32,8 @@ function RenderLatexComponent({ content }: RenderLatexProps) {
       // Bare strings (option text typed into a plain input) have no <p>; wrap them so math still renders.
       const value = /<(p|div|ul|ol|li|table|h[1-6]|blockquote|pre)\b/i.test(content) ? content : `<p>${content}</p>`;
       const parser = new DOMParser();
-      const doc = parser.parseFromString(value, "text/html");
+      // Strip scripts, event handlers and javascript: URLs from question HTML before rendering
+      const doc = parser.parseFromString(DOMPurify.sanitize(value), "text/html");
 
       // Extract from all <p> tags
       const pTags = doc.getElementsByTagName("p");

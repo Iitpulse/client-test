@@ -180,7 +180,7 @@ export const api = {
     getResult: (testId: string) => apiTests.get<{ success: boolean; data: StudentResult }>("/test/result/student", { params: { testId } }),
     submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean }) =>
       apiTests.post("/test/submit", data),
-    saveProgress: (data: { testId: string; sections: unknown[] }) =>
+    saveProgress: (data: { testId: string; sections: unknown[]; fullscreenExits?: number }) =>
       apiTests.post("/test/save-progress", data),
   },
   uiTemplates: {

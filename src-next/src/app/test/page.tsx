@@ -91,6 +91,12 @@ export default function TestPage() {
     action: "warn" as const,
   };
 
+  // The server keeps the highest exit count seen, so clearing storage or switching devices cannot reset it
+  const serverFullscreenExits = useTestStore((s) => s.serverFullscreenExits);
+  useEffect(() => {
+    if (serverFullscreenExits > 0) setFullscreenExitCount((prev) => Math.max(prev, serverFullscreenExits));
+  }, [serverFullscreenExits]);
+
   // Auto-submit when max exits reached with submit action
   useEffect(() => {
     if (

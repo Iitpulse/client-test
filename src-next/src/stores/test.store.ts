@@ -13,6 +13,7 @@ export interface ITestAttempt {
 }
 
 interface TestState {
+  serverFullscreenExits: number;
   test: ITest | null;
   questions: IQuestionWithStatus[];
   currentQuestion: number;
@@ -120,6 +121,7 @@ export const useTestStore = create<TestState>((set, get) => ({
   isSubmitted: false,
   totalMarks: null,
   attempt: null,
+  serverFullscreenExits: 0,
 
   fetchTest: async (testId: string) => {
     set({ isLoading: true, error: null });
@@ -172,6 +174,7 @@ export const useTestStore = create<TestState>((set, get) => ({
             answeredAndMarkedForReview: ids("answeredAndMarkedForReview"),
           },
           attempt,
+          serverFullscreenExits: Number(responseData?.fullscreenExits) || 0,
           isLoading: false,
         });
       }
@@ -461,6 +464,7 @@ export const useTestStore = create<TestState>((set, get) => ({
       }),
     }));
 
+    const fullscreenExits = Math.max(0, parseInt((typeof window !== "undefined" && localStorage.getItem(`IITP_FULLSCREEN_EXITS_${testId}`)) || "0", 10) || 0);
     try {
       if (options?.keepalive) {
         // Page is unloading: a keepalive fetch is allowed to finish after the page is gone
@@ -469,10 +473,10 @@ export const useTestStore = create<TestState>((set, get) => ({
           method: "POST",
           keepalive: true,
           headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ testId, sections }),
+          body: JSON.stringify({ testId, sections, fullscreenExits }),
         });
       } else {
-        await api.tests.saveProgress({ testId, sections });
+        await api.tests.saveProgress({ testId, sections, fullscreenExits });
       }
     } catch (error) {
       // Silent fail - auto-save should not interrupt user

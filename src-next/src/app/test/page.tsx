@@ -97,6 +97,41 @@ export default function TestPage() {
     if (serverFullscreenExits > 0) setFullscreenExitCount((prev) => Math.max(prev, serverFullscreenExits));
   }, [serverFullscreenExits]);
 
+  // One active tab per test. Each tab saves its own copy of the answers, so two open tabs overwrite
+  // each other's answers. When the test opens in a newer tab, this tab stops saving and steps aside.
+  const replacedRef = useRef(false);
+  const [replacedByOtherTab, setReplacedByOtherTab] = useState(false);
+  useEffect(() => {
+    if (!testId || !test || typeof BroadcastChannel === "undefined") return;
+    const me = Math.random().toString(36).slice(2);
+    const channel = new BroadcastChannel(`iitp-test-${testId}`);
+    channel.onmessage = (e) => {
+      if (e.data?.type === "opened" && e.data.tab !== me) {
+        replacedRef.current = true;
+        setReplacedByOtherTab(true);
+      }
+    };
+    channel.postMessage({ type: "opened", tab: me });
+    return () => channel.close();
+  }, [testId, test]);
+
+  // Tell the student when the connection drops; answers are saved again once it is back
+  const [isOnline, setIsOnline] = useState(true);
+  useEffect(() => {
+    const update = () => setIsOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+  useEffect(() => {
+    if (isOnline && test && !replacedRef.current) saveProgress();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnline]);
+
   // Auto-submit when max exits reached with submit action
   useEffect(() => {
     if (
@@ -253,7 +288,7 @@ export default function TestPage() {
   const answersFingerprint = questions.map((q) => `${q.id}:${q.status.status}:${q.selectedOptions.join(",")}:${q.enteredAnswer ?? ""}`).join("|");
   useEffect(() => {
     if (!test || !questions.length) return;
-    const t = setTimeout(() => saveProgress(), 1500);
+    const t = setTimeout(() => { if (!replacedRef.current) saveProgress(); }, 1500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answersFingerprint]);
@@ -261,7 +296,7 @@ export default function TestPage() {
   useEffect(() => {
     if (!test || !questions.length) return;
     const saveInterval = setInterval(() => {
-      saveProgress();
+      if (!replacedRef.current) saveProgress();
     }, 15000);
     return () => clearInterval(saveInterval);
   }, [test, questions.length, saveProgress]);
@@ -365,7 +400,7 @@ export default function TestPage() {
 
     // Save progress when user tries to leave
     const handleBeforeUnload = () => {
-      saveProgress({ keepalive: true });
+      if (!replacedRef.current) saveProgress({ keepalive: true });
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -636,6 +671,19 @@ export default function TestPage() {
         fontFamily: template.typography.fontFamily,
       }}
     >
+      {!isOnline && (
+        <div role="alert" className="sticky top-0 z-50 bg-amber-100 text-amber-900 text-sm text-center px-4 py-2">
+          You are offline. Keep answering; your answers will be saved when the connection is back.
+        </div>
+      )}
+      {replacedByOtherTab && (
+        <div role="alertdialog" aria-modal="true" className="fixed inset-0 z-[100] bg-white/95 flex items-center justify-center p-6">
+          <div className="max-w-md text-center space-y-3">
+            <h2 className="text-lg font-semibold">This test is open in another tab</h2>
+            <p className="text-sm text-gray-600">Continue in the other tab. Answers from this tab are no longer saved, so nothing you did there is overwritten.</p>
+          </div>
+        </div>
+      )}
       {/* Header - Logo Section */}
       <header
         className="flex items-center justify-between px-4 py-2 border-b test-header"

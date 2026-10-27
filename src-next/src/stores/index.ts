@@ -1,2 +1,2 @@
-export { useAuthStore } from "./auth.store";
+export { useAuthStore, useAuthHydrated } from "./auth.store";
 export { useTestStore } from "./test.store";

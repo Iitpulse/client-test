@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore, useTestStore } from "@/stores";
+import { useAuthStore, useTestStore, useAuthHydrated } from "@/stores";
 import {
   GENERAL_INSTRUCTIONS,
   NAVIGATING_INSTRUCTIONS,
@@ -19,10 +19,8 @@ export default function InstructionsPage() {
 
   const [confirmed, setConfirmed] = useState(false);
   const [language, setLanguage] = useState<"en" | "hi">("en");
-
-  // The selected test lives in persisted store state; wait for rehydration before deciding there is none.
-  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
-  useEffect(() => useAuthStore.persist.onFinishHydration(() => setHydrated(true)), []);
+  // Wait for the persisted test id / session to be restored (SSR-safe)
+  const hydrated = useAuthHydrated();
 
   useEffect(() => {
     if (!hydrated) return;

@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useAuthHydrated } from "@/stores";
 
 // Root page redirects to appropriate page based on auth status
 export default function HomePage() {
   const router = useRouter();
   const { checkAuth, isAuthenticated, testId } = useAuthStore();
-
-  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
-  useEffect(() => useAuthStore.persist.onFinishHydration(() => setHydrated(true)), []);
+  // Wait for the persisted test id / session to be restored (SSR-safe)
+  const hydrated = useAuthHydrated();
 
   useEffect(() => {
     if (!hydrated) return;

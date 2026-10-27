@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useAuthHydrated } from "@/stores";
 import { api, type StudentResult } from "@/lib/api";
 import { RenderLatex } from "@/components/render-latex";
 
@@ -36,10 +36,8 @@ export default function StudentResultPage() {
   const [result, setResult] = useState<StudentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSolutions, setShowSolutions] = useState(false);
-
-  // persisted auth state arrives after the first render; don't bounce to login before it does
-  const [hydrated, setHydrated] = useState(useAuthStore.persist.hasHydrated());
-  useEffect(() => useAuthStore.persist.onFinishHydration(() => setHydrated(true)), []);
+  // Wait for the persisted test id / session to be restored (SSR-safe)
+  const hydrated = useAuthHydrated();
 
   useEffect(() => {
     if (!hydrated) return;

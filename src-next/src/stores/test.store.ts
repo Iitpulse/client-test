@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { ITest, IQuestionWithStatus, ITestStatus, QuestionStatus } from "@/types";
-import { api } from "@/lib/api";
+import { api, auth } from "@/lib/api";
 
 // Attempt info from backend
 export interface ITestAttempt {
@@ -35,7 +35,7 @@ interface TestState {
   saveAndNext: (timeTaken?: number) => void;
   markForReview: (timeTaken?: number) => void;
   saveAndMarkForReview: (timeTaken?: number) => void;
-  saveProgress: () => Promise<void>;
+  saveProgress: (options?: { keepalive?: boolean }) => Promise<void>;
   submitTest: (userId: string, userType: string, instituteId?: string, options?: { isAutoSubmitted?: boolean }) => Promise<void>;
   updateTimeTaken: (questionId: string, time: number) => void;
   reset: () => void;
@@ -129,25 +129,47 @@ export const useTestStore = create<TestState>((set, get) => ({
       const responseData = response.data;
       const test = responseData?.data || responseData;
       const attempt = responseData?.attempt || null;
+      const progress = (responseData?.progress || null) as Array<{
+        id: string;
+        subSections?: Array<{ id: string; questions?: Record<string, { selectedOptions?: string[]; enteredAnswer?: number; timeTakenInSeconds?: number; status?: string }> }>;
+      }> | null;
 
       if (test) {
         const questions = flattenQuestions(test);
-        // Mark first question as visited
-        if (questions.length > 0) {
-          questions[0].status.status = "notAnswered";
-          questions[0].status.visitedAt = new Date().toISOString();
+
+        // Resume: apply the student's last saved answers (refresh, crash, new device)
+        if (progress) {
+          const saved = new Map<string, { selectedOptions?: string[]; enteredAnswer?: number; timeTakenInSeconds?: number; status?: string }>();
+          for (const sec of progress) for (const ss of sec.subSections || []) for (const [qid, r] of Object.entries(ss.questions || {})) saved.set(qid, r);
+          for (const q of questions) {
+            const r = saved.get(q.id);
+            if (!r) continue;
+            if (Array.isArray(r.selectedOptions)) q.selectedOptions = r.selectedOptions;
+            if (r.enteredAnswer !== undefined && r.enteredAnswer !== null) q.enteredAnswer = String(r.enteredAnswer);
+            if (typeof r.timeTakenInSeconds === "number") q.status.timeTakenInSeconds = r.timeTakenInSeconds;
+            if (r.status) q.status.status = r.status as QuestionStatus;
+          }
         }
+
+        // Land on the first question not answered yet, and mark it visited
+        let current = questions.findIndex((q) => q.status.status === "notVisited" || q.status.status === "notAnswered");
+        if (current < 0) current = 0;
+        if (questions[current] && questions[current].status.status === "notVisited") {
+          questions[current].status.status = "notAnswered";
+          questions[current].status.visitedAt = new Date().toISOString();
+        }
+        const ids = (st: string) => questions.filter((q) => q.status.status === st).map((q) => q.id);
 
         set({
           test,
           questions,
-          currentQuestion: 0,
+          currentQuestion: current,
           status: {
-            notVisited: questions.slice(1).map((q) => q.id),
-            notAnswered: questions.length > 0 ? [questions[0].id] : [],
-            answered: [],
-            markedForReview: [],
-            answeredAndMarkedForReview: [],
+            notVisited: ids("notVisited"),
+            notAnswered: ids("notAnswered"),
+            answered: ids("answered"),
+            markedForReview: ids("markedForReview"),
+            answeredAndMarkedForReview: ids("answeredAndMarkedForReview"),
           },
           attempt,
           isLoading: false,
@@ -402,7 +424,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     get().nextQuestion();
   },
 
-  saveProgress: async () => {
+  saveProgress: async (options?: { keepalive?: boolean }) => {
     const { test, questions } = get();
     if (!test) return;
 
@@ -426,7 +448,7 @@ export const useTestStore = create<TestState>((set, get) => ({
           .forEach((q) => {
             questionsRecord[q.id] = {
               selectedOptions: q.selectedOptions,
-              enteredAnswer: q.enteredAnswer ? parseFloat(q.enteredAnswer) : undefined,
+              enteredAnswer: q.enteredAnswer !== undefined && q.enteredAnswer !== "" ? parseFloat(q.enteredAnswer) : undefined,
               timeTakenInSeconds: q.status.timeTakenInSeconds,
               status: q.status.status,
             };
@@ -440,7 +462,18 @@ export const useTestStore = create<TestState>((set, get) => ({
     }));
 
     try {
-      await api.tests.saveProgress({ testId, sections });
+      if (options?.keepalive) {
+        // Page is unloading: a keepalive fetch is allowed to finish after the page is gone
+        const token = auth.getToken();
+        await fetch(`${process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000"}/tests/test/save-progress`, {
+          method: "POST",
+          keepalive: true,
+          headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ testId, sections }),
+        });
+      } else {
+        await api.tests.saveProgress({ testId, sections });
+      }
     } catch (error) {
       // Silent fail - auto-save should not interrupt user
       console.warn("Failed to save progress:", error);
@@ -473,7 +506,7 @@ export const useTestStore = create<TestState>((set, get) => ({
           .forEach((q) => {
             questionsRecord[q.id] = {
               selectedOptions: q.selectedOptions,
-              enteredAnswer: q.enteredAnswer ? parseFloat(q.enteredAnswer) : undefined,
+              enteredAnswer: q.enteredAnswer !== undefined && q.enteredAnswer !== "" ? parseFloat(q.enteredAnswer) : undefined,
               timeTakenInSeconds: q.status.timeTakenInSeconds,
               status: q.status.status,
             };

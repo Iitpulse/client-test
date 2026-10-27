@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { jwtDecode } from "jwt-decode";
@@ -115,3 +116,21 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+/**
+ * True once the persisted auth/test state has been restored from localStorage.
+ * Pages must wait for it before redirecting (a refresh otherwise sees "no test selected").
+ * Safe during server rendering, where the persist helper does not exist.
+ */
+export function useAuthHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const persist = (useAuthStore as unknown as { persist?: { hasHydrated: () => boolean; onFinishHydration: (fn: () => void) => () => void } }).persist;
+    if (!persist || persist.hasHydrated()) {
+      setHydrated(true);
+      return;
+    }
+    return persist.onFinishHydration(() => setHydrated(true));
+  }, []);
+  return hydrated;
+}

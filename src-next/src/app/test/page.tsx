@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuthStore, useTestStore } from "@/stores";
+import { useAuthStore, useTestStore, useAuthHydrated } from "@/stores";
 import { QuestionObjective } from "@/components/question-objective";
 import { QuestionInteger } from "@/components/question-integer";
 import { Legend } from "@/components/legend";
@@ -125,18 +125,22 @@ export default function TestPage() {
       router.push("/result");
     }
   }, [router]);
-
-  // Auth check and load test
+  // Wait for the persisted test id / session to be restored (SSR-safe)
+  const hydrated = useAuthHydrated();
   useEffect(() => {
+    if (!hydrated) return;
     if (!checkAuth() || !isAuthenticated) {
       router.push("/login");
       return;
     }
-
-    if (testId && !test) {
+    if (!testId) {
+      router.push("/tests");
+      return;
+    }
+    if (!test) {
       fetchTest(testId);
     }
-  }, [checkAuth, isAuthenticated, testId, test, fetchTest, router]);
+  }, [hydrated, checkAuth, isAuthenticated, testId, test, fetchTest, router]);
 
   // Load UI template when test is loaded
   useEffect(() => {
@@ -238,14 +242,21 @@ export default function TestPage() {
     return () => clearInterval(interval);
   }, [attempt?.expiresAt, test?.durationInMinutes, test?.duration, testId]);
 
-  // Auto-save progress every 30 seconds
+  // Save progress shortly after every change (answer, clear, review mark), plus a 15s safety net.
+  // Previously only every 30s, so a refresh or crash lost recent answers.
+  const answersFingerprint = questions.map((q) => `${q.id}:${q.status.status}:${q.selectedOptions.join(",")}:${q.enteredAnswer ?? ""}`).join("|");
   useEffect(() => {
     if (!test || !questions.length) return;
+    const t = setTimeout(() => saveProgress(), 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answersFingerprint]);
 
+  useEffect(() => {
+    if (!test || !questions.length) return;
     const saveInterval = setInterval(() => {
       saveProgress();
-    }, 30000); // 30 seconds
-
+    }, 15000);
     return () => clearInterval(saveInterval);
   }, [test, questions.length, saveProgress]);
 
@@ -348,7 +359,7 @@ export default function TestPage() {
 
     // Save progress when user tries to leave
     const handleBeforeUnload = () => {
-      saveProgress();
+      saveProgress({ keepalive: true });
     };
 
     window.addEventListener("popstate", handlePopState);

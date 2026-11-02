@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore, useTestStore } from "@/stores";
 import { api } from "@/lib/api";
@@ -8,8 +8,17 @@ import { api } from "@/lib/api";
 /**
  * Manual entry for a test access key. Links of the form /auth/<key>/<testId> exchange the key
  * automatically; this page is for students who were given the key by itself.
+ * useSearchParams needs a Suspense boundary, or `next build` fails to prerender the page.
  */
 export default function LoginWithKeyPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginWithKeyForm />
+    </Suspense>
+  );
+}
+
+function LoginWithKeyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, setTestId } = useAuthStore();
@@ -20,6 +29,7 @@ export default function LoginWithKeyPage() {
 
   useEffect(() => {
     const k = searchParams.get("key");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prefill from the URL after hydration
     if (k) setKey(k.toUpperCase());
   }, [searchParams]);
 

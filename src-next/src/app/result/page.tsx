@@ -36,6 +36,7 @@ export default function ResultPage() {
       router.push("/tests");
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is only readable after hydration
     setOutcome(readOutcome());
   }, [router]);
 

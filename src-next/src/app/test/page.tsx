@@ -94,6 +94,7 @@ export default function TestPage() {
   // The server keeps the highest exit count seen, so clearing storage or switching devices cannot reset it
   const serverFullscreenExits = useTestStore((s) => s.serverFullscreenExits);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync the server-side exit count into local state
     if (serverFullscreenExits > 0) setFullscreenExitCount((prev) => Math.max(prev, serverFullscreenExits));
   }, [serverFullscreenExits]);
 
@@ -143,6 +144,7 @@ export default function TestPage() {
       !isSubmitting
     ) {
       // Auto-submit after max exits
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- guards against a second submit while this one runs
       setIsSubmitting(true);
       (async () => {
         try {
@@ -357,6 +359,7 @@ export default function TestPage() {
     // Check initial state
     const isFullscreen = document.fullscreenElement || doc.webkitFullscreenElement;
     if (!isFullscreen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the fullscreen state is only known in the browser
       setExitFullscreenModal(true);
     }
 

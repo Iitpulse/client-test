@@ -127,6 +127,7 @@ export function useAuthHydrated(): boolean {
   useEffect(() => {
     const persist = (useAuthStore as unknown as { persist?: { hasHydrated: () => boolean; onFinishHydration: (fn: () => void) => () => void } }).persist;
     if (!persist || persist.hasHydrated()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- must stay false during SSR and the first client render
       setHydrated(true);
       return;
     }

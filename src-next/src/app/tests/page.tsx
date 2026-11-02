@@ -43,6 +43,7 @@ export default function TestsPage() {
       router.push("/login");
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetches the test list once auth is known
     load();
   }, [checkAuth, isAuthenticated, router, load]);
 

@@ -24,6 +24,8 @@ function RenderLatexComponent({ content }: RenderLatexProps) {
   const [previewHTML, setPreviewHTML] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // DOMParser and DOMPurify need the browser, so the HTML is built in an effect rather than during render
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setPreviewHTML("");
     setIsLoading(true);
@@ -70,6 +72,7 @@ function RenderLatexComponent({ content }: RenderLatexProps) {
     }
     setIsLoading(false);
   }, [content]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (isLoading) {
     return <p className="text-muted-foreground">Loading...</p>;

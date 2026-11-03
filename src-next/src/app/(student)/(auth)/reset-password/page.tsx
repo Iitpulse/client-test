@@ -132,7 +132,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <form className="col fade gap-5" onSubmit={save}>
+    <form className="col fade gap-5" onSubmit={save} noValidate>
       <div className="col gap-2.5">
         <h1 className="h1">
           Choose a new <InkUnderline delay={300}>password</InkUnderline>

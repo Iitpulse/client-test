@@ -89,7 +89,7 @@ function LoginForm() {
         <p className="sm muted m-0">Sign in with the email your institute registered.</p>
       </div>
       {error && <Notice tone="error">{error}</Notice>}
-      <form className="col gap-[22px]" onSubmit={handleSubmit} noValidate={false}>
+      <form className="col gap-[22px]" onSubmit={handleSubmit}>
         <div className="field">
           <Label htmlFor="email">Email</Label>
           <Input

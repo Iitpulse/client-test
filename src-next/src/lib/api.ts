@@ -32,9 +32,9 @@ function createApiClient(service: "users" | "tests"): AxiosInstance {
   client.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
-      // A 401 from the sign-in endpoints means bad credentials or a bad key: let the page show it.
+      // A 401 from the sign-in endpoints means bad credentials or a bad link: let the page show it.
       const url = error.config?.url || "";
-      const isAuthCall = /\/auth\/(login|login-with-key)/.test(url);
+      const isAuthCall = /\/auth\/(login|login-with-key)|\/reset-password\//.test(url);
       if (error.response?.status === 401 && !isAuthCall) {
         if (typeof window !== "undefined") {
           localStorage.removeItem(AUTH_TOKEN_KEY);
@@ -76,6 +76,25 @@ export interface StudentResult {
   totalMarks?: number;
   totalTimeTaken?: number;
 }
+
+/** Every error body from the services: { success: false, message, code, error: { code, message } } */
+export interface ApiErrorBody {
+  success?: false;
+  message?: string;
+  code?: string;
+  error?: { code?: string; message?: string };
+}
+
+/** HTTP status and machine-readable code of a failed call (status 0 = no response: offline, CORS, timeout). */
+export function apiError(err: unknown): { status: number; code?: string; message?: string } {
+  const res = (err as { response?: { status?: number; data?: ApiErrorBody } })?.response;
+  if (!res) return { status: 0 };
+  const data = res.data;
+  return { status: res.status ?? 0, code: data?.code ?? data?.error?.code, message: data?.message ?? data?.error?.message };
+}
+
+/** Why a sign-in link (access key) was refused: POST /student/auth/login-with-key answers 401 with one of these. */
+export type LinkErrorCode = "LINK_INVALID" | "LINK_EXPIRED" | "LINK_REVOKED";
 
 // API clients
 export const apiUsers = createApiClient("users");
@@ -173,6 +192,19 @@ export const api = {
         "/student/auth/login-with-key",
         { key }
       ),
+    /** The signed-in user's profile (name for the avatar). Students may call it (users student-guard). */
+    me: () => apiUsers.get<{ success: boolean; data: { _id: string; name?: string; email?: string } }>("/auth/me"),
+  },
+  /** Password reset by email link. The link opens /reset-password?token=... in the app named by `app`. */
+  passwordReset: {
+    /** Always 200 with the same generic message (no account enumeration); 429 TOO_MANY_ATTEMPTS when throttled. */
+    request: (email: string) => apiUsers.post<{ success: boolean; message: string }>("/reset-password/request", { email, app: "student" }),
+    /** Checks a link without using it up. 400 RESET_TOKEN_INVALID for a bad, used or expired link. */
+    verify: (token: string) =>
+      apiUsers.post<{ success: boolean; data: { email: string; expiresAt: string } }>("/reset-password/verify", { token }),
+    /** Sets the password (6-128 characters) and uses the link up. 400 RESET_TOKEN_INVALID as above. */
+    reset: (token: string, newPassword: string) =>
+      apiUsers.post<{ success: boolean; message: string }>("/reset-password/reset", { token, newPassword }),
   },
   tests: {
     getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),

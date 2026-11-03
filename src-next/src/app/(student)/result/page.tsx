@@ -60,7 +60,7 @@ export default function ResultPage() {
   const availableAt = outcome?.resultAvailableAt ? new Date(outcome.resultAvailableAt) : null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-md rounded-lg border bg-white p-8 text-center shadow-sm">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
           <CheckCircle2 className="h-8 w-8 text-green-600" />

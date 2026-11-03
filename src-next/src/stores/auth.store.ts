@@ -15,7 +15,9 @@ interface AuthState {
   setCurrentUser: (user: ICurrentUser | null) => void;
   setTestId: (testId: string | null) => void;
   setKeyRequiredForTest: (required: boolean) => void;
-  login: (token: string) => void;
+  /** Store a session token; `name` (when the sign-in response has it) fills the avatar without a /auth/me call */
+  login: (token: string, name?: string) => void;
+  setUserName: (name: string) => void;
   logout: () => void;
   checkAuth: () => boolean;
 }
@@ -34,7 +36,12 @@ export const useAuthStore = create<AuthState>()(
 
       setKeyRequiredForTest: (required) => set({ keyRequiredForTest: required }),
 
-      login: (token: string) => {
+      setUserName: (name) => {
+        const user = get().currentUser;
+        if (user && user.name !== name) set({ currentUser: { ...user, name } });
+      },
+
+      login: (token: string, name?: string) => {
         try {
           const decoded = jwtDecode<{
             id: string;
@@ -50,6 +57,7 @@ export const useAuthStore = create<AuthState>()(
               email: decoded.email,
               userType: decoded.userType,
               instituteId: decoded.instituteId,
+              name,
             },
             isAuthenticated: true,
           });

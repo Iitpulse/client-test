@@ -21,7 +21,7 @@ function formatWhen(iso: string) {
 
 export default function TestsPage() {
   const router = useRouter();
-  const { checkAuth, isAuthenticated, currentUser, setTestId, logout } = useAuthStore();
+  const { checkAuth, isAuthenticated, setTestId } = useAuthStore();
   const { reset } = useTestStore();
   const [tests, setTests] = useState<AvailableTest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,25 +54,9 @@ export default function TestsPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <header className="flex items-center justify-between px-4 py-2 border-b bg-white">
-        <span className="text-2xl font-bold text-blue-600">IIT Pulse</span>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-gray-600">{currentUser?.email}</span>
-          <button
-            type="button"
-            onClick={() => {
-              logout();
-              router.push("/login");
-            }}
-            className="px-3 py-1 border rounded hover:bg-gray-50"
-          >
-            Log out
-          </button>
-        </div>
-      </header>
-
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8">
+    // Inside the student shell (StudentNav / PhoneTabBar; sign-out lives on /profile). Redesigned in M2 (Student-Tests).
+    <div className="w-full max-w-3xl mx-auto">
+      <div>
         <h1 className="text-xl font-semibold mb-1">Your tests</h1>
         <p className="text-sm text-gray-500 mb-6">Tests assigned to your batch. A test can be started between its start and end time.</p>
 
@@ -97,7 +81,7 @@ export default function TestsPage() {
             const canOpen = t.state === "live" || t.state === "in_progress";
             const examName = typeof t.exam === "string" ? t.exam : t.exam?.name;
             return (
-              <li key={t._id} className="rounded-lg border p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <li key={t._id} className="rounded-lg border bg-white p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="font-medium">{t.name}</h2>
@@ -114,7 +98,7 @@ export default function TestsPage() {
                 </div>
                 {t.state === "submitted" ? (
                   t.result?.visible ? (
-                    <button type="button" onClick={() => router.push(`/results/${t._id}`)} className="px-4 py-2 rounded border border-blue-600 text-blue-700 text-sm font-medium hover:bg-blue-50">
+                    <button type="button" onClick={() => router.push(`/results/${t._id}`)} className="px-4 py-2 rounded border border-brand text-brand text-sm font-medium hover:bg-brand-50">
                       View result
                     </button>
                   ) : (
@@ -129,7 +113,7 @@ export default function TestsPage() {
                     type="button"
                     disabled={!canOpen}
                     onClick={() => open(t)}
-                    className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:bg-gray-300 disabled:text-gray-600"
+                    className="px-4 py-2 rounded bg-brand text-white hover:bg-brand-600 text-sm font-medium disabled:bg-gray-300 disabled:text-gray-600"
                   >
                     {t.state === "in_progress" ? "Resume" : t.state === "upcoming" ? "Not started" : t.state === "ended" ? "Ended" : "Start"}
                   </button>
@@ -138,7 +122,7 @@ export default function TestsPage() {
             );
           })}
         </ul>
-      </main>
+      </div>
     </div>
   );
 }

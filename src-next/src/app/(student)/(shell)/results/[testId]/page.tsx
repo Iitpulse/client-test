@@ -84,14 +84,12 @@ export default function StudentResultPage() {
   const totalMax = sections.reduce((a, s) => a + s.max, 0);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <header className="flex items-center justify-between px-4 py-2 border-b bg-white">
-        <span className="text-2xl font-bold text-blue-600">IIT Pulse</span>
-        <button type="button" onClick={() => router.push("/tests")} className="px-3 py-1 border rounded text-sm hover:bg-gray-50">
-          Back to your tests
+    // Inside the student shell (StudentNav / PhoneTabBar). The page itself is redesigned in M2 (Student-Result).
+    <div className="w-full max-w-4xl mx-auto">
+      <div>
+        <button type="button" onClick={() => router.push("/tests")} className="mb-4 text-sm font-semibold text-brand hover:underline">
+          ← Back to your tests
         </button>
-      </header>
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-8">
         {error && (
           <div className="rounded border border-amber-200 bg-amber-50 p-4 text-amber-900">
             <p className="font-medium">{error}</p>
@@ -107,28 +105,28 @@ export default function StudentResultPage() {
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              <div className="rounded-lg border p-4">
+              <div className="rounded-lg border bg-white p-4">
                 <p className="text-xs uppercase text-gray-500">Score</p>
                 <p className="text-2xl font-bold">
                   {total} <span className="text-base font-normal text-gray-500">/ {totalMax}</span>
                 </p>
               </div>
-              <div className="rounded-lg border p-4">
+              <div className="rounded-lg border bg-white p-4">
                 <p className="text-xs uppercase text-gray-500">Correct</p>
                 <p className="text-2xl font-bold text-green-700">{sections.reduce((a, s) => a + s.correct, 0)}</p>
               </div>
-              <div className="rounded-lg border p-4">
+              <div className="rounded-lg border bg-white p-4">
                 <p className="text-xs uppercase text-gray-500">Wrong</p>
                 <p className="text-2xl font-bold text-red-700">{sections.reduce((a, s) => a + s.wrong, 0)}</p>
               </div>
-              <div className="rounded-lg border p-4">
+              <div className="rounded-lg border bg-white p-4">
                 <p className="text-xs uppercase text-gray-500">Skipped</p>
                 <p className="text-2xl font-bold text-gray-600">{sections.reduce((a, s) => a + s.skipped, 0)}</p>
               </div>
             </div>
 
             <h2 className="font-semibold mb-2">Sections</h2>
-            <div className="overflow-x-auto rounded-lg border mb-8">
+            <div className="overflow-x-auto rounded-lg border bg-white mb-8">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-left">
                   <tr>
@@ -171,7 +169,7 @@ export default function StudentResultPage() {
                   const answered = chosen.size > 0 || (r?.enteredAnswer !== undefined && r?.enteredAnswer !== "");
                   const tone = !answered ? "border-gray-200" : marks > 0 ? "border-green-300" : "border-red-300";
                   return (
-                    <div key={q._id} className={`rounded-lg border ${tone} p-4`}>
+                    <div key={q._id} className={`rounded-lg border ${tone} bg-white p-4`}>
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <span className="text-sm font-semibold">Q{n}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${!answered ? "bg-gray-100 text-gray-700" : marks > 0 ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
@@ -219,7 +217,7 @@ export default function StudentResultPage() {
             </div>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }

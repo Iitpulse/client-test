@@ -1,0 +1,67 @@
+name: CI
+
+# Public repo: this workflow uses no secrets. It checks the active Next.js app in src-next/.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "src-next/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [master]
+    paths:
+      - "src-next/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: src-next
+
+jobs:
+  check:
+    name: Typecheck, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Placeholder build-time values; real ones are set per deployment.
+      NEXT_PUBLIC_API_GATEWAY: http://localhost:8000
+      NEXT_PUBLIC_TEST_PORTAL_URI: http://localhost:3001
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.4
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            src-next/.next/cache
+          key: ${{ runner.os }}-bun-next-${{ hashFiles('src-next/bun.lock') }}-${{ hashFiles('src-next/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-next-${{ hashFiles('src-next/bun.lock') }}-
+            ${{ runner.os }}-bun-next-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Build
+        run: bun run build

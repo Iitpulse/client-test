@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/nta/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,20 +10,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/nta/ui/dialog";
 import { useAuthStore, useTestStore, useAuthHydrated } from "@/stores";
-import { QuestionObjective } from "@/components/question-objective";
-import { QuestionInteger } from "@/components/question-integer";
-import { Legend } from "@/components/legend";
-import { cn } from "@/lib/utils";
+import { QuestionObjective } from "@/components/nta/question-objective";
+import { QuestionInteger } from "@/components/nta/question-integer";
+import { Legend } from "@/components/nta/legend";
+import { cn } from "@/components/nta/utils";
 import {
   GENERAL_INSTRUCTIONS,
   NAVIGATING_INSTRUCTIONS,
   ANSWERING_INSTRUCTIONS,
   SECTION_INSTRUCTIONS,
-} from "@/lib/constants";
-import { RenderLatex } from "@/components/render-latex";
-import { useUITemplate, useTemplateStyles } from "@/contexts/ui-template.context";
+} from "@/components/nta/instructions";
+import { RenderLatex } from "@/components/nta/render-latex";
+import { useUITemplate, useTemplateStyles } from "@/components/nta/ui-template.context";
 
 export default function TestPage() {
   const router = useRouter();

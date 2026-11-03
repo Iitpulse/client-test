@@ -428,8 +428,10 @@ export const useTestStore = create<TestState>((set, get) => ({
   },
 
   saveProgress: async (options?: { keepalive?: boolean }) => {
-    const { test, questions } = get();
-    if (!test) return;
+    const { test, questions, isSubmitted } = get();
+    // Nothing to save once submitted. /result is in the other root layout, so leaving /test after a
+    // submit is a full page load: pending autosave timers and beforeunload can still fire meanwhile.
+    if (!test || isSubmitted) return;
 
     const testId = (test as { id?: string; _id?: string }).id ||
                    (test as { id?: string; _id?: string })._id;

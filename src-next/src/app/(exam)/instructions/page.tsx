@@ -10,7 +10,7 @@ import {
   SECTION_INSTRUCTIONS,
   INSTRUCTIONS_WARNING,
   INSTRUCTIONS_CONFIRMATION,
-} from "@/lib/constants";
+} from "@/components/nta/instructions";
 
 export default function InstructionsPage() {
   const router = useRouter();

@@ -689,7 +689,7 @@ export default function TestPage() {
       )}
       {/* Header - Logo Section */}
       <header
-        className="flex items-center justify-between px-4 py-2 border-b test-header"
+        className="flex items-center justify-between px-4 py-2 border-b test-header exam-header max-md:flex-wrap max-md:gap-2"
         style={{
           backgroundColor: colors.surface,
           borderColor: colors.border,
@@ -708,11 +708,11 @@ export default function TestPage() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 max-md:w-full">
           <button
             type="button"
             onClick={() => setQuestionPaperModal(true)}
-            className="flex items-center gap-2 px-4 py-2 btn-header-green rounded text-sm"
+            className="flex items-center gap-2 px-4 py-2 btn-header-green rounded text-sm max-md:flex-auto max-md:justify-center max-md:px-3"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -722,7 +722,7 @@ export default function TestPage() {
           <button
             type="button"
             onClick={() => setInstructionsModal(true)}
-            className="flex items-center gap-2 px-4 py-2 btn-header-blue rounded text-sm"
+            className="flex items-center gap-2 px-4 py-2 btn-header-blue rounded text-sm max-md:flex-auto max-md:justify-center max-md:px-3"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -734,7 +734,7 @@ export default function TestPage() {
 
       {/* Test Info Bar */}
       <div
-        className="flex items-center justify-between px-4 py-2 border-b test-info-bar"
+        className="flex items-center justify-between px-4 py-2 border-b test-info-bar exam-info-bar"
         style={{ backgroundColor: colors.surface, borderColor: colors.border }}
       >
         <div className="flex items-center gap-3">
@@ -762,7 +762,7 @@ export default function TestPage() {
               <div className="text-sm">
                 <span style={{ color: colors.textSecondary }}>Time Remaining : </span>
                 <span
-                  className="font-mono px-2 py-0.5 rounded"
+                  className="font-mono px-2 py-0.5 rounded max-md:whitespace-nowrap"
                   style={{ backgroundColor: `${colors.primary}20`, color: colors.primary }}
                 >
                   {timer.hours} : {timer.minutes} : {timer.seconds}
@@ -784,12 +784,12 @@ export default function TestPage() {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden test-main-container">
+      <div className="flex flex-1 overflow-hidden test-main-container max-md:flex-col">
         {/* Left Container - Question Area */}
-        <main className={cn("flex flex-col", isExpanded ? "w-full" : "w-[60%]")}>
+        <main className={cn("flex flex-col", isExpanded ? "w-full" : "w-[60%] max-md:w-full")}>
           {/* Section/Subject Info Bar */}
-          <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border border-blue-200 rounded-t mb-0">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border border-blue-200 rounded-t mb-0 max-md:flex-wrap max-md:gap-x-2 max-md:gap-y-1">
+            <div className="flex items-center gap-4 max-md:flex-wrap max-md:gap-y-0.5">
               <span className="text-sm font-medium text-blue-800">
                 {question.sectionSubject || question.sectionName || "Section"}
               </span>
@@ -944,7 +944,8 @@ export default function TestPage() {
         {/* Right Container - Question Palette */}
         <aside className={cn(
           "flex items-start",
-          isExpanded ? "w-[10%]" : "w-[40%]"
+          isExpanded ? "w-[10%]" : "w-[40%]",
+          "max-md:w-full max-md:mt-6"
         )}>
           <button
             type="button"
@@ -961,7 +962,7 @@ export default function TestPage() {
           </button>
 
           {!isExpanded && (
-            <div className="flex-1 min-w-[250px]">
+            <div className="flex-1 min-w-[250px] max-md:min-w-0">
               {/* Section Tabs */}
               {sections.length > 1 && (
                 <div className="mb-3 border-b">

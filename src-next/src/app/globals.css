@@ -249,6 +249,16 @@
   align-content: flex-start;
 }
 
+/* Exam screen below 768px only (phones): gutters line up with the 90%-wide main container.
+   Desktop and tablet (>= 768px) are untouched; the instructions page does not use these classes. */
+@media (width < 48rem) {
+  .test-header.exam-header,
+  .test-info-bar.exam-info-bar {
+    padding-left: 5%;
+    padding-right: 5%;
+  }
+}
+
 /* Action Button Styles */
 .btn-save-next {
   background: #55bc7e;

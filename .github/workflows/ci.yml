@@ -1,6 +1,9 @@
 name: CI
 
-# Public repo: this workflow uses no secrets. It checks the active Next.js app in src-next/.
+# Public repo. It checks the active Next.js app in src-next/. The only credential is the job's own GITHUB_TOKEN
+# (read-only, packages: read) to install the private @iitpulse/ui from GitHub Packages; no stored secret is used.
+# Pull requests from forks are skipped: their GITHUB_TOKEN cannot read the org's private packages, and no token
+# is ever handed to fork code (this is `pull_request`, never `pull_request_target`).
 on:
   push:
     branches: [master]
@@ -16,6 +19,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -30,6 +34,7 @@ jobs:
     name: Typecheck, lint and build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       # Placeholder build-time values; real ones are set per deployment.
@@ -54,8 +59,18 @@ jobs:
             ${{ runner.os }}-bun-next-${{ hashFiles('src-next/bun.lock') }}-
             ${{ runner.os }}-bun-next-
 
+      # src-next/.npmrc maps @iitpulse to GitHub Packages (no token). The token goes into a user-level ~/.npmrc for
+      # this step only and is removed right after, so typecheck, lint and build never see it.
+      # Needs: @iitpulse/ui package settings -> "Manage Actions access" -> Iitpulse/client-test (read).
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '//npm.pkg.github.com/:_authToken=%s\n' "$NODE_AUTH_TOKEN" > ~/.npmrc
+          status=0
+          bun install --frozen-lockfile || status=$?
+          rm -f ~/.npmrc
+          exit $status
 
       - name: Typecheck
         run: bunx tsc --noEmit

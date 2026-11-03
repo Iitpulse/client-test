@@ -1,0 +1,8 @@
+# Never send local installs, build output or env files into the build context
+node_modules
+.next
+out
+.env*
+*.tsbuildinfo
+npm-debug.log*
+.DS_Store

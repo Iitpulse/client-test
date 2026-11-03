@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { InkUnderline } from "@iitpulse/ui";
 import { Button } from "@/components/ui/button";
 import { BlockedIcon, ClockIcon, LinkBrokenIcon } from "@/components/shell/icons";
-import type { LinkErrorCode } from "@/lib/api";
+import type { LinkErrorCode } from "@/lib/auth-api";
 import { SignInCard } from "./signin-frame";
 
 type Problem = LinkErrorCode | "OFFLINE";

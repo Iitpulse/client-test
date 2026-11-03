@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { InkUnderline } from "@iitpulse/ui";
 import { useAuthStore, useTestStore } from "@/stores";
-import { api, apiError } from "@/lib/api";
+import { authApi, apiError } from "@/lib/auth-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,7 +53,7 @@ function LoginWithKeyForm() {
     setError("");
     setLoading(true);
     try {
-      const response = await api.auth.loginWithKey(key.trim());
+      const response = await authApi.loginWithKey(key.trim());
       const data = response.data?.data;
       if (!data?.token) throw new Error("No token returned");
       reset();

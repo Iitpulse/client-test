@@ -1,6 +1,10 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
 
-const AUTH_TOKEN_KEY = "IITP_TEST_AUTH_TOKEN";
+import { AUTH_TOKEN_KEY, auth } from "./session";
+import { apiError, type ApiErrorBody, type LinkErrorCode } from "./auth-api";
+
+export { auth, apiError };
+export type { ApiErrorBody, LinkErrorCode };
 
 // API Gateway URL
 const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
@@ -77,47 +81,9 @@ export interface StudentResult {
   totalTimeTaken?: number;
 }
 
-/** Every error body from the services: { success: false, message, code, error: { code, message } } */
-export interface ApiErrorBody {
-  success?: false;
-  message?: string;
-  code?: string;
-  error?: { code?: string; message?: string };
-}
-
-/** HTTP status and machine-readable code of a failed call (status 0 = no response: offline, CORS, timeout). */
-export function apiError(err: unknown): { status: number; code?: string; message?: string } {
-  const res = (err as { response?: { status?: number; data?: ApiErrorBody } })?.response;
-  if (!res) return { status: 0 };
-  const data = res.data;
-  return { status: res.status ?? 0, code: data?.code ?? data?.error?.code, message: data?.message ?? data?.error?.message };
-}
-
-/** Why a sign-in link (access key) was refused: POST /student/auth/login-with-key answers 401 with one of these. */
-export type LinkErrorCode = "LINK_INVALID" | "LINK_EXPIRED" | "LINK_REVOKED";
-
 // API clients
 export const apiUsers = createApiClient("users");
 export const apiTests = createApiClient("tests");
-
-// Auth helpers
-export const auth = {
-  getToken: (): string | null => {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem(AUTH_TOKEN_KEY);
-  },
-  setToken: (token: string): void => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
-  },
-  removeToken: (): void => {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-  },
-  isAuthenticated: (): boolean => {
-    return !!auth.getToken();
-  },
-};
 
 // UI Template types
 export interface ColorScheme {
@@ -184,27 +150,9 @@ export interface TestUITemplate {
 // API endpoints
 export const api = {
   auth: {
-    login: (credentials: { email: string; password: string }) =>
-      apiUsers.post("/auth/login", credentials),
-    /** Exchange a test access key (from a /auth/<key>/<testId> link or typed in) for a session */
-    loginWithKey: (key: string) =>
-      apiUsers.post<{ success: boolean; data: { token: string; testId: string; student: { id: string; name?: string; email?: string } } }>(
-        "/student/auth/login-with-key",
-        { key }
-      ),
+    // Sign-in calls (login, login-with-key, password reset) live in lib/auth-api.ts on plain fetch.
     /** The signed-in user's profile (name for the avatar). Students may call it (users student-guard). */
     me: () => apiUsers.get<{ success: boolean; data: { _id: string; name?: string; email?: string } }>("/auth/me"),
-  },
-  /** Password reset by email link. The link opens /reset-password?token=... in the app named by `app`. */
-  passwordReset: {
-    /** Always 200 with the same generic message (no account enumeration); 429 TOO_MANY_ATTEMPTS when throttled. */
-    request: (email: string) => apiUsers.post<{ success: boolean; message: string }>("/reset-password/request", { email, app: "student" }),
-    /** Checks a link without using it up. 400 RESET_TOKEN_INVALID for a bad, used or expired link. */
-    verify: (token: string) =>
-      apiUsers.post<{ success: boolean; data: { email: string; expiresAt: string } }>("/reset-password/verify", { token }),
-    /** Sets the password (6-128 characters) and uses the link up. 400 RESET_TOKEN_INVALID as above. */
-    reset: (token: string, newPassword: string) =>
-      apiUsers.post<{ success: boolean; message: string }>("/reset-password/reset", { token, newPassword }),
   },
   tests: {
     getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),

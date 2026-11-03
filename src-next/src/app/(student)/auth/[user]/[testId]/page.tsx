@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { InkUnderline } from "@iitpulse/ui";
 import { useAuthStore, useTestStore } from "@/stores";
-import { api, apiError, type LinkErrorCode } from "@/lib/api";
+import { authApi, apiError, type LinkErrorCode } from "@/lib/auth-api";
 import { SignInCard, SignInFrame } from "@/components/auth/signin-frame";
 import { LinkProblem } from "@/components/auth/link-problem";
 import { ArrowRightIcon, CheckIcon, Spinner } from "@/components/shell/icons";
@@ -62,7 +62,7 @@ export default function AuthWithURIPage() {
     };
 
     if (credential && credential.length <= 32) {
-      api.auth
+      authApi
         .loginWithKey(credential)
         .then((response) => {
           const data = response.data?.data;

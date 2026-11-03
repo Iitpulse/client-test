@@ -7,30 +7,32 @@ import { cn } from "@/lib/utils"
 // shadcn new-york Button, restyled through @iitpulse/ui tokens to the boards' .btn family (Main board):
 // primary = the navy gradient, secondary = white with a hairline, ghost, danger. No shadows; focus is a
 // 3px brand-200 outline. Sizes: sm 32px, default 40px, lg 48px, icon 40px.
+// cn() does not merge conflicting utilities (lib/utils.ts), so base, variant and size never set the same property:
+// radius and font size belong to the size, disabled opacity to the variant.
 const buttonVariants = cva(
   [
-    "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-control border border-transparent text-sm font-semibold no-underline",
+    "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap border font-semibold no-underline",
     "transition-[transform,background,border-color,color,filter] duration-200 ease-standard active:scale-[.97]",
     "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-brand-200",
-    "disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed",
+    "disabled:cursor-not-allowed aria-disabled:cursor-not-allowed",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   ].join(" "),
   {
     variants: {
       variant: {
+        // Disabled primary turns Navy 100 with muted text at full opacity (the board's .btn-primary:disabled).
         primary:
-          "border-brand bg-(image:--grad-btn) text-on-brand hover:bg-(image:--grad-btn-hover) hover:text-on-brand disabled:border-transparent disabled:bg-brand-100 disabled:bg-none disabled:text-muted disabled:opacity-100",
-        secondary: "border-line bg-surface text-ink hover:border-brand-200 hover:bg-brand-50 hover:text-brand",
-        ghost: "bg-transparent text-ink-2 hover:bg-line-2 hover:text-ink",
-        danger: "bg-danger text-white hover:bg-[#A30000] hover:text-white",
-        link: "h-auto px-0 text-brand underline-offset-4 hover:underline",
+          "border-brand bg-(image:--grad-btn) text-on-brand hover:bg-(image:--grad-btn-hover) hover:text-on-brand disabled:border-transparent disabled:bg-brand-100 disabled:bg-none disabled:text-muted",
+        secondary: "border-line bg-surface text-ink hover:border-brand-200 hover:bg-brand-50 hover:text-brand disabled:opacity-60",
+        ghost: "border-transparent bg-transparent text-ink-2 hover:bg-line-2 hover:text-ink disabled:opacity-60",
+        danger: "border-transparent bg-danger text-white hover:bg-[#A30000] hover:text-white disabled:opacity-60",
       },
       size: {
-        default: "h-10 px-4",
+        default: "h-10 rounded-control px-4 text-sm",
         sm: "h-8 rounded-chip px-3 text-[13px]",
         lg: "h-12 rounded-tile px-[22px] text-[15px]",
-        icon: "size-10 p-0",
-        "icon-sm": "size-8 rounded-chip p-0",
+        icon: "size-10 rounded-control text-sm",
+        "icon-sm": "size-8 rounded-chip text-[13px]",
       },
     },
     defaultVariants: {

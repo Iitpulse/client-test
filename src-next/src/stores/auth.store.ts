@@ -5,7 +5,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { jwtDecode } from "jwt-decode";
 import { ICurrentUser } from "@/types";
-import { auth } from "@/lib/api";
+import { auth } from "@/lib/session";
 
 interface AuthState {
   currentUser: ICurrentUser | null;

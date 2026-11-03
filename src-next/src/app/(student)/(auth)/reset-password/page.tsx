@@ -10,7 +10,7 @@ import { PasswordField } from "@/components/auth/password-field";
 import { Notice } from "@/components/auth/notice";
 import { ClockIcon, Spinner } from "@/components/shell/icons";
 import { RESET_EMAIL_KEY, passwordStrength } from "@/components/auth/reset-email";
-import { api, apiError } from "@/lib/api";
+import { authApi, apiError } from "@/lib/auth-api";
 
 // Student-Login board, reset state: /reset-password?token=... from the email (new in the student app).
 // verify checks the link without using it up; reset sets the password and uses the link up (it works once).
@@ -47,7 +47,7 @@ function ResetPasswordForm() {
   useEffect(() => {
     if (!token) return;
     let live = true;
-    api.passwordReset
+    authApi.passwordReset
       .verify(token)
       .then((res) => {
         if (!live) return;
@@ -78,7 +78,7 @@ function ResetPasswordForm() {
     if (password !== confirm) return setError("The two passwords don't match.");
     setSaving(true);
     try {
-      await api.passwordReset.reset(token, password);
+      await authApi.passwordReset.reset(token, password);
       router.replace("/login?reset=done");
     } catch (err: unknown) {
       const { status, code } = apiError(err);

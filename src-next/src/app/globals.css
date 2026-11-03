@@ -1,10 +1,12 @@
 /*
  * Student app global CSS (every route except the frozen NTA exam, which loads only (exam)/nta.css).
- * Order per @iitpulse/ui: Tailwind, then the design system (tokens, motion, base, components, classroom), then KaTeX.
+ * Order per @iitpulse/ui: Tailwind, then the design system (tokens, motion, base, components, classroom).
+ * KaTeX's CSS (about 20 KB and 20 @font-face rules) is not global: it would sit in the render-blocking CSS of
+ * the sign-in screens, which show no maths. Import "katex/dist/katex.min.css" in the layout or page that renders
+ * <MathText> (today: the kitchen sink; the old results page gets it through components/render-latex).
  */
 @import "tailwindcss";
 @import "@iitpulse/ui/index.css";
-@import "katex/dist/katex.min.css";
 
 /*
  * shadcn names, mapped onto the design-system tokens. The regenerated primitives in components/ui use the

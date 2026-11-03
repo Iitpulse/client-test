@@ -11,8 +11,8 @@ import { PasswordField } from "@/components/auth/password-field";
 import { Notice } from "@/components/auth/notice";
 import { ArrowRightIcon, Spinner } from "@/components/shell/icons";
 import { RESET_EMAIL_KEY } from "@/components/auth/reset-email";
-import { useAuthStore } from "@/stores";
-import { api, apiError } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth.store";
+import { authApi, apiError } from "@/lib/auth-api";
 
 // Student-Login board, sign-in state. POST /users/auth/login (unchanged); the session token goes to the auth store.
 export default function LoginPage() {
@@ -54,7 +54,7 @@ function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      const response = await api.auth.login({ email: email.trim(), password });
+      const response = await authApi.login({ email: email.trim(), password });
       // The users service wraps payloads as { success, data: { token } }
       const token = response.data?.data?.token ?? response.data?.token;
       if (!token) throw new Error("No token returned");

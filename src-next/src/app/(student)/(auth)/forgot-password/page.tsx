@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/auth/notice";
 import { ArrowLeftIcon, MailIcon, Spinner } from "@/components/shell/icons";
-import { api, apiError } from "@/lib/api";
+import { authApi, apiError } from "@/lib/auth-api";
 
 // Student-Login board, forgot-password state. POST /users/reset-password/request { email, app: "student" }:
 // always the same 200 whether or not the account exists, so the screen never says whether it does.
@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      await api.passwordReset.request(address);
+      await authApi.passwordReset.request(address);
       setSentTo(address);
     } catch (err: unknown) {
       const { status } = apiError(err);

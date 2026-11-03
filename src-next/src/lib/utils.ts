@@ -1,16 +1,12 @@
 import { clsx, type ClassValue } from "clsx"
-import { extendTailwindMerge } from "tailwind-merge"
 
-// The design system's type scale (text-d1, text-h1, ..., text-body from @iitpulse/ui tokens.css) is a font size,
-// not a colour: tell tailwind-merge, or cn("text-ink", "text-h1") would drop one of them.
-const twMerge = extendTailwindMerge({
-  extend: {
-    theme: {
-      text: ["d1", "h1", "h2", "h3", "body"],
-    },
-  },
-})
-
+/**
+ * Join class names. Deliberately clsx only, without tailwind-merge: its 9 KB (gzip) chunk is loaded by every
+ * page, and on /login it pushed Lighthouse mobile LCP over the 2.5 s M1 budget. So the primitives in
+ * components/ui never set the same property twice (base, variant and size are disjoint), and a className passed
+ * in must only ADD utilities (w-full, group, pr-12 after px-*), never restate one the primitive sets; use a
+ * variant or size instead. (The frozen NTA copy in components/nta/utils.ts keeps tailwind-merge.)
+ */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return clsx(inputs)
 }

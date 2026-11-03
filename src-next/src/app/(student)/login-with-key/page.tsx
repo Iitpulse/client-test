@@ -1,15 +1,30 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { InkUnderline } from "@iitpulse/ui";
 import { useAuthStore, useTestStore } from "@/stores";
-import { api } from "@/lib/api";
+import { api, apiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/auth/notice";
+import { SignInCard, SignInFrame } from "@/components/auth/signin-frame";
+import { ArrowRightIcon, Spinner } from "@/components/shell/icons";
 
 /**
- * Manual entry for a test access key. Links of the form /auth/<key>/<testId> exchange the key
- * automatically; this page is for students who were given the key by itself.
+ * Manual entry for a test access key (Student-SignInLink frame). Links of the form /auth/<key>/<testId> exchange
+ * the key automatically; this page is for students who were given the key by itself. Kept at the same URL, with
+ * ?key= (prefill) and ?error=invalid (older redirects) still understood.
  * useSearchParams needs a Suspense boundary, or `next build` fails to prerender the page.
  */
+const ERROR_TEXT: Record<string, string> = {
+  LINK_EXPIRED: "This key has expired. Ask your teacher for a new link, or sign in with your email.",
+  LINK_REVOKED: "This key was turned off by your institute. Use the newest link your teacher sent.",
+  LINK_INVALID: "That key doesn't match any test. Check the 10 characters and try again.",
+};
+
 export default function LoginWithKeyPage() {
   return (
     <Suspense fallback={null}>
@@ -24,7 +39,7 @@ function LoginWithKeyForm() {
   const { login, setTestId } = useAuthStore();
   const { reset } = useTestStore();
   const [key, setKey] = useState("");
-  const [error, setError] = useState(searchParams.get("error") === "invalid" ? "That link's access key is not valid or has expired. Enter your key below or ask your institute for a new link." : "");
+  const [error, setError] = useState(searchParams.get("error") === "invalid" ? ERROR_TEXT.LINK_INVALID : "");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -42,51 +57,68 @@ function LoginWithKeyForm() {
       const data = response.data?.data;
       if (!data?.token) throw new Error("No token returned");
       reset();
-      login(data.token);
+      login(data.token, data.student?.name);
       setTestId(data.testId);
       router.push("/instructions");
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number; data?: { error?: { message?: string } } } })?.response?.status;
-      const serverMessage = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message;
-      setError(status === 401 || status === 404 ? serverMessage || "This access key is not valid" : "Could not sign in right now. Please try again.");
-    } finally {
+      const { status, code } = apiError(err);
+      setError(
+        code && ERROR_TEXT[code]
+          ? ERROR_TEXT[code]
+          : status === 400 || status === 401 || status === 404
+            ? ERROR_TEXT.LINK_INVALID
+            : status === 0
+              ? "Can't reach IIT-PULSE. Check your connection and try again."
+              : "Couldn't sign you in right now. Please try again."
+      );
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md rounded-lg border bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-blue-600 mb-1">IITP Test Portal</h1>
-        <h2 className="text-lg font-semibold mb-1">Enter your test key</h2>
-        <p className="text-sm text-gray-500 mb-6">Your institute gave you a 10-character key for one test. It signs you in and opens that test.</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="key" className="block text-sm font-medium mb-1">
-              Key
-            </label>
-            <input
+    <SignInFrame footer={false}>
+      <SignInCard gap={22}>
+        <div className="col gap-2.5">
+          <h1 className="h2">
+            Enter your test <InkUnderline delay={450}>key</InkUnderline>
+          </h1>
+          <p className="sm muted m-0">Your teacher&apos;s link ends with a 10-character key. It signs you in and opens that one test.</p>
+        </div>
+        {error && <Notice tone="error">{error}</Notice>}
+        <form className="col gap-[22px]" onSubmit={handleSubmit}>
+          <div className="field">
+            <Label htmlFor="key">Key</Label>
+            <Input
               id="key"
               value={key}
               onChange={(e) => setKey(e.target.value.toUpperCase())}
               placeholder="e.g. K7PX4M2QHD"
               autoComplete="off"
+              autoCapitalize="characters"
               spellCheck={false}
-              className="w-full rounded border px-3 py-2 font-mono tracking-widest uppercase"
+              maxLength={64}
+              className="font-mono tracking-[.2em] uppercase placeholder:font-sans placeholder:tracking-normal placeholder:normal-case"
+              aria-invalid={error ? true : undefined}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button type="submit" disabled={loading || !key.trim()} className="w-full rounded bg-blue-600 px-4 py-2 text-white font-medium disabled:bg-gray-300">
-            {loading ? "Signing in…" : "Open my test"}
-          </button>
+          {loading ? (
+            <Button type="submit" size="lg" className="w-full disabled:opacity-90" disabled>
+              <Spinner />
+              Opening your test…
+            </Button>
+          ) : (
+            <Button type="submit" size="lg" className="group w-full" disabled={!key.trim()}>
+              Open my test <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-[3px]" />
+            </Button>
+          )}
         </form>
-        <p className="mt-6 text-center text-sm text-gray-500">
-          Have an account instead?{" "}
-          <button type="button" onClick={() => router.push("/login")} className="text-blue-600 underline">
-            Sign in with email
-          </button>
-        </p>
-      </div>
-    </div>
+      </SignInCard>
+      <p className="xs muted m-0 text-center">
+        Have an account instead?{" "}
+        <Link href="/login" className="font-semibold">
+          Sign in with email
+        </Link>
+      </p>
+    </SignInFrame>
   );
 }

@@ -95,9 +95,20 @@ function QuietLine({ message, retry }: { message: string; retry?: () => void }) 
 
 /**
  * Student-Result: "Your 3 biggest leaks: 33 of the 52 marks you lost", one column per leak, the first one marked
- * "start here". `onReview` opens a leak's question in the pane below (questionNs are the numbers the student saw).
+ * "start here". `onReview` opens a leak's question in the pane below. questionNs are paper numbers (n, as the M2
+ * routes take them); `labelOf` turns one into the number the student saw (shownAs) for the link text.
  */
-export function LeaksCard({ st, now, onReview }: { st: SummaryState; now: number; onReview?: (shownAs: number) => void }) {
+export function LeaksCard({
+  st,
+  now,
+  onReview,
+  labelOf = (n) => n,
+}: {
+  st: SummaryState;
+  now: number;
+  onReview?: (n: number) => void;
+  labelOf?: (n: number) => number;
+}) {
   if (st.kind === "hidden") return null;
   const style = { "--i": 6 } as React.CSSProperties;
   if (st.kind !== "ready") {
@@ -120,14 +131,14 @@ export function LeaksCard({ st, now, onReview }: { st: SummaryState; now: number
       </div>
       <div className="grid grid-cols-3 gap-4 max-lg:grid-cols-1">
         {s.leaks.map((l, i) => (
-          <LeakColumn key={`${l.title}-${i}`} leak={l} first={i === 0} onReview={onReview} />
+          <LeakColumn key={`${l.title}-${i}`} leak={l} first={i === 0} onReview={onReview} labelOf={labelOf} />
         ))}
       </div>
     </article>
   );
 }
 
-function LeakColumn({ leak, first, onReview }: { leak: Leak; first: boolean; onReview?: (shownAs: number) => void }) {
+function LeakColumn({ leak, first, onReview, labelOf }: { leak: Leak; first: boolean; onReview?: (n: number) => void; labelOf: (n: number) => number }) {
   return (
     <div className="col gap-1.5">
       <div className="row wrap gap-2">
@@ -147,8 +158,8 @@ function LeakColumn({ leak, first, onReview }: { leak: Leak; first: boolean; onR
         <span className="row wrap xs muted gap-x-2 gap-y-1">
           Review
           {leak.questionNs.map((n) => (
-            <button key={n} type="button" className="mono font-medium text-primary underline-offset-2 hover:underline" onClick={() => onReview(n)} aria-label={`Review question ${n}`}>
-              Q{n}
+            <button key={n} type="button" className="mono font-medium text-primary underline-offset-2 hover:underline" onClick={() => onReview(n)} aria-label={`Review question ${labelOf(n)}`}>
+              Q{labelOf(n)}
             </button>
           ))}
         </span>
@@ -244,10 +255,10 @@ export function ExplainButton({ outcome, onClick }: { outcome: QuestionOutcome; 
 /**
  * The panel itself: "Comparing your answer with the solution…" while it loads or is being written, then why,
  * the worked steps, the key idea and the trap, and "Was this helpful?".
- * `n` is the number the student saw (shownAs), as the AI routes take it.
+ * `n` is the paper number (as the M2 question routes take it), not the number the student saw.
  */
-export function WhyPanel({ testId, cell, now, compact }: { testId: string; cell: Pick<QuestionCell, "shownAs">; now: number | null; compact?: boolean }) {
-  const n = cell.shownAs;
+export function WhyPanel({ testId, cell, now, compact }: { testId: string; cell: Pick<QuestionCell, "n">; now: number | null; compact?: boolean }) {
+  const n = cell.n;
   const { query, late, retry } = useAiExplanation(testId, n, true);
   const d = query.data;
   const e = query.error instanceof StudentApiError ? query.error : null;

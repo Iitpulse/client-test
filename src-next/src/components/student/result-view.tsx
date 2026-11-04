@@ -112,10 +112,11 @@ function PublishedDesktop({ data, r, now, ai }: { data: StudentResult; r: Publis
   const published = data.visibility.publishedAt;
   // The pane's selected question (paper n), so a leak's "Review Q…" can open it.
   const [sel, setSel] = useState<number | null>(null);
-  const reviewLeak = (shownAs: number) => {
-    const cell = r.questions.find((c) => c.shownAs === shownAs);
-    if (!cell) return;
-    setSel(cell.n);
+  // Leaks name paper numbers (n); the pane selects by n and labels by shownAs.
+  const shownAsOf = (n: number) => r.questions.find((c) => c.n === n)?.shownAs ?? n;
+  const reviewLeak = (n: number) => {
+    if (!r.questions.some((c) => c.n === n)) return;
+    setSel(n);
     document.getElementById("review-h")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   return (
@@ -179,7 +180,7 @@ function PublishedDesktop({ data, r, now, ai }: { data: StudentResult; r: Publis
 
       <SectionCards sections={r.sections} />
 
-      <LeaksCard st={ai} now={now} onReview={reviewLeak} />
+      <LeaksCard st={ai} now={now} onReview={reviewLeak} labelOf={shownAsOf} />
 
       <ReviewPane data={data} r={r} now={now} sel={sel} onSel={setSel} />
     </div>

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { InkUnderline } from "@iitpulse/ui";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/shell/avatar";
-import { useAuthHydrated, useAuthStore } from "@/stores";
+import { useAuthHydrated, useAuthStore } from "@/stores/auth.store";
 
 /**
  * /profile placeholder (Student-Profile arrives in M4): who is signed in, and sign out.

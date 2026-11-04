@@ -52,35 +52,6 @@ function createApiClient(service: "users" | "tests"): AxiosInstance {
   return client;
 }
 
-export interface AvailableTest {
-  _id: string;
-  name: string;
-  description?: string;
-  exam?: { id?: string; name?: string } | string;
-  durationInMinutes: number;
-  validity: { from: string; to: string };
-  totalMarks?: number;
-  totalQuestions: number;
-  state: "upcoming" | "live" | "in_progress" | "submitted" | "ended";
-  startedAt?: string;
-  /** Present for submitted tests: whether the result can be viewed now */
-  result?: ResultVisibility;
-}
-
-export interface ResultVisibility {
-  visible: boolean;
-  reason?: string;
-  availableAt?: string;
-  mode: string;
-}
-
-export interface StudentResult {
-  test: { _id: string; name: string; sections: unknown[] };
-  submission: { sections?: unknown[]; totalMarks?: number; totalTimeTakenInSeconds?: number; submittedAt?: string };
-  totalMarks?: number;
-  totalTimeTaken?: number;
-}
-
 // API clients
 export const apiUsers = createApiClient("users");
 export const apiTests = createApiClient("tests");
@@ -149,15 +120,8 @@ export interface TestUITemplate {
 
 // API endpoints
 export const api = {
-  auth: {
-    // Sign-in calls (login, login-with-key, password reset) live in lib/auth-api.ts on plain fetch.
-    /** The signed-in user's profile (name for the avatar). Students may call it (users student-guard). */
-    me: () => apiUsers.get<{ success: boolean; data: { _id: string; name?: string; email?: string } }>("/auth/me"),
-  },
   tests: {
     getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),
-    getAvailable: () => apiTests.get<{ success: boolean; data: AvailableTest[] }>("/test/available"),
-    getResult: (testId: string) => apiTests.get<{ success: boolean; data: StudentResult }>("/test/result/student", { params: { testId } }),
     submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean }) =>
       apiTests.post("/test/submit", data),
     saveProgress: (data: { testId: string; sections: unknown[]; fullscreenExits?: number }) =>

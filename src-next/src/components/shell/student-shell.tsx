@@ -2,21 +2,36 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthHydrated, useAuthStore } from "@/stores";
-import { api } from "@/lib/api";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuthHydrated, useAuthStore } from "@/stores/auth.store";
+import { studentApi } from "@/lib/student-api";
+import { cn } from "@/lib/utils";
 import { Avatar } from "./avatar";
 import { PhoneHeader } from "./phone-header";
 import { PhoneTabBar } from "./phone-tabbar";
 import { StudentNav } from "./student-nav";
 
 /**
+ * What a phone (below 768px) shows around a screen, as the Phone-* boards draw it:
+ * - "full": Phone-Home's compact header (logo + avatar) and the PhoneTabBar (Home, Tests, Progress, Doubts).
+ * - "tabs": the screen draws its own sticky header (Phone-Tests: the title and the status tabs); tab bar stays.
+ * - "none": a drill-in screen with its own back header and no tab bar (Phone-Result, Phone-Review).
+ */
+type PhoneChrome = "full" | "tabs" | "none";
+function phoneChrome(pathname: string): PhoneChrome {
+  if (pathname.startsWith("/results/")) return "none";
+  if (pathname === "/tests") return "tabs";
+  return "full";
+}
+
+/**
  * The signed-in student shell. Desktop (768px and up): StudentNav and a 1136px column with the red margin rule
- * 20px to its left. Phone: Phone-Home's compact header and the fixed PhoneTabBar; no margin rule. 100dvh, so the
- * browser's own bars never hide the tab bar. Signed-out visitors are sent to /login.
+ * 20px to its left. Phone: see phoneChrome(); no margin rule. 100dvh, so the browser's own bars never hide the
+ * tab bar. Signed-out visitors are sent to /login.
  */
 export function StudentShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const chrome = phoneChrome(usePathname());
   const hydrated = useAuthHydrated();
   const { currentUser, checkAuth, setUserName } = useAuthStore();
   const askedName = useRef(false);
@@ -30,11 +45,10 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated || !currentUser || currentUser.name || askedName.current) return;
     askedName.current = true;
-    api.auth
+    studentApi
       .me()
-      .then((res) => {
-        const name = res.data?.data?.name;
-        if (name) setUserName(name);
+      .then((me) => {
+        if (me?.name) setUserName(me.name);
       })
       .catch(() => {});
   }, [hydrated, currentUser, setUserName]);
@@ -46,19 +60,28 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <span className="cl-margin max-md:hidden" aria-hidden="true" style={{ left: "calc(50% - 588px)" }} />
       <StudentNav name={name} email={email} />
-      <PhoneHeader
-        className="md:hidden"
-        homeHref="/"
-        right={
-          <Link href="/profile" aria-label={name ? `${name}, profile` : "Your profile"} className="-mr-1.5 flex size-11 items-center justify-center rounded-full">
-            <Avatar name={name} email={email} size={32} />
-          </Link>
-        }
-      />
-      <main className="mx-auto w-full max-w-[1200px] flex-1 px-8 pt-8 pb-16 max-md:px-4 max-md:pt-4 max-md:pb-[calc(92px+env(safe-area-inset-bottom))]">
+      {chrome === "full" && (
+        <PhoneHeader
+          className="md:hidden"
+          homeHref="/"
+          right={
+            <Link href="/profile" aria-label={name ? `${name}, profile` : "Your profile"} className="-mr-1.5 flex size-11 items-center justify-center rounded-full">
+              <Avatar name={name} email={email} size={32} />
+            </Link>
+          }
+        />
+      )}
+      <main
+        className={cn(
+          "mx-auto w-full max-w-[1200px] flex-1 px-8 pt-8 pb-16",
+          chrome === "full" && "max-md:px-4 max-md:pt-4",
+          chrome !== "full" && "max-md:px-0 max-md:pt-0",
+          chrome === "none" ? "max-md:pb-0" : "max-md:pb-[calc(92px+env(safe-area-inset-bottom))]"
+        )}
+      >
         {children}
       </main>
-      <PhoneTabBar />
+      {chrome !== "none" && <PhoneTabBar />}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { useIsDesktop } from "@/lib/use-media";
 import type { PublishedResult, QuestionCell, QuestionOutcome, ReviewQuestion, StudentResult } from "@/types/m2-student";
 import { ErrorCard, Skel } from "./common";
 import { LockIcon } from "./icons";
-import { OUTCOME_BADGE, outcomeText, subjectLabel } from "./labels";
+import { OUTCOME_BADGE, outcomeText, sentence, subjectLabel } from "./labels";
 import { LangToggle, numberingFrom, QuestionBody, shownNumber, Solution, type Lang } from "./question-body";
 
 type GridFilter = "all" | QuestionOutcome;
@@ -168,7 +168,7 @@ function QuestionCard({
             <LockIcon size={18} />
           </span>
           <span className="sm">
-            {withStop(data.review.reason || "Answers and solutions open when the test has closed for everyone")}
+            {sentence(data.review.reason || "Answers and solutions open when the test has closed for everyone")}
             {data.review.availableAt ? ` They open ${relativeDayTime(now, data.review.availableAt)}.` : ""}
           </span>
         </div>
@@ -201,7 +201,3 @@ function QuestionCard({
   );
 }
 
-/** API sentences may come without a full stop. */
-function withStop(s: string) {
-  return /[.!?]$/.test(s) ? s : `${s}.`;
-}

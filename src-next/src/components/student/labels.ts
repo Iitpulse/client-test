@@ -1,6 +1,5 @@
 // Board wording for the M2 screens, derived from the contract's fields (types/m2-student.ts).
-import type { QuestionCell, QuestionOutcome, TestCard, TestKind, TestSummary } from "@/types/m2-student";
-import { dayMonth, daysFrom, relativeDayTime } from "@/lib/time";
+import type { QuestionCell, QuestionOutcome, TestKind, TestSummary } from "@/types/m2-student";
 
 /** The boards write "Maths" for the "Mathematics" section. */
 export function subjectLabel(subject: string): string {
@@ -65,39 +64,8 @@ export function outcomeText(cell: Pick<QuestionCell, "outcome" | "marks">): stri
   return `${OUTCOME_LABEL[cell.outcome]} · ${signed(cell.marks)}`;
 }
 
-/** The status badge of a test card (Student-Tests and Phone-Tests). */
-export function cardBadge(t: TestCard, now: number, phone = false): { text: string; cls: string } {
-  switch (t.state) {
-    case "live":
-      return { text: "Live now", cls: "b-live" };
-    case "in_progress":
-      return { text: "In progress", cls: "b-live" };
-    case "upcoming": {
-      const d = daysFrom(now, t.opensAt);
-      if (phone) return { text: d === 0 ? "Today" : d === 1 ? "Tomorrow" : dayMonth(t.opensAt), cls: "b-navy" };
-      return { text: d === 0 ? "Opens today" : d === 1 ? "Tomorrow" : `In ${d} days`, cls: "b-navy" };
-    }
-    case "ended":
-      return { text: "Missed", cls: "b-grey" };
-    case "submitted": {
-      const v = t.result?.visibility;
-      const h = t.result?.headline;
-      if (v?.status === "published" && h) return { text: phone ? `${num(h.score)}/${num(h.maxScore)}` : "Result out", cls: "b-green" };
-      if (v?.status === "pending")
-        return v.availableAt ? { text: `Result ${phone ? "" : "on "}${dayMonth(v.availableAt)}`, cls: "b-amber" } : { text: "Result pending", cls: "b-amber" };
-      return { text: "Result not shared", cls: "b-grey" };
-    }
-  }
-}
-
-/** "Ends today, 9:00 PM" / "Sun 15 Nov, 10:00 AM" / "Taken 1 Nov" */
-export function cardWhen(t: TestCard, now: number): string {
-  if (t.state === "live") return `Ends ${relativeDayTime(now, t.closesAt)}`;
-  if (t.state === "in_progress" && t.attempt) return `Time up ${relativeDayTime(now, t.attempt.expiresAt)}`;
-  if (t.state === "upcoming") {
-    const s = relativeDayTime(now, t.opensAt);
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
-  if (t.state === "submitted" && t.submittedAt) return `Taken ${dayMonth(t.submittedAt)}`;
-  return `Closed ${dayMonth(t.closesAt)}`;
+/** API sentences may come without a full stop; end them with one before another sentence follows. */
+export function sentence(s: string): string {
+  const t = s.trim();
+  return /[.!?]$/.test(t) ? t : `${t}.`;
 }

@@ -6,14 +6,15 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Doodle, InkArrow, InkUnderline, Note, Stamp, Sticker, useCountUp } from "@iitpulse/ui";
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
-import { countdownParts, dayMonth, dowDayMonth, dowDayMonthTime, minutes, relativeDayTime, useServerClock } from "@/lib/time";
+import { countdownParts, dayMonth, dowDayMonth, dowDayMonthTime, minutes, relativeDayTime } from "@/lib/time";
+import { useServerClock } from "@/lib/server-clock";
 import { useAuthStore } from "@/stores/auth.store";
 import type { PublishedResult, SectionResult, StudentResult } from "@/types/m2-student";
 import { ArrowLeftIcon, ArrowRightIcon } from "@/components/shell/icons";
 import { Delta } from "./bits";
 import { ErrorCard, Skel, useStartTest } from "./common";
 import { ChevronLeftIcon, HourglassRing, LockIcon } from "./icons";
-import { num, signed, subjectLabel, underlineSplit } from "./labels";
+import { num, sentence, signed, subjectLabel, underlineSplit } from "./labels";
 import { ReviewPane } from "./review-pane";
 import { Ring } from "./ring";
 
@@ -302,8 +303,8 @@ function PublishedPhone({ data, r, now }: { data: StudentResult; r: PublishedRes
               <LockIcon size={18} />
             </span>
             <span className="sm">
-              {data.review.reason || "Answers and solutions open when the test has closed for everyone."}
-              {data.review.availableAt ? <> ({relativeDayTime(now, data.review.availableAt)})</> : null}
+              {sentence(data.review.reason || "Answers and solutions open when the test has closed for everyone")}
+              {data.review.availableAt ? ` They open ${relativeDayTime(now, data.review.availableAt)}.` : ""}
             </span>
           </div>
         )}

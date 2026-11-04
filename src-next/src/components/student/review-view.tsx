@@ -5,12 +5,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
-import { mmss, relativeDayTime, useServerClock } from "@/lib/time";
+import { mmss, relativeDayTime } from "@/lib/time";
+import { useServerClock } from "@/lib/server-clock";
 import type { ReviewFilter, ReviewQuestion } from "@/types/m2-student";
 import { ArrowLeftIcon, ArrowRightIcon } from "@/components/shell/icons";
 import { ErrorCard, Skel } from "./common";
 import { ChevronLeftIcon, LockIcon } from "./icons";
-import { OUTCOME_BADGE, outcomeText, subjectLabel } from "./labels";
+import { OUTCOME_BADGE, outcomeText, sentence, subjectLabel } from "./labels";
 import { LangToggle, numberingFrom, QuestionBody, shownNumber, Solution, type Lang } from "./question-body";
 
 const FILTERS: ReviewFilter[] = ["all", "correct", "wrong", "skipped", "review"];
@@ -60,6 +61,7 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
     return it ? shownNumber(it, known) : m;
   };
 
+  const subtitle = [q && label !== q.n ? `Paper Q${q.n}` : null, position ? `${filter === "review" ? "Reviewing" : "Question"} ${position.index} of ${position.of}` : null].filter(Boolean).join(" · ");
   const [lang, setLang] = useState<Lang>("en");
   let error: unknown = null;
   if (!q) {
@@ -81,11 +83,9 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
           <Link href={back} className="btn btn-ghost btn-icon size-11 flex-none" aria-label="Back to the result">
             <ChevronLeftIcon />
           </Link>
-          <span className="col grow min-w-0 gap-px">
+          <span className="col grow min-w-0 justify-center gap-px">
             <h1 className="h3">Question {label}</h1>
-            <span className="xs muted">
-              {[q && label !== q.n ? `Paper Q${q.n}` : null, position ? `${filter === "review" ? "Reviewing" : "Question"} ${position.index} of ${position.of}` : null].filter(Boolean).join(" · ") || " "}
-            </span>
+            {subtitle && <span className="xs muted">{subtitle}</span>}
           </span>
           {q && <span className={`badge ${q.outcome === "wrong" ? "b-live" : OUTCOME_BADGE[q.outcome]}`}>{outcomeText(q)}</span>}
         </div>
@@ -172,7 +172,7 @@ function ReviewProblem({ error, now, back, onRetry }: { error: unknown; now: num
           <span className="h3 text-ink">{e.code === "RESULT_NOT_AVAILABLE" ? "Your result isn't out yet" : "Answers aren't open yet"}</span>
         </span>
         <span className="sm muted">
-          {/[.!?]$/.test(e.message) ? e.message : `${e.message}.`}
+          {sentence(e.message)}
           {at ? ` They open ${now !== null ? relativeDayTime(now, at) : "soon"}.` : ""}
         </span>
         <Link href={back} className="btn btn-secondary">

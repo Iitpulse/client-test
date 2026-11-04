@@ -40,45 +40,51 @@
   /* No drop shadows anywhere (classroom rule): depth comes from borders, tints and gradients. */
 }
 
-/* ---------- student shells ---------- */
+/*
+ * App classes sit in @layer components, after the package's own: they refine the boards' classes (same layer,
+ * later source order) and Tailwind utilities (md:hidden, lg:hidden) still win over them.
+ */
+@layer components {
+  /* ---------- student shells ---------- */
 
-/* Phone tab bar: fixed, safe-area padded, 44px+ targets (the .tb tab style comes from the package). */
-.phone-tabbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: var(--z-topbar);
-  display: flex;
-  height: calc(62px + max(14px, env(safe-area-inset-bottom)));
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
-  background: #fff;
-  border-top: 1px solid var(--line);
-}
-.phone-tabbar .tb { min-height: 48px; justify-content: flex-start }
-.phone-tabbar .tb:focus-visible { outline: 3px solid var(--navy-200); outline-offset: -3px }
+  /* Phone tab bar: fixed, safe-area padded, 44px+ targets (the .tb tab style comes from the package). */
+  .phone-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-topbar);
+    display: flex;
+    height: calc(62px + max(14px, env(safe-area-inset-bottom)));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    background: #fff;
+    border-top: 1px solid var(--line);
+  }
+  .phone-tabbar .tb { min-height: 48px; justify-content: flex-start }
+  .phone-tabbar .tb:focus-visible { outline: 3px solid var(--navy-200); outline-offset: -3px }
 
-/* Desktop top bar: the active item is underlined in blue ink (drawn once), never boxed (StudentNav board). */
-.nav-a { position: relative; color: var(--ink-2) }
-.nav-a.on { color: var(--navy); background: transparent }
-.nav-a .nav-ink { position: absolute; left: 9px; bottom: 1px; width: calc(100% - 18px); height: 7px; color: var(--cl-ink); display: none }
-.nav-a.on .nav-ink { display: block }
-.nav-a.on:hover { background: var(--navy-50) }
+  /* Desktop top bar: the active item is underlined in blue ink (drawn once), never boxed (StudentNav board). */
+  .nav-a { position: relative; color: var(--ink-2) }
+  .nav-a.on { color: var(--navy); background: transparent }
+  .nav-a .nav-ink { position: absolute; left: 9px; bottom: 1px; width: calc(100% - 18px); height: 7px; color: var(--cl-ink); display: none }
+  .nav-a.on .nav-ink { display: block }
+  .nav-a.on:hover { background: var(--navy-50) }
 
-/* ---------- auth screens (Student-Login, Student-SignInLink) ---------- */
+  /* ---------- auth screens (Student-Login, Student-SignInLink) ---------- */
 
-/* Pencil doodles become chalk on the blueboard; a full-height blueboard needs less chalk dust than a hero card. */
-.auth-board .cl-doodle { color: rgba(255, 255, 255, .3) }
-.auth-board .cl-doodle :is(path, circle, ellipse) { stroke-width: 1.8 }
-.auth-board .cl-doodle text { font-size: 15px }
-.auth-board::after { opacity: .32 }
+  /* Pencil doodles become chalk on the blueboard; a full-height blueboard needs less chalk dust than a hero card. */
+  .auth-board .cl-doodle { color: rgba(255, 255, 255, .3) }
+  .auth-board .cl-doodle :is(path, circle, ellipse) { stroke-width: 1.8 }
+  .auth-board .cl-doodle text { font-size: 15px }
+  .auth-board::after { opacity: .32 }
 
-/* Phones and small tablets: one column, Phone-Home's compact header, no tape, no margin rule. */
-@media (width < 64rem) {
-  .auth-desktop-only { display: none !important }
-}
-@media (width < 48rem) {
-  .phone-hide { display: none !important }
+  /* Phones and small tablets: one column, Phone-Home's compact header, no tape, no margin rule. */
+  @media (width < 64rem) {
+    .auth-desktop-only { display: none !important }
+  }
+  @media (width < 48rem) {
+    .phone-hide { display: none !important }
+  }
 }

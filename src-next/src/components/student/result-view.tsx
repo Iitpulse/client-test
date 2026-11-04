@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Doodle, InkArrow, InkUnderline, Note, Stamp, Sticker, useCountUp } from "@iitpulse/ui";
@@ -15,6 +15,7 @@ import { Delta } from "./bits";
 import { ErrorCard, Skel, useStartTest } from "./common";
 import { ChevronLeftIcon, HourglassRing, LockIcon } from "./icons";
 import { num, sentence, signed, underlineSplit } from "./labels";
+import { LeaksCard, MarksWentCard, useSummaryState, type SummaryState } from "./ai-review";
 import { ReviewPane } from "./review-pane";
 import { Ring } from "./ring";
 
@@ -23,8 +24,10 @@ import { Ring } from "./ring";
  * one column) while pending, and the pending layout with the institute's reason when hidden.
  * From GET /tests/student/results/:testId.
  *
- * Out of M2 and left out: Download PDF, the AI leaks card, "Explain my mistake", the doubt chat, "Add to revision
- * list", "Email me when it's out", "AI review unlocks…" and "Continue your study plan".
+ * M3 adds the AI summary (ai-review.tsx: "Your 3 biggest leaks" on desktop, "Where N marks went" on the phone),
+ * fetched after the hero has painted, and "Why this happened" in the question pane.
+ * Left out: Download PDF, the doubt chat, "Add to revision list", "Email me when it's out", "AI review unlocks…"
+ * and "Continue your study plan".
  */
 export function ResultView({ testId }: { testId: string }) {
   const router = useRouter();
@@ -95,17 +98,26 @@ function ordinal(n: number) {
 }
 
 function Published({ data, result, now }: { data: StudentResult; result: PublishedResult; now: number }) {
+  const ai = useSummaryState(data);
   return (
     <>
-      <PublishedDesktop data={data} r={result} now={now} />
-      <PublishedPhone data={data} r={result} now={now} />
+      <PublishedDesktop data={data} r={result} now={now} ai={ai} />
+      <PublishedPhone data={data} r={result} now={now} ai={ai} />
     </>
   );
 }
 
-function PublishedDesktop({ data, r, now }: { data: StudentResult; r: PublishedResult; now: number }) {
+function PublishedDesktop({ data, r, now, ai }: { data: StudentResult; r: PublishedResult; now: number; ai: SummaryState }) {
   const score = useCountUp(r.score, { delay: 200, decimals: Number.isInteger(r.score) ? 0 : 2 });
   const published = data.visibility.publishedAt;
+  // The pane's selected question (paper n), so a leak's "Review Q…" can open it.
+  const [sel, setSel] = useState<number | null>(null);
+  const reviewLeak = (shownAs: number) => {
+    const cell = r.questions.find((c) => c.shownAs === shownAs);
+    if (!cell) return;
+    setSel(cell.n);
+    document.getElementById("review-h")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   return (
     <div className="col -mt-1 gap-6 max-md:hidden">
       <Doodle name="flask" slot="gl" style={{ top: 452 }} />
@@ -167,7 +179,9 @@ function PublishedDesktop({ data, r, now }: { data: StudentResult; r: PublishedR
 
       <SectionCards sections={r.sections} />
 
-      <ReviewPane data={data} r={r} now={now} />
+      <LeaksCard st={ai} now={now} onReview={reviewLeak} />
+
+      <ReviewPane data={data} r={r} now={now} sel={sel} onSel={setSel} />
     </div>
   );
 }
@@ -225,7 +239,7 @@ function SectionCards({ sections }: { sections: SectionResult[] }) {
   );
 }
 
-function PublishedPhone({ data, r, now }: { data: StudentResult; r: PublishedResult; now: number }) {
+function PublishedPhone({ data, r, now, ai }: { data: StudentResult; r: PublishedResult; now: number; ai: SummaryState }) {
   const score = useCountUp(r.score, { delay: 150, decimals: Number.isInteger(r.score) ? 0 : 2 });
   const published = data.visibility.publishedAt;
   const toReview = r.questions.filter((q) => q.outcome !== "correct");
@@ -289,6 +303,8 @@ function PublishedPhone({ data, r, now }: { data: StudentResult; r: PublishedRes
             ))}
           </section>
         )}
+
+        <MarksWentCard st={ai} now={now} />
 
         <AnswersCard r={r} i={2} className="p-4" />
 

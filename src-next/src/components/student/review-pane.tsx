@@ -10,6 +10,7 @@ import { ErrorCard, Skel } from "./common";
 import { LockIcon } from "./icons";
 import { OUTCOME_BADGE, outcomeText, sentence } from "./labels";
 import { LangToggle, QuestionBody, Solution, type Lang } from "./question-body";
+import { canExplain, ExplainButton, WhyPanel } from "./ai-review";
 
 type GridFilter = "all" | QuestionOutcome;
 
@@ -18,8 +19,22 @@ type GridFilter = "all" | QuestionOutcome;
  * The grid comes with the result; the questions with answers come from GET …/questions (fetched once, desktop
  * only) and only after the test has settled (review.available), so nobody still writing can be fed answers.
  * Questions are numbered as the student saw them in the exam (shownAs), with the paper's number second.
+ * M3: "Explain my mistake" opens "Why this happened" (ai-review.tsx) under the question. The selection can be
+ * driven from outside (`sel` / `onSel`: a leak's "Review Q…" on the AI summary).
  */
-export function ReviewPane({ data, r, now }: { data: StudentResult; r: PublishedResult; now: number }) {
+export function ReviewPane({
+  data,
+  r,
+  now,
+  sel: selProp,
+  onSel,
+}: {
+  data: StudentResult;
+  r: PublishedResult;
+  now: number;
+  sel?: number | null;
+  onSel?: (n: number) => void;
+}) {
   const isDesktop = useIsDesktop();
   const testId = data.test.id;
   const available = data.review.available;
@@ -32,7 +47,9 @@ export function ReviewPane({ data, r, now }: { data: StudentResult; r: Published
   const cells = r.questions; // in the student's order (shownAs), as the API sends them
 
   const [filter, setFilter] = useState<GridFilter>("all");
-  const [sel, setSel] = useState<number | null>(null);
+  const [selOwn, setSelOwn] = useState<number | null>(null);
+  const sel = selProp !== undefined ? selProp : selOwn;
+  const setSel = onSel ?? setSelOwn;
   const firstToReview = cells.find((c) => c.outcome !== "correct") ?? cells[0];
   const selected = cells.find((c) => c.n === sel) ?? firstToReview;
   const q = listQ.data?.items.find((i) => i.n === selected?.n);
@@ -143,7 +160,9 @@ function QuestionCard({
 }) {
   const [lang, setLang] = useState<Lang>("en");
   const [showSolution, setShowSolution] = useState(false);
+  const [explain, setExplain] = useState(false);
   const avg = q?.averageTimeSeconds;
+  const explainable = data.review.available && canExplain(cell.outcome, q);
   return (
     <article className="card pad-lg col fade gap-[18px]" aria-label={`Question ${label}`}>
       <div className="row between wrap gap-2">
@@ -186,6 +205,7 @@ function QuestionCard({
           <QuestionBody q={q} lang={lang} />
           {cell.outcome === "skipped" && q.options.length > 0 && <span className="sm muted">You skipped this question.</span>}
           <div className="row wrap gap-2.5">
+            {explainable && !explain && <ExplainButton outcome={cell.outcome} onClick={() => setExplain(true)} />}
             {(q.solution.en || q.solution.hi) && (
               <button type="button" className="btn btn-secondary" aria-expanded={showSolution} onClick={() => setShowSolution((v) => !v)}>
                 {showSolution ? "Hide solution" : "Official solution"}
@@ -193,6 +213,7 @@ function QuestionCard({
             )}
             <LangToggle q={q} lang={lang} onChange={setLang} />
           </div>
+          {explainable && explain && <WhyPanel testId={data.test.id} cell={cell} now={now} />}
           {showSolution && <Solution q={q} lang={lang} />}
         </>
       )}

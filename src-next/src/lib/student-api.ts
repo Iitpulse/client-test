@@ -14,15 +14,16 @@ import type {
   StudentTestsPage,
   TestsTab,
 } from "@/types/m2-student";
+import type { AiErrorCode } from "@/types/m3-ai";
 
 const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
 
 /** A failed call. status 0 = no response (offline, CORS, timeout). `message` is a sentence a student can read. */
 export class StudentApiError extends Error {
   readonly status: number;
-  readonly code?: M2ErrorCode;
+  readonly code?: M2ErrorCode | AiErrorCode;
   readonly details?: Record<string, unknown>;
-  constructor(status: number, message: string, code?: M2ErrorCode, details?: Record<string, unknown>) {
+  constructor(status: number, message: string, code?: M2ErrorCode | AiErrorCode, details?: Record<string, unknown>) {
     super(message);
     this.name = "StudentApiError";
     this.status = status;
@@ -41,19 +42,28 @@ function signOutToLogin() {
   window.location.replace("/login"); // a full load: drop every cached query of the old session
 }
 
-async function request<T>(service: "tests" | "users", path: string, params?: Record<string, string | number | undefined | null>, signal?: AbortSignal): Promise<T> {
+/** One call through the gateway: `/tests`, `/users` or `/ai` (lib/ai-api.ts). A body makes it a JSON POST. */
+export async function request<T>(
+  service: "tests" | "users" | "ai",
+  path: string,
+  params?: Record<string, string | number | undefined | null>,
+  signal?: AbortSignal,
+  body?: unknown
+): Promise<T> {
   const url = new URL(`${API_GATEWAY}/${service}${path}`);
   for (const [k, v] of Object.entries(params || {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
   const token = typeof window !== "undefined" ? localStorage.getItem(AUTH_TOKEN_KEY) : null;
+  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
   let res: Response;
   try {
-    res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, cache: "no-store", signal });
+    res = await fetch(url, { method: body !== undefined ? "POST" : "GET", headers, body: body !== undefined ? JSON.stringify(body) : undefined, cache: "no-store", signal });
   } catch (e) {
     if ((e as Error)?.name === "AbortError") throw e;
     throw new StudentApiError(0, "You seem to be offline. Check your connection and try again.");
   }
-  const body = (await res.json().catch(() => null)) as ApiOk<T> | ApiErrorBody | null;
-  return unwrap<T>(res.status, body);
+  const json = (await res.json().catch(() => null)) as ApiOk<T> | ApiErrorBody | null;
+  return unwrap<T>(res.status, json);
 }
 
 function unwrap<T>(status: number, body: ApiOk<T> | ApiErrorBody | null): T {
@@ -64,7 +74,7 @@ function unwrap<T>(status: number, body: ApiOk<T> | ApiErrorBody | null): T {
   }
   if (status < 200 || status >= 300 || !body || body.success !== true) {
     const e = body && body.success === false ? body : null;
-    throw new StudentApiError(status, e?.message || "Something went wrong. Please try again.", e?.code, e?.details);
+    throw new StudentApiError(status, e?.message || "Something went wrong. Please try again.", e?.code as M2ErrorCode | AiErrorCode | undefined, e?.details);
   }
   return body.data;
 }

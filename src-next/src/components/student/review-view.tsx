@@ -13,6 +13,7 @@ import { ErrorCard, Skel } from "./common";
 import { ChevronLeftIcon, LockIcon } from "./icons";
 import { OUTCOME_BADGE, outcomeText, sentence } from "./labels";
 import { LangToggle, QuestionBody, Solution, type Lang } from "./question-body";
+import { canExplain, WhyPanel } from "./ai-review";
 
 const FILTERS: ReviewFilter[] = ["all", "correct", "wrong", "skipped", "review"];
 
@@ -29,7 +30,8 @@ function inFilter(o: QuestionOutcome, f: ReviewFilter): boolean {
  * neighbours of the current one are fetched ahead, so Next is instant). The strip comes from the result's grid
  * (already loaded on the result page), filtered here: every cell carries shownAs, in the student's order.
  * Questions are numbered as the student saw them (shownAs), with the paper's number second; `n` is the route key.
- * Out of M2: "Why this happened" (AI) and "Ask a doubt"; the institute's own solution shows instead.
+ * M3: "Why this happened" (ai-review.tsx) under the options for wrong, partly correct and skipped questions, as on
+ * the board; the institute's own solution still follows it. Not in M3: "Ask a doubt" (M4).
  */
 export function ReviewView({ testId, n }: { testId: string; n: number }) {
   const search = useSearchParams();
@@ -126,6 +128,7 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
               </span>
             </div>
             <QuestionBody key={q.n} q={q} lang={lang} compact />
+            {canExplain(q.outcome, q) && <WhyPanel key={`why-${q.n}`} testId={testId} cell={q} now={serverNow ? now : null} compact />}
             <Solution q={q} lang={lang} className="rise" />
           </>
         )}

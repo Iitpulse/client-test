@@ -5,7 +5,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AiMark, Doodle, MathText, TypingDots } from "@iitpulse/ui";
 import { useDoubt, type ChatProblem } from "@/lib/use-doubt";
-import { qk, studentApi } from "@/lib/student-api";
+import { qk, StudentApiError, studentApi } from "@/lib/student-api";
 import { relativeDayTime, resetsAt } from "@/lib/time";
 import type { DoubtChip, DoubtMessage, PracticeQuestion } from "@/types/m4";
 import { ChevronLeftIcon, LockIcon } from "./icons";
@@ -128,9 +128,10 @@ function Log({ d, empty, top, className }: { d: Doubt; empty: React.ReactNode; t
   );
 }
 
-function Composer({ d, label, phone }: { d: Doubt; label: number; phone?: boolean }) {
+function Composer({ d, label, phone, held }: { d: Doubt; label: number; phone?: boolean; held?: ChatProblem | null }) {
   const [text, setText] = useState("");
-  const blocked = d.daily || d.full || d.problem?.kind === "locked";
+  const problem = held ?? d.problem;
+  const blocked = d.daily || d.full || problem?.kind === "locked";
   const disabled = d.busy || blocked;
   const go = () => {
     const t = text.trim();
@@ -188,10 +189,10 @@ function Composer({ d, label, phone }: { d: Doubt; label: number; phone?: boolea
       </form>
       {text.length > MAX - 60 && <span className="xs muted">{MAX - text.length} characters left</span>}
       <span className="sr-only" role="status">
-        {d.problem ? "" : d.busy ? "The tutor is answering" : ""}
+        {problem ? "" : d.busy ? "The tutor is answering" : ""}
       </span>
       {/* the strip under the input is reserved for one line, so a problem appearing never shifts the chat */}
-      {d.problem && <ProblemLine p={d.problem} label={label} now={d.now} onNew={d.startNew} />}
+      {problem && <ProblemLine p={problem} label={label} now={d.now} onNew={d.startNew} />}
     </>
   );
 }
@@ -249,6 +250,12 @@ export function PhoneDoubtView({ testId, n, threadId }: { testId: string; n: num
   const preview = s?.questionPreview ?? (itemQ.data ? plain(itemQ.data.item.stem.en) : null);
   const q = quotaLine(d);
   const back = `/results/${encodeURIComponent(testId)}/q/${n}`;
+  // Answers for this test aren't open yet (the M2 review says so): no chat until they are.
+  const ie = itemQ.error instanceof StudentApiError ? itemQ.error : null;
+  const held: ChatProblem | null =
+    !d.thread && (ie?.code === "REVIEW_NOT_AVAILABLE_YET" || ie?.code === "RESULT_NOT_AVAILABLE")
+      ? { kind: "locked", message: ie.message, at: typeof ie.details?.availableAt === "string" ? ie.details.availableAt : null }
+      : null;
 
   return (
     <div className="col mx-auto h-dvh w-full max-w-[760px] md:h-auto md:gap-4">
@@ -279,10 +286,10 @@ export function PhoneDoubtView({ testId, n, threadId }: { testId: string; n: num
         empty={d.loading ? <Skel className="h-10 w-2/3 self-center rounded-xl" /> : <span className="sm muted py-4 text-center">Ask anything about this question: why an option is wrong, a quicker method, or the idea in Hindi.</span>}
       />
       <footer className="col flex-none gap-2.5 border-t border-line bg-white px-3 pt-2.5 pb-[max(26px,env(safe-area-inset-bottom))] md:rounded-card md:border md:px-4 md:pb-4">
-        <Composer d={d} label={label} phone />
+        <Composer d={d} label={label} phone held={held} />
         {q && <span className="sr-only">{q}</span>}
       </footer>
-      {d.loadError != null && (
+      {d.loadError != null && !held && (
         <div className="px-4 pb-4">
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => d.retryLoad()}>
             Couldn&apos;t load this chat. Try again

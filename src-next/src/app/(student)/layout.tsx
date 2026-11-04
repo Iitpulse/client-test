@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { Paper } from "@iitpulse/ui";
 import { homeEarlyFetchScript } from "@/lib/student-api";
 import { studentFonts } from "../fonts";
@@ -29,10 +28,12 @@ export default function StudentRootLayout({
   return (
     <html lang="en" className={studentFonts}>
       <body>
-        {/* Home (/) only, signed in: start its data request while the JavaScript loads (mobile LCP budget). */}
-        <Script id="iitp-home-early" strategy="beforeInteractive">
-          {homeEarlyFetchScript()}
-        </Script>
+        {/*
+          Home (/) only, signed in: start its data request while the JavaScript downloads (mobile LCP budget).
+          A plain inline script, so it runs while the HTML is parsed (next/script's beforeInteractive waits for
+          Next's own runtime). This layout is only rendered into the first HTML, never re-rendered on the client.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: homeEarlyFetchScript() }} />
         {/* The classroom ground: graph-grid paper, grain as one fixed layer (data-surface="student"). */}
         <Paper surface="student" className="min-h-dvh">
           {children}

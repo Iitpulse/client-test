@@ -1,5 +1,7 @@
 // Student navigation. Desktop (StudentNav board) shows Home, Tests, Progress; the phone tab bar adds Doubts.
-// Home becomes Student-Home in M2 (today "/" forwards to /tests); Progress and Doubts show a "coming soon" page until M4.
+// Progress and Doubts show a "coming soon" page until M4. The shell's links do not prefetch (prefetch={false}): on
+// a slow phone, prefetching every tab right after load competes with the screen's own data (Home's LCP); a tab
+// fetches its small RSC payload when tapped.
 export type NavKey = "home" | "tests" | "progress" | "doubts";
 
 export const NAV_ITEMS: Array<{ key: NavKey; href: string; label: string; desktop: boolean }> = [

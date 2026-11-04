@@ -6,12 +6,14 @@ import { useSearchParams } from "next/navigation";
 import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Bar, Doodle, InkUnderline, LiveDot, Note, Sticker } from "@iitpulse/ui";
 import { qk, studentApi } from "@/lib/student-api";
-import { dayMonth, daysFrom, dowDayMonthTime, longDay, relativeDayTime, timeOf, useServerClock } from "@/lib/time";
+import { dayMonth, daysFrom, dowDayMonthTime, longDay, relativeDayTime, timeOf } from "@/lib/time";
+import { useServerClock } from "@/lib/server-clock";
 import type { TestCard, TestsTab } from "@/types/m2-student";
 import { ArrowRightIcon } from "@/components/shell/icons";
 import { ErrorCard, NoBatchCard, Skel, useStartTest } from "./common";
 import { CalendarIcon, SearchIcon } from "./icons";
-import { cardBadge, cardWhen, kindLabel, num, subjectLabel, testMeta } from "./labels";
+import { cardBadge, cardWhen } from "./card-labels";
+import { kindLabel, num, subjectLabel, testMeta } from "./labels";
 
 const TABS: TestsTab[] = ["live", "upcoming", "completed"];
 const isTab = (v: string | null): v is TestsTab => !!v && (TABS as string[]).includes(v);

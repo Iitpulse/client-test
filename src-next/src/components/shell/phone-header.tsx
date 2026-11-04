@@ -23,7 +23,7 @@ export function PhoneHeader({ right, homeHref, className }: { right?: ReactNode;
       )}
     >
       {homeHref ? (
-        <Link href={homeHref} aria-label="IIT-PULSE home" className="-m-2 flex min-h-11 items-center p-2">
+        <Link prefetch={false} href={homeHref} aria-label="IIT-PULSE home" className="-m-2 flex min-h-11 items-center p-2">
           {logo}
         </Link>
       ) : (

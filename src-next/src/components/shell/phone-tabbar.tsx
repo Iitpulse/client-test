@@ -19,7 +19,7 @@ export function PhoneTabBar() {
         const Icon = ICONS[key];
         const on = key === active;
         return (
-          <Link key={key} href={href} className={on ? "tb on" : "tb"} aria-current={on ? "page" : undefined}>
+          <Link prefetch={false} key={key} href={href} className={on ? "tb on" : "tb"} aria-current={on ? "page" : undefined}>
             <Icon />
             {label}
           </Link>

@@ -18,14 +18,14 @@ export function StudentNav({ name, email }: { name?: string; email?: string }) {
     <nav className="topbar max-md:hidden" aria-label="Main">
       <div className="row between mx-auto h-[72px] max-w-[1200px] gap-6 px-8">
         <div className="row gap-9">
-          <Link href="/" aria-label="IIT-PULSE home" className="flex">
+          <Link prefetch={false} href="/" aria-label="IIT-PULSE home" className="flex">
             <LogoMark />
           </Link>
           <div className="row gap-1">
             {NAV_ITEMS.filter((i) => i.desktop).map(({ key, href, label }) => {
               const on = key === active;
               return (
-                <Link key={key} href={href} className={cn("btn btn-ghost btn-sm nav-a", on && "on")} aria-current={on ? "page" : undefined}>
+                <Link prefetch={false} key={key} href={href} className={cn("btn btn-ghost btn-sm nav-a", on && "on")} aria-current={on ? "page" : undefined}>
                   {label}
                   <svg className="cl-ink nav-ink" viewBox="0 0 60 8" preserveAspectRatio="none" aria-hidden="true" focusable="false" style={{ "--d": 250 } as React.CSSProperties}>
                     <path pathLength={1} d="M2 5.2C14 3.4 27 3 40 3.9S54 5.6 58 4.4" />
@@ -36,6 +36,7 @@ export function StudentNav({ name, email }: { name?: string; email?: string }) {
           </div>
         </div>
         <Link
+          prefetch={false}
           href="/profile"
           className="row gap-2.5 rounded-full py-1 pr-1.5 pl-1 text-ink hover:bg-brand-50 hover:text-ink"
           aria-label={name ? `${name}, profile` : "Your profile"}

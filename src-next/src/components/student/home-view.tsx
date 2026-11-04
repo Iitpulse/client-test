@@ -1,28 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import dynamic from "next/dynamic";
+import { lazy, Suspense, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Doodle, InkUnderline, LiveDot, Note, Sticker } from "@iitpulse/ui";
+import { Note, Sticker } from "@iitpulse/ui";
 import { qk, studentApi } from "@/lib/student-api";
-import { countdown, dowDayMonthTime, greeting, ist, longDay, shortDay, timeOf, useServerClock } from "@/lib/time";
+import { countdown, dowDayMonthTime, ist, timeOf } from "@/lib/time";
+import { useServerClock } from "@/lib/server-clock";
 import { useAuthStore } from "@/stores/auth.store";
 import { useIsDesktop } from "@/lib/use-media";
 import type { LastResult, PendingResult, StudentHome, TestCard } from "@/types/m2-student";
 import { ArrowRightIcon } from "@/components/shell/icons";
 import { Delta } from "./bits";
 import { ErrorCard, Skel, useStartTest } from "./common";
-import { ChevronRightIcon } from "./icons";
 import { num, shortPair, subjectLabel, testMeta } from "./labels";
 import { Ring } from "./ring";
 
 // The score trend is desktop only (the phone board has none): its code loads only where it is shown, and after
-// the first paint, so it stays out of the phone's critical JavaScript.
-const TrendCard = dynamic(() => import("./trend-card").then((m) => m.TrendCard), {
-  ssr: false,
-  loading: () => <Skel className="col-span-2 h-[332px] rounded-card max-md:hidden" />,
-});
+// the first paint, so it stays out of the phone's critical JavaScript. React.lazy, not next/dynamic: the latter
+// adds about 2.7 KB of loader code to Home's first load.
+const TrendCard = lazy(() => import("./trend-card").then((m) => ({ default: m.TrendCard })));
+const trendSkeleton = <Skel className="col-span-2 h-[332px] rounded-card max-md:hidden" />;
 
 /**
  * Student-Home (desktop) and Phone-Home, from GET /tests/student/home.
@@ -30,71 +28,68 @@ const TrendCard = dynamic(() => import("./trend-card").then((m) => m.TrendCard),
  * Out of M2 and left out (no placeholders): Weak topics, Today's plan, "Open AI review", "Remind me", the bell.
  * Their places: the trend shares its row with "Coming up"; the phone shows "Coming up" where the plan was.
  *
- * Classroom budget. Desktop: notes 2 (date, "all the best!"), doodles 2 (gutters), 1 sticker (Personal best, only
- * when the data says so), title underline on the name; no tape, no red pen. Phone: notes 2, doodle 1, sticker 1.
+ * The greeting, date note and doodles are server-rendered by the page; this is the data (client) part.
+ * Classroom budget with the page. Desktop: notes 2 (date, "all the best!"), doodles 2 (gutters), 1 sticker
+ * (Personal best, only when the data says so), title underline on the name; no tape, no red pen.
+ * Phone: notes 2, doodle 1, sticker 1.
  */
 export function HomeView() {
   const query = useQuery({ queryKey: qk.home, queryFn: ({ signal }) => studentApi.home(signal) });
   const data = query.data;
   const storedName = useAuthStore((s) => s.currentUser?.name);
+  const setUserName = useAuthStore((s) => s.setUserName);
   const now = useServerClock(data?.now, query.dataUpdatedAt);
+  const homeName = data?.student.name;
+  useEffect(() => {
+    if (homeName && !storedName) setUserName(homeName);
+  }, [homeName, storedName, setUserName]);
   const isDesktop = useIsDesktop();
 
-  if (query.isError && !data) {
-    return (
-      <div className="col gap-7">
-        <Greeting now={null} name={storedName} batch={null} />
-        <ErrorCard error={query.error} onRetry={() => query.refetch()} />
-      </div>
-    );
-  }
-  if (!data) return <HomeSkeleton name={storedName} />;
+  if (query.isError && !data) return <ErrorCard error={query.error} onRetry={() => query.refetch()} />;
 
-  const firstName = (data.student.name || storedName || "").trim().split(/\s+/)[0] || undefined;
   return (
-    <div className="col gap-7 md:pt-1 max-md:gap-3.5">
-      <Doodle name="pendulum" slot="gl" style={{ top: 300 }} />
-      <Doodle name="benzene" slot="gr" style={{ top: 760 }} />
-      <Greeting now={now} name={firstName} batch={data.student.batch?.name ?? null} />
-
-      <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
-        <Hero home={data} now={now} />
-        <LastResultCard last={data.lastResult} pending={data.latestPending} />
+    <>
+      <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5" aria-busy={!data}>
+        {/*
+          One hero element from the first paint to the data: the blueboard is drawn at once (it is there whatever
+          the data says) and its content fills in. Being the same element, it stays the page's largest paint
+          instead of a second, later one (mobile LCP).
+        */}
+        <article className="hero cl-board col-span-2 col gap-[22px] p-7 min-h-[262px] max-md:col-span-1 max-md:min-h-[221px] max-md:gap-3.5 max-md:rounded-[20px] max-md:p-5">
+          {data ? <Hero home={data} now={now} /> : <HeroLoading />}
+        </article>
+        {data ? <LastResultCard last={data.lastResult} pending={data.latestPending} /> : <Skel className="h-[262px] rounded-card max-md:h-[96px]" />}
       </section>
 
-      <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
-        {isDesktop ? <TrendCard trend={data.trend} last={data.lastResult} /> : <Skel className="col-span-2 h-[332px] rounded-card max-md:hidden" />}
-        <ComingUp items={data.upcoming} />
-      </section>
-    </div>
+      {data ? (
+        <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
+          {isDesktop ? (
+            <Suspense fallback={trendSkeleton}>
+              <TrendCard trend={data.trend} last={data.lastResult} />
+            </Suspense>
+          ) : (
+            trendSkeleton
+          )}
+          <ComingUp items={data.upcoming} />
+        </section>
+      ) : (
+        <section className="grid grid-cols-3 gap-5 max-md:hidden" aria-hidden="true">
+          <Skel className="col-span-2 h-[332px] rounded-card" />
+          <Skel className="h-[332px] rounded-card" />
+        </section>
+      )}
+    </>
   );
 }
 
-function Greeting({ now, name, batch }: { now: number | null; name?: string; batch: string | null }) {
-  const hello = now === null ? "Hello" : greeting(now);
+/** Chalk lines where the hero's text will be, while Home loads. */
+function HeroLoading() {
   return (
-    <header className="row between wrap relative gap-4 rise max-md:gap-0.5">
-      <Doodle name="atom" className="md:hidden [&_svg]:size-16" style={{ right: 2, top: -6 }} />
-      <div className="col gap-0.5">
-        {now !== null ? (
-          <Note size="sm" write rotate={-1.5} delay={150} className="self-start">
-            <span className="max-md:hidden">{longDay(now)}</span>
-            <span className="md:hidden">{shortDay(now)}</span>
-          </Note>
-        ) : (
-          <span className="h-6" />
-        )}
-        <h1 className="h1 max-md:text-[22px] relative">
-          {hello}
-          {name ? (
-            <>
-              , <InkUnderline delay={450}>{name}</InkUnderline>
-            </>
-          ) : null}
-        </h1>
-      </div>
-      {batch && <span className="badge b-navy max-md:hidden">Batch: {batch}</span>}
-    </header>
+    <>
+      <span className="block h-6 w-24 rounded-full" style={{ background: "rgba(255,255,255,.12)" }} />
+      <span className="block h-10 w-3/5 rounded-lg max-md:h-7" style={{ background: "rgba(255,255,255,.12)" }} />
+      <span className="block h-4 w-2/5 rounded-md" style={{ background: "rgba(255,255,255,.08)" }} />
+    </>
   );
 }
 
@@ -119,7 +114,7 @@ function Hero({ home, now }: { home: StudentHome; now: number }) {
   const more = home.liveCount > 1 ? home.liveCount - 1 : 0;
   const badge = live ? (
     <span className="badge" style={{ background: "rgba(253,0,1,.16)", color: "#FFD1D1" }}>
-      <LiveDot />
+      <span className="live-dot" aria-hidden="true" />
       {resume ? "In progress" : <><span className="max-md:hidden">Live now</span><span className="md:hidden">Live</span></>}
     </span>
   ) : (
@@ -136,7 +131,7 @@ function Hero({ home, now }: { home: StudentHome; now: number }) {
   ) : null;
 
   return (
-    <article className="hero cl-board rise col-span-2 col gap-[22px] p-7 max-md:col-span-1 max-md:gap-3.5 max-md:rounded-[20px] max-md:p-5" style={{ "--i": 1 } as React.CSSProperties}>
+    <>
       <span className="cl-smudge max-md:hidden" aria-hidden="true" style={{ right: -60, top: 20 }} />
       <span className="cl-smudge md:hidden" aria-hidden="true" style={{ right: -120, top: 10, width: 280, height: 100 }} />
 
@@ -168,7 +163,7 @@ function Hero({ home, now }: { home: StudentHome; now: number }) {
           <span className="xs" style={{ color: "#C3C6EF" }}>
             Opens the NTA-style exam window{more ? ` · ` : ""}
             {more ? (
-              <Link href="/tests" className="font-semibold text-white underline">
+              <Link prefetch={false} href="/tests" className="font-semibold text-white underline">
                 {more} more live
               </Link>
             ) : null}
@@ -221,11 +216,11 @@ function Hero({ home, now }: { home: StudentHome; now: number }) {
       )}
       {action && <div className="md:hidden">{action}</div>}
       {live && more > 0 && (
-        <Link href="/tests" className="xs text-center font-semibold text-white underline md:hidden">
+        <Link prefetch={false} href="/tests" className="xs text-center font-semibold text-white underline md:hidden">
           {more} more live {more === 1 ? "test" : "tests"}
         </Link>
       )}
-    </article>
+    </>
   );
 }
 
@@ -264,14 +259,14 @@ function LastResultCard({ last, pending }: { last: LastResult | null; pending: P
             {h.delta && <Delta delta={h.delta} against={last.test.name} className="self-start" />}
           </div>
         </div>
-        <Link href={href} className="btn btn-secondary mt-auto">
+        <Link prefetch={false} href={href} className="btn btn-secondary mt-auto">
           See full result
           <ArrowRightIcon className="arrow" />
         </Link>
       </article>
 
       {/* Phone: one tappable row */}
-      <Link href={href} className="card pad row cl-lift rise relative gap-3.5 text-ink md:hidden" style={{ "--i": 2 } as React.CSSProperties}>
+      <Link prefetch={false} href={href} className="card pad row cl-lift rise relative gap-3.5 text-ink md:hidden" style={{ "--i": 2 } as React.CSSProperties}>
         {h.isPersonalBest && (
           <Sticker float rotate={4} delay={1100} style={{ top: -12, right: 40, fontSize: 13, padding: "6px 10px 7px" }}>
             Personal best
@@ -291,7 +286,9 @@ function LastResultCard({ last, pending }: { last: LastResult | null; pending: P
           )}
         </span>
         <span className="text-muted">
-          <ChevronRightIcon />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false">
+            <path d="m9 6 6 6-6 6" />
+          </svg>
         </span>
       </Link>
     </>
@@ -312,7 +309,7 @@ function FirstResultCard({ pending }: { pending: PendingResult | null }) {
           <span className="sm muted">
             {pending.visibility.availableAt ? `Result on ${dowDayMonthTime(pending.visibility.availableAt)}` : pending.visibility.reason || "Your teacher will publish it"}
           </span>
-          <Link href={`/results/${encodeURIComponent(pending.test.id)}`} className="btn btn-secondary mt-auto">
+          <Link prefetch={false} href={`/results/${encodeURIComponent(pending.test.id)}`} className="btn btn-secondary mt-auto">
             View submission
           </Link>
         </>
@@ -328,7 +325,7 @@ function ComingUp({ items }: { items: TestCard[] }) {
     <article className="card col rise" style={{ "--i": 4 } as React.CSSProperties}>
       <div className="row between pad max-md:px-4 max-md:pt-3.5" style={{ paddingBottom: 8 }}>
         <span className="h3">Coming up</span>
-        <Link href="/tests?tab=upcoming" className="sm font-semibold">
+        <Link prefetch={false} href="/tests?tab=upcoming" className="sm font-semibold">
           All tests
         </Link>
       </div>
@@ -358,30 +355,5 @@ function ComingUp({ items }: { items: TestCard[] }) {
         </ul>
       )}
     </article>
-  );
-}
-
-function HomeSkeleton({ name }: { name?: string }) {
-  return (
-    <div className="col gap-7 max-md:gap-3.5" aria-busy="true" aria-label="Loading your home">
-      <header className="col gap-1.5">
-        <Skel className="h-5 w-40" />
-        <Skel className="h-9 w-72 max-md:h-7 max-md:w-56" />
-        <span className="sr-only">{name ? `Loading, ${name}` : "Loading"}</span>
-      </header>
-      <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
-        {/* The hero's blueboard is drawn at once (it is there whatever the data says); chalk lines hold its text. */}
-        <div className="hero cl-board col-span-2 col gap-[22px] p-7 max-md:col-span-1 max-md:gap-3.5 max-md:rounded-[20px] max-md:p-5 min-h-[262px] max-md:min-h-[230px]">
-          <span className="block h-6 w-24 rounded-full" style={{ background: "rgba(255,255,255,.12)" }} />
-          <span className="block h-10 w-3/5 rounded-lg max-md:h-7" style={{ background: "rgba(255,255,255,.12)" }} />
-          <span className="block h-4 w-2/5 rounded-md" style={{ background: "rgba(255,255,255,.08)" }} />
-        </div>
-        <Skel className="h-[262px] rounded-card max-md:h-[96px]" />
-      </section>
-      <section className="grid grid-cols-3 gap-5 max-md:hidden">
-        <Skel className="col-span-2 h-[332px] rounded-card" />
-        <Skel className="h-[332px] rounded-card" />
-      </section>
-    </div>
   );
 }

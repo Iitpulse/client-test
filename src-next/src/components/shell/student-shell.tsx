@@ -45,12 +45,15 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated || !currentUser || currentUser.name || askedName.current) return;
     askedName.current = true;
-    studentApi
-      .me()
-      .then((me) => {
-        if (me?.name) setUserName(me.name);
-      })
-      .catch(() => {});
+    // Not urgent (Home's own response carries the name too): ask a moment after load, off the first paint.
+    const ask = () =>
+      studentApi
+        .me()
+        .then((me) => {
+          if (me?.name) setUserName(me.name);
+        })
+        .catch(() => {});
+    setTimeout(ask, 1500); // no cleanup: the ref above makes it once per session, also under React's dev double run
   }, [hydrated, currentUser, setUserName]);
 
   const name = hydrated ? currentUser?.name : undefined;
@@ -65,7 +68,7 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           className="md:hidden"
           homeHref="/"
           right={
-            <Link href="/profile" aria-label={name ? `${name}, profile` : "Your profile"} className="-mr-1.5 flex size-11 items-center justify-center rounded-full">
+            <Link prefetch={false} href="/profile" aria-label={name ? `${name}, profile` : "Your profile"} className="-mr-1.5 flex size-11 items-center justify-center rounded-full">
               <Avatar name={name} email={email} size={32} />
             </Link>
           }

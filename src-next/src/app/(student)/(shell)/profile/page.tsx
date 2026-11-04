@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@/app/m4.css";
 import { ProfileView } from "@/components/student/profile-view";
 
 export const metadata: Metadata = { title: "Profile · IIT-PULSE" };

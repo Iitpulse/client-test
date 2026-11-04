@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@/app/m4.css";
 import "katex/dist/katex.min.css"; // questions and solutions render with MathText (KaTeX)
 import { PracticeView } from "@/components/student/practice-view";
 

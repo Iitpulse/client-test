@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Paper } from "@iitpulse/ui";
+import { homeEarlyFetchScript } from "@/lib/student-api";
 import { studentFonts } from "../fonts";
 import "../globals.css";
 
@@ -27,6 +29,10 @@ export default function StudentRootLayout({
   return (
     <html lang="en" className={studentFonts}>
       <body>
+        {/* Home (/) only, signed in: start its data request while the JavaScript loads (mobile LCP budget). */}
+        <Script id="iitp-home-early" strategy="beforeInteractive">
+          {homeEarlyFetchScript()}
+        </Script>
         {/* The classroom ground: graph-grid paper, grain as one fixed layer (data-surface="student"). */}
         <Paper surface="student" className="min-h-dvh">
           {children}

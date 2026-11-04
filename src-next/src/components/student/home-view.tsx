@@ -1,19 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Doodle, InkUnderline, LiveDot, Note, Sticker } from "@iitpulse/ui";
 import { qk, studentApi } from "@/lib/student-api";
 import { countdown, dowDayMonthTime, greeting, ist, longDay, shortDay, timeOf, useServerClock } from "@/lib/time";
 import { useAuthStore } from "@/stores/auth.store";
-import type { LastResult, PendingResult, StudentHome, TestCard, TrendPoint } from "@/types/m2-student";
+import { useIsDesktop } from "@/lib/use-media";
+import type { LastResult, PendingResult, StudentHome, TestCard } from "@/types/m2-student";
 import { ArrowRightIcon } from "@/components/shell/icons";
 import { Delta } from "./bits";
 import { ErrorCard, Skel, useStartTest } from "./common";
 import { ChevronRightIcon } from "./icons";
-import { axisLabel, num, shortPair, subjectLabel, testMeta } from "./labels";
+import { num, shortPair, subjectLabel, testMeta } from "./labels";
 import { Ring } from "./ring";
+
+// The score trend is desktop only (the phone board has none): its code loads only where it is shown, and after
+// the first paint, so it stays out of the phone's critical JavaScript.
+const TrendCard = dynamic(() => import("./trend-card").then((m) => m.TrendCard), {
+  ssr: false,
+  loading: () => <Skel className="col-span-2 h-[332px] rounded-card max-md:hidden" />,
+});
 
 /**
  * Student-Home (desktop) and Phone-Home, from GET /tests/student/home.
@@ -29,6 +38,7 @@ export function HomeView() {
   const data = query.data;
   const storedName = useAuthStore((s) => s.currentUser?.name);
   const now = useServerClock(data?.now, query.dataUpdatedAt);
+  const isDesktop = useIsDesktop();
 
   if (query.isError && !data) {
     return (
@@ -53,7 +63,7 @@ export function HomeView() {
       </section>
 
       <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
-        <TrendCard trend={data.trend} last={data.lastResult} />
+        {isDesktop ? <TrendCard trend={data.trend} last={data.lastResult} /> : <Skel className="col-span-2 h-[332px] rounded-card max-md:hidden" />}
         <ComingUp items={data.upcoming} />
       </section>
     </div>
@@ -313,97 +323,6 @@ function FirstResultCard({ pending }: { pending: PendingResult | null }) {
   );
 }
 
-type TrendTab = "score" | "accuracy" | "rank";
-
-function TrendCard({ trend, last }: { trend: TrendPoint[]; last: LastResult | null }) {
-  const [tab, setTab] = useState<TrendTab>("score");
-  const kind = last?.test.kind;
-  const subtitle = trend.length ? `Last ${trend.length} ${kind === "full_mock" ? (trend.length === 1 ? "full mock" : "full mocks") : kind === "sectional" ? (trend.length === 1 ? "sectional" : "sectionals") : trend.length === 1 ? "test" : "tests"}` : "";
-  const value = (p: TrendPoint): number | null => (tab === "score" ? p.score : tab === "accuracy" ? p.accuracyPercent : p.rank?.position ?? null);
-  const fmt = (v: number) => (tab === "score" ? num(v) : tab === "accuracy" ? `${v}%` : `#${v}`);
-  const pts = trend.map((p, i) => ({ p, i, v: value(p) })).filter((x): x is { p: TrendPoint; i: number; v: number } => x.v !== null);
-
-  const X0 = 20, X1 = 500, TOP = 58, BOTTOM = 115; // the board's band: first point at 115, best at 58
-  const xs = (i: number) => (trend.length < 2 ? (X0 + X1) / 2 : X0 + ((X1 - X0) * i) / (trend.length - 1));
-  const vals = pts.map((x) => x.v);
-  const lo = Math.min(...vals), hi = Math.max(...vals);
-  const better = tab === "rank" ? -1 : 1; // rank: lower is better, so it is drawn higher
-  const ys = (v: number) => (hi === lo ? (TOP + BOTTOM) / 2 : BOTTOM - ((better * (v - (better > 0 ? lo : hi))) / (hi - lo)) * (BOTTOM - TOP));
-  const line = pts.map((x) => `${xs(x.i).toFixed(1)},${ys(x.v).toFixed(1)}`).join(" ");
-  const first = pts[0], lastPt = pts[pts.length - 1];
-  const summary =
-    first && lastPt && pts.length > 1
-      ? `${tab === "score" ? "Scores" : tab === "accuracy" ? "Accuracy" : "Rank"} went from ${fmt(first.v)} to ${fmt(lastPt.v)} over ${pts.length} tests`
-      : "";
-
-  return (
-    <article className="card pad-lg col rise col-span-2 gap-3.5 max-md:hidden" style={{ "--i": 3 } as React.CSSProperties}>
-      <div className="row between gap-3">
-        <div className="col gap-0.5">
-          <span className="h3">Score trend</span>
-          <span className="sm muted">{subtitle}</span>
-        </div>
-        {trend.length > 0 && (
-          <div className="seg" role="tablist" aria-label="Trend measure">
-            {(["score", "accuracy", "rank"] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "tab on" : "tab"} onClick={() => setTab(k)}>
-                {k === "score" ? "Score" : k === "accuracy" ? "Accuracy" : "Rank"}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      {trend.length < 2 ? (
-        <div className="col flex-1 items-center justify-center gap-1 py-10 text-center">
-          <span className="sm font-semibold">{trend.length ? "One test so far" : "No results yet"}</span>
-          <span className="sm muted">Your trend appears after two tests of the same kind.</span>
-        </div>
-      ) : (
-        <svg key={tab} viewBox="0 0 520 170" style={{ width: "100%", height: 220 }} role="img" aria-label={summary}>
-          <g stroke="#EEF0F5" strokeWidth="1">
-            <line x1="20" y1="20" x2="500" y2="20" />
-            <line x1="20" y1="65" x2="500" y2="65" />
-            <line x1="20" y1="110" x2="500" y2="110" />
-            <line x1="20" y1="150" x2="500" y2="150" />
-          </g>
-          {pts.length > 1 && (
-            <>
-              <path d={`M${line.split(" ").join(" L")} L${xs(lastPt!.i).toFixed(1)} 150 L${xs(first!.i).toFixed(1)} 150 Z`} fill="#F1F2FC" className="fade" />
-              <polyline className="draw" points={line} fill="none" stroke="var(--navy)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </>
-          )}
-          <g fill="#fff" stroke="var(--navy)" strokeWidth="2.5">
-            {pts.map((x, k) => (
-              <circle key={x.i} cx={xs(x.i)} cy={ys(x.v)} r={k === pts.length - 1 ? 6 : 4} fill={k === pts.length - 1 ? "var(--navy)" : "#fff"}>
-                <title>{`${x.p.testName}: ${fmt(x.v)}`}</title>
-              </circle>
-            ))}
-          </g>
-          <g fontFamily="var(--font-sans)" fontSize="11" fill="#575C75" textAnchor="middle">
-            {trend.map((p, i) => (
-              <text key={p.testId} x={xs(i)} y="166">
-                {axisLabel(p.testName)}
-              </text>
-            ))}
-          </g>
-          {first && lastPt && (
-            <g fontFamily="var(--font-sans)" fontSize="12" fontWeight="600" fill="#0D0F2B" textAnchor="middle">
-              <text x={xs(first.i)} y={ys(first.v) - 11}>
-                {fmt(first.v)}
-              </text>
-              {lastPt !== first && (
-                <text x={xs(lastPt.i)} y={ys(lastPt.v) - 14}>
-                  {fmt(lastPt.v)}
-                </text>
-              )}
-            </g>
-          )}
-        </svg>
-      )}
-    </article>
-  );
-}
-
 function ComingUp({ items }: { items: TestCard[] }) {
   return (
     <article className="card col rise" style={{ "--i": 4 } as React.CSSProperties}>
@@ -451,7 +370,12 @@ function HomeSkeleton({ name }: { name?: string }) {
         <span className="sr-only">{name ? `Loading, ${name}` : "Loading"}</span>
       </header>
       <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
-        <Skel className="col-span-2 h-[262px] rounded-hero max-md:col-span-1 max-md:h-[230px]" />
+        {/* The hero's blueboard is drawn at once (it is there whatever the data says); chalk lines hold its text. */}
+        <div className="hero cl-board col-span-2 col gap-[22px] p-7 max-md:col-span-1 max-md:gap-3.5 max-md:rounded-[20px] max-md:p-5 min-h-[262px] max-md:min-h-[230px]">
+          <span className="block h-6 w-24 rounded-full" style={{ background: "rgba(255,255,255,.12)" }} />
+          <span className="block h-10 w-3/5 rounded-lg max-md:h-7" style={{ background: "rgba(255,255,255,.12)" }} />
+          <span className="block h-4 w-2/5 rounded-md" style={{ background: "rgba(255,255,255,.08)" }} />
+        </div>
         <Skel className="h-[262px] rounded-card max-md:h-[96px]" />
       </section>
       <section className="grid grid-cols-3 gap-5 max-md:hidden">

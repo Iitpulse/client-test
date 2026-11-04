@@ -269,6 +269,8 @@ export function WhyPanel({ testId, cell, now, compact }: { testId: string; cell:
       );
     }
     if (e && isAiDown(e)) return shell(<span className="sm muted">{sentence(downMessage(e))}</span>);
+    // Not this student's question, or no AI service behind the gateway yet: the official solution is enough.
+    if (e && e.status >= 400 && e.status < 500) return null;
     return shell(<QuietLine message="Couldn't load the explanation." retry={() => query.refetch()} />);
   }
   if (!d || d.status === "generating") {

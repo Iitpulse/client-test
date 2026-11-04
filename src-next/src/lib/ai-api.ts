@@ -33,13 +33,13 @@ export function isAiDown(err: unknown): boolean {
 }
 
 /** Retry only network errors and bare 5xx; never a coded answer (a paused AI stays paused on a second try). */
-const aiRetry = (count: number, err: unknown) => count < 2 && isRetryable(err) && !(err instanceof StudentApiError && err.code);
+export const aiRetry = (count: number, err: unknown) => count < 2 && isRetryable(err) && !(err instanceof StudentApiError && err.code);
 
 /**
  * The contract's polling window: `setOver(true)` once `active` has stayed true for `ms`; back to false when `active`
  * drops or `round` changes (Try again). The flag lives in the caller's state because refetchInterval reads it.
  */
-function usePollWindow(active: boolean, ms: number, setOver: (v: boolean) => void, round = 0) {
+export function usePollWindow(active: boolean, ms: number, setOver: (v: boolean) => void, round = 0) {
   useEffect(() => {
     if (!active) return;
     const t = setTimeout(() => setOver(true), ms);

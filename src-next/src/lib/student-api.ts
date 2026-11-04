@@ -15,15 +15,25 @@ import type {
   TestsTab,
 } from "@/types/m2-student";
 import type { AiErrorCode } from "@/types/m3-ai";
+import type { M4ErrorCode } from "@/types/m4";
 
-const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
+/** Every coded error the student screens handle (M2 reads, M3 AI review, M4 progress / practice / profile / doubts). */
+export type StudentErrorCode =
+  | M2ErrorCode
+  | AiErrorCode
+  | M4ErrorCode
+  // listed under "Changes" in api-ai docs/m4-api.md, not yet in the copied types
+  | "ITEM_NOT_FOUND"
+  | "TOO_MANY_ATTEMPTS";
+
+export const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
 
 /** A failed call. status 0 = no response (offline, CORS, timeout). `message` is a sentence a student can read. */
 export class StudentApiError extends Error {
   readonly status: number;
-  readonly code?: M2ErrorCode | AiErrorCode;
+  readonly code?: StudentErrorCode;
   readonly details?: Record<string, unknown>;
-  constructor(status: number, message: string, code?: M2ErrorCode | AiErrorCode, details?: Record<string, unknown>) {
+  constructor(status: number, message: string, code?: StudentErrorCode, details?: Record<string, unknown>) {
     super(message);
     this.name = "StudentApiError";
     this.status = status;
@@ -37,18 +47,19 @@ export function isRetryable(err: unknown): boolean {
   return err instanceof StudentApiError && (err.status === 0 || err.status >= 500);
 }
 
-function signOutToLogin() {
+export function signOutToLogin() {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   window.location.replace("/login"); // a full load: drop every cached query of the old session
 }
 
-/** One call through the gateway: `/tests`, `/users` or `/ai` (lib/ai-api.ts). A body makes it a JSON POST. */
+/** One call through the gateway: `/tests`, `/users` or `/ai` (lib/ai-api.ts). A body makes it a JSON POST (or `method`). */
 export async function request<T>(
   service: "tests" | "users" | "ai",
   path: string,
   params?: Record<string, string | number | undefined | null>,
   signal?: AbortSignal,
-  body?: unknown
+  body?: unknown,
+  method?: "POST" | "PATCH"
 ): Promise<T> {
   const url = new URL(`${API_GATEWAY}/${service}${path}`);
   for (const [k, v] of Object.entries(params || {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
@@ -57,7 +68,7 @@ export async function request<T>(
   if (body !== undefined) headers["Content-Type"] = "application/json";
   let res: Response;
   try {
-    res = await fetch(url, { method: body !== undefined ? "POST" : "GET", headers, body: body !== undefined ? JSON.stringify(body) : undefined, cache: "no-store", signal });
+    res = await fetch(url, { method: method ?? (body !== undefined ? "POST" : "GET"), headers, body: body !== undefined ? JSON.stringify(body) : undefined, cache: "no-store", signal });
   } catch (e) {
     if ((e as Error)?.name === "AbortError") throw e;
     throw new StudentApiError(0, "You seem to be offline. Check your connection and try again.");
@@ -66,7 +77,7 @@ export async function request<T>(
   return unwrap<T>(res.status, json);
 }
 
-function unwrap<T>(status: number, body: ApiOk<T> | ApiErrorBody | null): T {
+export function unwrap<T>(status: number, body: ApiOk<T> | ApiErrorBody | null): T {
   if (status === 401) {
     // Expired or missing session: same as the axios client (lib/api.ts) does for every other call.
     signOutToLogin();
@@ -74,7 +85,9 @@ function unwrap<T>(status: number, body: ApiOk<T> | ApiErrorBody | null): T {
   }
   if (status < 200 || status >= 300 || !body || body.success !== true) {
     const e = body && body.success === false ? body : null;
-    throw new StudentApiError(status, e?.message || "Something went wrong. Please try again.", e?.code as M2ErrorCode | AiErrorCode | undefined, e?.details);
+    // A 5xx without a code is a crash, and its message may be internal (a failed query): never show it to a student.
+    const message = status >= 500 && !e?.code ? "" : e?.message;
+    throw new StudentApiError(status, message || "Something went wrong. Please try again.", e?.code as StudentErrorCode | undefined, e?.details);
   }
   return body.data;
 }

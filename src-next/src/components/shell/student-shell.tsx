@@ -14,13 +14,15 @@ import { StudentNav } from "./student-nav";
 /**
  * What a phone (below 768px) shows around a screen, as the Phone-* boards draw it:
  * - "full": Phone-Home's compact header (logo + avatar) and the PhoneTabBar (Home, Tests, Progress, Doubts).
- * - "tabs": the screen draws its own sticky header (Phone-Tests: the title and the status tabs); tab bar stays.
- * - "none": a drill-in screen with its own back header and no tab bar (Phone-Result, Phone-Review).
+ * - "tabs": the screen draws its own sticky header (Phone-Tests: the title and the status tabs; Phone-Progress and
+ *   the Doubts list: the title and the avatar, PhoneTitleBar); tab bar stays.
+ * - "none": a drill-in screen with its own back header and no tab bar (Phone-Result, Phone-Review, Phone-Doubt,
+ *   a practice set).
  */
 type PhoneChrome = "full" | "tabs" | "none";
 function phoneChrome(pathname: string): PhoneChrome {
-  if (pathname.startsWith("/results/")) return "none";
-  if (pathname === "/tests") return "tabs";
+  if (pathname.startsWith("/results/") || pathname.startsWith("/practice/")) return "none";
+  if (pathname === "/tests" || pathname === "/progress" || pathname === "/doubts") return "tabs";
   return "full";
 }
 

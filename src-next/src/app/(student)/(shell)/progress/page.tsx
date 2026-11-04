@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/shell/coming-soon";
+import "katex/dist/katex.min.css"; // plan items are text with inline LaTeX (MathText)
+import { ProgressView } from "@/components/student/progress-view";
 
 export const metadata: Metadata = { title: "Progress · IIT-PULSE" };
 
+// Student-Progress / Phone-Progress (M4).
 export default function ProgressPage() {
-  return <ComingSoon title="Progress" body="Your topic-by-topic progress and study plan will appear here. Until then, every result is under Tests." />;
+  return <ProgressView />;
 }

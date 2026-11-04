@@ -124,3 +124,16 @@ export function minutes(seconds: number): string {
   const m = Math.round(Math.max(0, seconds) / 60);
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`;
 }
+
+/**
+ * When a daily limit lifts: "tomorrow" for midnight IST (the usual reset), else relativeDayTime ("today, 6:00 PM").
+ * Midnight is never "today, 12:00 AM" (that reads as already past).
+ */
+export function resetsAt(now: number, at: string | number): string {
+  const p = ist(at);
+  if (p.hour24 === 0 && p.time.startsWith("12:00")) {
+    const d = daysFrom(now, at);
+    return d <= 1 ? "tomorrow" : `on ${dowDayMonth(Date.parse(String(at)) - 60_000)}`;
+  }
+  return relativeDayTime(now, at);
+}

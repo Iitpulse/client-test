@@ -31,7 +31,8 @@ function inFilter(o: QuestionOutcome, f: ReviewFilter): boolean {
  * (already loaded on the result page), filtered here: every cell carries shownAs, in the student's order.
  * Questions are numbered as the student saw them (shownAs), with the paper's number second; `n` is the route key.
  * M3: "Why this happened" (ai-review.tsx) under the options for wrong, partly correct and skipped questions, as on
- * the board; the institute's own solution still follows it. Not in M3: "Ask a doubt" (M4).
+ * the board; the institute's own solution still follows it. M4: "Ask a doubt" in the phone footer (Phone-Review)
+ * opens Phone-Doubt; Previous stays on desktop (the strip covers it on the phone).
  */
 export function ReviewView({ testId, n }: { testId: string; n: number }) {
   const search = useSearchParams();
@@ -136,13 +137,18 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
 
       {!error && (
       <footer className="fixed inset-x-0 bottom-0 z-(--z-topbar) row gap-2 border-t border-line bg-white px-4 pt-3 pb-[max(26px,env(safe-area-inset-bottom))] md:static md:border-0 md:bg-transparent md:px-0 md:pt-4 md:pb-0">
+        {q && (
+          <Link href={`/results/${encodeURIComponent(testId)}/q/${n}/doubt`} className="btn btn-secondary btn-lg flex-1 md:hidden">
+            Ask a doubt
+          </Link>
+        )}
         {prevN !== null ? (
-          <Link href={href(prevN)} replace className="btn btn-secondary btn-lg flex-1">
+          <Link href={href(prevN)} replace className={q ? "btn btn-secondary btn-lg flex-1 max-md:hidden" : "btn btn-secondary btn-lg flex-1"}>
             <ArrowLeftIcon />
             Previous
           </Link>
         ) : (
-          <Link href={back} className="btn btn-secondary btn-lg flex-1">
+          <Link href={back} className={q ? "btn btn-secondary btn-lg flex-1 max-md:hidden" : "btn btn-secondary btn-lg flex-1"}>
             Back to result
           </Link>
         )}

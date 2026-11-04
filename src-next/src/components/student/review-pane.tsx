@@ -11,6 +11,7 @@ import { LockIcon } from "./icons";
 import { OUTCOME_BADGE, outcomeText, sentence } from "./labels";
 import { LangToggle, QuestionBody, Solution, type Lang } from "./question-body";
 import { canExplain, ExplainButton, WhyPanel } from "./ai-review";
+import { InlineDoubtCard } from "./doubt-chat";
 
 type GridFilter = "all" | QuestionOutcome;
 
@@ -21,6 +22,7 @@ type GridFilter = "all" | QuestionOutcome;
  * Questions are numbered as the student saw them in the exam (shownAs), with the paper's number second.
  * M3: "Explain my mistake" opens "Why this happened" (ai-review.tsx) under the question. The selection can be
  * driven from outside (`sel` / `onSel`: a leak's "Review Q…" on the AI summary).
+ * M4: "Ask a doubt about Q12" (doubt-chat.tsx) under the selected question.
  */
 export function ReviewPane({
   data,
@@ -133,6 +135,8 @@ export function ReviewPane({
 
         <div className="col min-w-0 flex-[999_1_560px] gap-5">
           <QuestionCard key={selected.n} cell={selected} label={selected.shownAs} data={data} now={now} q={q} loading={available && (listQ.isPending || isDesktop === null)} error={listQ.error} onRetry={() => listQ.refetch()} />
+          {/* M4: the doubt chat about the selected question, once answers are open (the AI gate is checked again on send) */}
+          {available && isDesktop === true && <InlineDoubtCard key={`doubt-${selected.n}`} testId={testId} n={selected.n} label={selected.shownAs} />}
         </div>
       </div>
     </section>

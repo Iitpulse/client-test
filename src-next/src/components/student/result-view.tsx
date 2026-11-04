@@ -14,7 +14,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@/components/shell/icons";
 import { Delta } from "./bits";
 import { ErrorCard, Skel, useStartTest } from "./common";
 import { ChevronLeftIcon, HourglassRing, LockIcon } from "./icons";
-import { num, sentence, signed, subjectLabel, underlineSplit } from "./labels";
+import { num, sentence, signed, underlineSplit } from "./labels";
 import { ReviewPane } from "./review-pane";
 import { Ring } from "./ring";
 
@@ -209,7 +209,7 @@ function SectionCards({ sections }: { sections: SectionResult[] }) {
       {sections.map((s, i) => (
         <article key={s.id} className="card pad col cl-lift rise gap-2.5" style={{ "--i": 3 + i } as React.CSSProperties}>
           <div className="row between">
-            <span className="h3">{subjectLabel(s.name)}</span>
+            <span className="h3">{s.subject ?? s.name}</span>
             <span className="num h3">
               {num(s.score)}
               <span className="sm muted">/{num(s.maxScore)}</span>
@@ -271,7 +271,7 @@ function PublishedPhone({ data, r, now }: { data: StudentResult; r: PublishedRes
             {r.sections.map((s, i) => (
               <div key={s.id} className="col gap-1.5">
                 <div className="row sm gap-1.5">
-                  <span className="font-semibold">{subjectLabel(s.name)}</span>
+                  <span className="font-semibold">{s.subject ?? s.name}</span>
                   {weakest?.id === s.id && (
                     <>
                       <InkArrow delay={1500} style={{ marginTop: 2 }} />
@@ -334,7 +334,7 @@ function Pending({ data, now }: { data: StudentResult; now: number }) {
 
   const lead =
     hidden
-      ? v.reason || "Your institute does not share results for this test."
+      ? sentence(v.reason || "Your institute does not share results for this test")
       : v.mode === "atTheEndOfTest"
         ? "Results come out for everyone when the test closes."
         : v.mode === "manual"

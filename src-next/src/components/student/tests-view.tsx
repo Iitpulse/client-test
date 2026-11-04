@@ -13,7 +13,7 @@ import { ArrowRightIcon } from "@/components/shell/icons";
 import { ErrorCard, NoBatchCard, Skel, useStartTest } from "./common";
 import { CalendarIcon, SearchIcon } from "./icons";
 import { cardBadge, cardWhen } from "./card-labels";
-import { kindLabel, num, subjectLabel, testMeta } from "./labels";
+import { kindLabel, num, sentence, testMeta } from "./labels";
 
 const TABS: TestsTab[] = ["live", "upcoming", "completed"];
 const isTab = (v: string | null): v is TestsTab => !!v && (TABS as string[]).includes(v);
@@ -117,7 +117,7 @@ export function TestsView() {
       <div className="row wrap gap-2 max-md:flex-nowrap max-md:overflow-x-auto max-md:pb-1" role="group" aria-label="Subject">
         {["", ...subjects].map((s) => (
           <button key={s || "all"} type="button" className={subject === s ? "chip on max-md:flex-none" : "chip max-md:flex-none"} aria-pressed={subject === s} onClick={() => setSubject(s)}>
-            {s ? subjectLabel(s) : "All"}
+            {s || "All"}
           </button>
         ))}
       </div>
@@ -269,7 +269,7 @@ function DesktopCard({ t, now, i }: { t: TestCard; now: number; i: number }) {
             <span className="sm font-semibold">
               {num(h.score)} / {num(h.maxScore)}
             </span>
-            <span className="xs muted">{h.rank ? `Rank ${h.rank.position} of ${h.rank.of}` : h.rankAvailableAt ? `Rank on ${relativeDayTime(now, h.rankAvailableAt)}` : ""}</span>
+            <span className="xs muted">{h.rank ? `Rank ${h.rank.position} of ${h.rank.of}` : h.rankAvailableAt ? `Rank ${/^(today|tomorrow)/.test(relativeDayTime(now, h.rankAvailableAt)) ? "" : "on "}${relativeDayTime(now, h.rankAvailableAt)}` : ""}</span>
           </div>
           <Bar value={Math.max(0, h.percent)} max={100} label={`Score ${num(h.score)} of ${num(h.maxScore)}`} />
         </div>
@@ -285,7 +285,7 @@ function DesktopCard({ t, now, i }: { t: TestCard; now: number; i: number }) {
           <div className="h-2 rounded-full border-[1.5px] border-dashed" style={{ borderColor: "#E8C27A" }} />
         </div>
       )}
-      {t.state === "submitted" && v?.status === "hidden" && <span className="sm muted">{v.reason || "Your institute does not share results for this test."}</span>}
+      {t.state === "submitted" && v?.status === "hidden" && <span className="sm muted">{sentence(v.reason || "Your institute does not share results for this test")}</span>}
       {t.state === "ended" && <span className="sm muted">You didn&apos;t take this test.</span>}
 
       <div className="row mt-auto gap-2">
@@ -343,7 +343,7 @@ function PhoneCard({ t, now, i, best }: { t: TestCard; now: number; i: number; b
               : "Result out"
           : v?.status === "pending"
             ? "Submitted · answers saved"
-            : v?.reason || "Submitted";
+            : v?.reason ? sentence(v.reason) : "Submitted";
 
   const body = (
     <>

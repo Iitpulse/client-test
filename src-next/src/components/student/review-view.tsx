@@ -1,80 +1,78 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
 import { mmss, relativeDayTime } from "@/lib/time";
 import { useServerClock } from "@/lib/server-clock";
-import type { ReviewFilter, ReviewQuestion } from "@/types/m2-student";
+import type { QuestionOutcome, ReviewFilter } from "@/types/m2-student";
 import { ArrowLeftIcon, ArrowRightIcon } from "@/components/shell/icons";
 import { ErrorCard, Skel } from "./common";
 import { ChevronLeftIcon, LockIcon } from "./icons";
-import { OUTCOME_BADGE, outcomeText, sentence, subjectLabel } from "./labels";
-import { LangToggle, numberingFrom, QuestionBody, shownNumber, Solution, type Lang } from "./question-body";
+import { OUTCOME_BADGE, outcomeText, sentence } from "./labels";
+import { LangToggle, QuestionBody, Solution, type Lang } from "./question-body";
 
 const FILTERS: ReviewFilter[] = ["all", "correct", "wrong", "skipped", "review"];
+
+/** The contract's filters: review = wrong + partial + skipped. */
+function inFilter(o: QuestionOutcome, f: ReviewFilter): boolean {
+  return f === "all" || (f === "review" ? o !== "correct" : o === f);
+}
 
 /**
  * /results/[testId]/q/[n]: Phone-Review, one question at a time with a strip of the questions in the filter and
  * Previous / Next. On desktop the same screen sits in the shell, centred (the result page has the pane).
  *
- * The question itself comes from GET …/questions/:n (fast first paint); the filter's list from GET …/questions
- * follows, which gives the strip, the exam numbering (shownAs) for every question and instant Previous / Next.
- * Questions are ordered and numbered as the student saw them, with the paper's number second.
+ * The question, its place in the filter, its neighbours and the server time come from GET …/questions/:n (the
+ * neighbours of the current one are fetched ahead, so Next is instant). The strip comes from the result's grid
+ * (already loaded on the result page), filtered here: every cell carries shownAs, in the student's order.
+ * Questions are numbered as the student saw them (shownAs), with the paper's number second; `n` is the route key.
  * Out of M2: "Why this happened" (AI) and "Ask a doubt"; the institute's own solution shows instead.
  */
 export function ReviewView({ testId, n }: { testId: string; n: number }) {
   const search = useSearchParams();
   const f = search.get("filter");
   const filter: ReviewFilter = f && (FILTERS as string[]).includes(f) ? (f as ReviewFilter) : "all";
+  const client = useQueryClient();
 
-  const listQ = useQuery({
-    queryKey: qk.reviewList(testId, filter),
-    queryFn: ({ signal }) => studentApi.reviewList(testId, filter, signal),
-    staleTime: 10 * 60_000,
+  const itemFn = (m: number) => ({
+    queryKey: qk.reviewItem(testId, m, filter),
+    queryFn: ({ signal }: { signal: AbortSignal }) => studentApi.reviewItem(testId, m, filter, signal),
+    staleTime: 10 * 60_000, // the answer key does not change
   });
-  const fromList = listQ.data?.items.find((i) => i.n === n);
-  const itemQ = useQuery({
-    queryKey: qk.reviewItem(testId, n, filter),
-    queryFn: ({ signal }) => studentApi.reviewItem(testId, n, filter, signal),
-    enabled: !fromList && !listQ.data, // the list answers it once loaded
-    staleTime: 10 * 60_000,
-  });
-  // Server time for "opens tomorrow, 1:02 AM" in the not-yet message (the review routes carry no `now`).
-  const resultQ = useQuery({ queryKey: qk.result(testId), queryFn: ({ signal }) => studentApi.result(testId, signal), enabled: listQ.isError || itemQ.isError });
-  const now = useServerClock(resultQ.data?.now, resultQ.dataUpdatedAt, false);
+  const itemQ = useQuery(itemFn(n));
+  const resultQ = useQuery({ queryKey: qk.result(testId), queryFn: ({ signal }) => studentApi.result(testId, signal) });
+  const serverNow = itemQ.data?.now ?? resultQ.data?.now;
+  const now = useServerClock(serverNow, itemQ.data ? itemQ.dataUpdatedAt : resultQ.dataUpdatedAt, false);
 
-  const q: ReviewQuestion | undefined = fromList ?? itemQ.data?.item;
-  const known = useMemo(() => numberingFrom(listQ.data?.items), [listQ.data]);
-  const ordered = useMemo(() => [...(listQ.data?.items ?? [])].sort((a, b) => shownNumber(a, known) - shownNumber(b, known)), [listQ.data, known]);
-  const idx = ordered.findIndex((i) => i.n === n);
-  const position = idx >= 0 ? { index: idx + 1, of: ordered.length } : itemQ.data?.position;
-  const prevN = idx >= 0 ? ordered[idx - 1]?.n ?? null : itemQ.data?.prevN ?? null;
-  const nextN = idx >= 0 ? ordered[idx + 1]?.n ?? null : itemQ.data?.nextN ?? null;
-  const label = q ? shownNumber(q, known) : n;
+  const item = itemQ.data;
+  const q = item?.item;
+  const cells = (resultQ.data?.result?.questions ?? []).filter((c) => inFilter(c.outcome, filter));
+  const labelOf = (m: number) => cells.find((c) => c.n === m)?.shownAs ?? m;
+  const label = q ? q.shownAs : labelOf(n);
+  const position = item?.position;
+  const prevN = item?.prevN ?? null;
+  const nextN = item?.nextN ?? null;
   const href = (to: number) => `/results/${encodeURIComponent(testId)}/q/${to}${filter !== "all" ? `?filter=${filter}` : ""}`;
   const back = `/results/${encodeURIComponent(testId)}`;
-  const labelOf = (m: number) => {
-    const it = ordered.find((i) => i.n === m);
-    return it ? shownNumber(it, known) : m;
-  };
+
+  // Fetch the neighbours ahead, so Previous / Next show at once.
+  useEffect(() => {
+    for (const m of [nextN, prevN]) if (m !== null) client.prefetchQuery(itemFn(m));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- itemFn is rebuilt every render from testId and filter
+  }, [client, nextN, prevN, testId, filter]);
 
   const subtitle = [q && label !== q.n ? `Paper Q${q.n}` : null, position ? `${filter === "review" ? "Reviewing" : "Question"} ${position.index} of ${position.of}` : null].filter(Boolean).join(" · ");
   const [lang, setLang] = useState<Lang>("en");
-  let error: unknown = null;
-  if (!q) {
-    if (listQ.data) error = new StudentApiError(404, "This question is not in this list", "QUESTION_NOT_FOUND");
-    else if (itemQ.error) error = itemQ.error;
-    else if (listQ.error && !itemQ.isFetching) error = listQ.error;
-  }
+  const error: unknown = !q && itemQ.isError ? itemQ.error : null;
 
   // Keep the current question in view in the strip.
   const strip = useRef<HTMLElement>(null);
   useEffect(() => {
     strip.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [n, ordered.length]);
+  }, [n, cells.length]);
 
   return (
     <div className="col mx-auto min-h-dvh w-full max-w-[760px] md:min-h-0 md:gap-4">
@@ -89,11 +87,11 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
           </span>
           {q && <span className={`badge ${q.outcome === "wrong" ? "b-live" : OUTCOME_BADGE[q.outcome]}`}>{outcomeText(q)}</span>}
         </div>
-        {ordered.length > 1 && (
+        {cells.length > 1 && (
           <nav ref={strip} className="qstrip" aria-label="Questions in this list">
-            {ordered.map((i) => {
+            {cells.map((i) => {
               const on = i.n === n;
-              const l = shownNumber(i, known);
+              const l = i.shownAs;
               return (
                 <Link key={i.n} href={href(i.n)} replace scroll={false} className={`qc qc-${i.outcome}${on ? " qc-on" : ""}`} aria-current={on ? "true" : undefined} aria-label={`Question ${l}, ${i.outcome}`}>
                   {l}
@@ -106,7 +104,7 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
 
       <div className="col flex-1 gap-3 px-4 pt-3.5 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-0 md:pb-0" aria-live="polite">
         {error ? (
-          <ReviewProblem error={error} now={resultQ.data ? now : null} back={back} onRetry={() => (listQ.isError ? listQ.refetch() : itemQ.refetch())} />
+          <ReviewProblem error={error} now={resultQ.data ? now : null} back={back} onRetry={() => itemQ.refetch()} />
         ) : !q ? (
           <div className="col gap-3" aria-busy="true" aria-label="Loading the question">
             <Skel className="h-28 w-full rounded-[14px]" />
@@ -117,7 +115,7 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
         ) : (
           <>
             <div className="row xs muted gap-2">
-              {q.subject && <span className="badge b-grey flex-none">{subjectLabel(q.subject)}</span>}
+              {q.subject && <span className="badge b-grey flex-none">{q.subject}</span>}
               <span className="grow min-w-0">
                 Your time <b className="num text-ink">{mmss(q.timeSeconds)}</b>
                 {q.averageTimeSeconds != null ? ` · average ${mmss(q.averageTimeSeconds)}` : ""}

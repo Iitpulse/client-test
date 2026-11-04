@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { qk, studentApi } from "@/lib/student-api";
 import { relativeDayTime, mmss } from "@/lib/time";
@@ -8,8 +8,8 @@ import { useIsDesktop } from "@/lib/use-media";
 import type { PublishedResult, QuestionCell, QuestionOutcome, ReviewQuestion, StudentResult } from "@/types/m2-student";
 import { ErrorCard, Skel } from "./common";
 import { LockIcon } from "./icons";
-import { OUTCOME_BADGE, outcomeText, sentence, subjectLabel } from "./labels";
-import { LangToggle, numberingFrom, QuestionBody, shownNumber, Solution, type Lang } from "./question-body";
+import { OUTCOME_BADGE, outcomeText, sentence } from "./labels";
+import { LangToggle, QuestionBody, Solution, type Lang } from "./question-body";
 
 type GridFilter = "all" | QuestionOutcome;
 
@@ -29,8 +29,7 @@ export function ReviewPane({ data, r, now }: { data: StudentResult; r: Published
     enabled: isDesktop === true && available,
     staleTime: 10 * 60_000, // the answer key does not change
   });
-  const known = useMemo(() => numberingFrom(listQ.data?.items), [listQ.data]);
-  const cells = useMemo(() => [...r.questions].sort((a, b) => shownNumber(a, known) - shownNumber(b, known)), [r.questions, known]);
+  const cells = r.questions; // in the student's order (shownAs), as the API sends them
 
   const [filter, setFilter] = useState<GridFilter>("all");
   const [sel, setSel] = useState<number | null>(null);
@@ -76,7 +75,7 @@ export function ReviewPane({ data, r, now }: { data: StudentResult; r: Published
           <span className="sm muted">Tap a question</span>
           <div className="grid grid-cols-8 gap-1.5">
             {cells.map((cell) => {
-              const label = shownNumber(cell, known);
+              const label = cell.shownAs;
               const dim = filter !== "all" && cell.outcome !== filter;
               const on = cell.n === selected.n;
               return (
@@ -116,7 +115,7 @@ export function ReviewPane({ data, r, now }: { data: StudentResult; r: Published
         </aside>
 
         <div className="col min-w-0 flex-[999_1_560px] gap-5">
-          <QuestionCard key={selected.n} cell={selected} label={shownNumber(selected, known)} data={data} now={now} q={q} loading={available && (listQ.isPending || isDesktop === null)} error={listQ.error} onRetry={() => listQ.refetch()} />
+          <QuestionCard key={selected.n} cell={selected} label={selected.shownAs} data={data} now={now} q={q} loading={available && (listQ.isPending || isDesktop === null)} error={listQ.error} onRetry={() => listQ.refetch()} />
         </div>
       </div>
     </section>
@@ -151,7 +150,7 @@ function QuestionCard({
         <div className="row wrap gap-2.5">
           <span className="h3 mono">Q{label}</span>
           {label !== cell.n && <span className="xs muted">Paper Q{cell.n}</span>}
-          {cell.subject && <span className="badge b-grey">{subjectLabel(cell.subject)}</span>}
+          {cell.subject && <span className="badge b-grey">{cell.subject}</span>}
           <span className={`badge ${OUTCOME_BADGE[cell.outcome]}`}>{outcomeText(cell)}</span>
         </div>
         <span className="xs muted">

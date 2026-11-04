@@ -1,18 +1,15 @@
 // Board wording for the M2 screens, derived from the contract's fields (types/m2-student.ts).
 import type { QuestionCell, QuestionOutcome, TestKind, TestSummary } from "@/types/m2-student";
 
-/** The boards write "Maths" for the "Mathematics" section. */
-export function subjectLabel(subject: string): string {
-  return subject === "Mathematics" ? "Maths" : subject;
-}
-
 export function kindLabel(kind: TestKind): string {
-  return kind === "full_mock" ? "Full mock" : kind === "sectional" ? "Sectional" : "";
+  return kind === "full" ? "Full mock" : kind === "sectional" ? "Sectional" : "";
 }
 
 /** Marks may be fractional; show at most 2 decimals. */
+/** "155", "2.5", "−13" (a true minus sign, as on the boards) */
 export function num(n: number): string {
-  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+  const s = Number.isInteger(n) ? String(Math.abs(n)) : String(Math.round(Math.abs(n) * 100) / 100);
+  return n < 0 && s !== "0" ? `\u2212${s}` : s;
 }
 
 /** "+4", "−1" (a true minus sign), "0" */
@@ -50,10 +47,17 @@ export function underlineSplit(name: string): [string, string] {
   return [words.slice(0, -take).join(" ") + " ", words.slice(-take).join(" ")];
 }
 
-/** A short axis label for a trend point: "JEE Main Mock 11" -> "M11"; no number -> the first word. */
-export function axisLabel(name: string): string {
-  const m = name.match(/(\p{L})\p{L}*\s+(\d+)\s*$/u);
-  return m ? `${m[1]!.toUpperCase()}${m[2]}` : name.split(/\s+/)[0]!.slice(0, 6);
+/**
+ * A short axis label for a trend point. TrendPoint carries no shortName (TestSummary does), so: the shortName
+ * of a test we already have (lastResult, upcoming), else the API's own rule for tests without a stored one
+ * (docs/m2-student-api.md): prefix M (full) / subject initial + S (sectional) / T, plus the last 1–3 digit
+ * number in the name; no number -> initials of the first three words.
+ */
+export function axisLabel(name: string, kind: TestKind | undefined, subject: string | undefined): string {
+  const m = name.match(/(\d{1,3})(?!.*\d)/);
+  if (!m) return name.split(/\s+/).slice(0, 3).map((w) => w[0]?.toUpperCase() ?? "").join("");
+  const prefix = kind === "full" ? "M" : kind === "sectional" ? `${(subject ?? "")[0]?.toUpperCase() ?? ""}S` : "T";
+  return `${prefix}${m[1]}`;
 }
 
 export const OUTCOME_LABEL: Record<QuestionOutcome, string> = { correct: "Correct", partial: "Partial", wrong: "Wrong", skipped: "Skipped" };

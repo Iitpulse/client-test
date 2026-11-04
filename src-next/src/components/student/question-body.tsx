@@ -1,25 +1,10 @@
 "use client";
 
 import { MathText } from "@iitpulse/ui";
-import type { QuestionCell, ReviewQuestion } from "@/types/m2-student";
+import type { ReviewQuestion } from "@/types/m2-student";
 import { num } from "./labels";
 
 export type Lang = "en" | "hi";
-
-/**
- * The number a student knows a question by: the position they saw it at in the exam (`shownAs`), else the paper's.
- * QuestionCell has no shownAs in the M2 contract; when the API adds it, it is used without a change here.
- */
-export function shownNumber(cell: QuestionCell & { shownAs?: number | null }, known?: Map<number, number>): number {
-  return cell.shownAs ?? known?.get(cell.n) ?? cell.n;
-}
-
-/** n -> shownAs from loaded review questions */
-export function numberingFrom(items: ReviewQuestion[] | undefined): Map<number, number> {
-  const m = new Map<number, number>();
-  for (const q of items ?? []) if (q.shownAs != null) m.set(q.n, q.shownAs);
-  return m;
-}
 
 /** The question in the chosen language, falling back to English where there is no Hindi text. */
 const pick = (t: { en: string | null; hi: string | null }, lang: Lang) => (lang === "hi" && t.hi ? t.hi : t.en) || "";

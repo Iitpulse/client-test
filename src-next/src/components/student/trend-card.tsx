@@ -9,7 +9,7 @@ type TrendTab = "score" | "accuracy" | "rank";
 export function TrendCard({ trend, last }: { trend: TrendPoint[]; last: LastResult | null }) {
   const [tab, setTab] = useState<TrendTab>("score");
   const kind = last?.test.kind;
-  const subtitle = trend.length ? `Last ${trend.length} ${kind === "full_mock" ? (trend.length === 1 ? "full mock" : "full mocks") : kind === "sectional" ? (trend.length === 1 ? "sectional" : "sectionals") : trend.length === 1 ? "test" : "tests"}` : "";
+  const subtitle = trend.length ? `Last ${trend.length} ${kind === "full" ? (trend.length === 1 ? "full mock" : "full mocks") : kind === "sectional" ? (trend.length === 1 ? "sectional" : "sectionals") : trend.length === 1 ? "test" : "tests"}` : "";
   const value = (p: TrendPoint): number | null => (tab === "score" ? p.score : tab === "accuracy" ? p.accuracyPercent : p.rank?.position ?? null);
   const fmt = (v: number) => (tab === "score" ? num(v) : tab === "accuracy" ? `${v}%` : `#${v}`);
   const pts = trend.map((p, i) => ({ p, i, v: value(p) })).filter((x): x is { p: TrendPoint; i: number; v: number } => x.v !== null);
@@ -73,7 +73,7 @@ export function TrendCard({ trend, last }: { trend: TrendPoint[]; last: LastResu
           <g fontFamily="var(--font-sans)" fontSize="11" fill="#575C75" textAnchor="middle">
             {trend.map((p, i) => (
               <text key={p.testId} x={xs(i)} y="166">
-                {axisLabel(p.testName)}
+                {p.testId === last?.test.id ? last.test.shortName : axisLabel(p.testName, kind, last?.test.subjects[0])}
               </text>
             ))}
           </g>

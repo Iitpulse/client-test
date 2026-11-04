@@ -106,7 +106,7 @@
 
   /* Phone-Review: the strip of questions under review, scrolls sideways inside itself (never the page). */
   .qstrip {
-    display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; padding: 4px 24px 4px 4px;
+    display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; padding: 4px 24px 4px 4px; scroll-padding-inline: 4px;
     mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
   }
   .qstrip::-webkit-scrollbar { display: none }

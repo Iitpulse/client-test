@@ -13,7 +13,7 @@ import type { LastResult, PendingResult, StudentHome, TestCard } from "@/types/m
 import { ArrowRightIcon } from "@/components/shell/icons";
 import { Delta } from "./bits";
 import { ErrorCard, Skel, useStartTest } from "./common";
-import { num, shortPair, subjectLabel, testMeta } from "./labels";
+import { num, shortPair, testMeta } from "./labels";
 import { Ring } from "./ring";
 
 // The score trend is desktop only (the phone board has none): its code loads only where it is shown, and after
@@ -110,7 +110,7 @@ function Hero({ home, now }: { home: StudentHome; now: number }) {
 
   const t = live ?? next;
   const resume = live?.state === "in_progress";
-  const subjects = t ? t.subjects.map(subjectLabel).join(", ") : "";
+  const subjects = t ? t.subjects.join(", ") : "";
   const more = home.liveCount > 1 ? home.liveCount - 1 : 0;
   const badge = live ? (
     <span className="badge" style={{ background: "rgba(253,0,1,.16)", color: "#FFD1D1" }}>

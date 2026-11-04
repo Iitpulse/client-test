@@ -1,4 +1,4 @@
-// Copied verbatim from Iitpulse/api-tests src/contracts/m2-student.ts (branch m2-contract, 7b32dc5).
+// Copied verbatim from Iitpulse/api-tests src/contracts/m2-student.ts (branch feature/migration-fastify-typescript, 8d97c51).
 // Do not edit here: change the contract in api-tests and copy it again.
 
 /**
@@ -52,8 +52,8 @@ export interface ApiError {
 // Shared pieces
 // ---------------------------------------------------------------------------------------------
 
-/** Derived in M2 from the number of distinct section subjects (2+ = full_mock, 1 = sectional). */
-export type TestKind = "full_mock" | "sectional" | "other";
+/** The test's kind column. On create it defaults from the subjects (2+ = full, 1 = sectional, else custom). */
+export type TestKind = "full" | "sectional" | "custom";
 
 /**
  * The student's state on one test.
@@ -89,8 +89,17 @@ export interface TestSummary {
   id: string;
   name: string;
   kind: TestKind;
+  /**
+   * Short label for chart axes and tight spaces, at most 8 characters: the admin's stored label, else derived
+   * from the kind and the last number in the name ("JEE Main Mock 11" -> "M11", "Physics Sectional 4" -> "PS4",
+   * no number -> initials, "Full Syllabus Test" -> "FST"). Always present.
+   */
+  shortName: string;
   exam: ExamRef | null;
-  /** Section subjects in paper order, title case ("Physics", "Chemistry", "Mathematics") */
+  /**
+   * Section subjects in paper order, as the boards print them: "Physics", "Chemistry", "Maths" (not
+   * "Mathematics"); CAT: "VARC", "DILR", "QA". Every subject field in this contract uses these display names.
+   */
   subjects: string[];
   totalQuestions: number;
   durationMinutes: number;
@@ -117,7 +126,7 @@ export interface ResultVisibilityInfo {
   reason: string | null;
 }
 
-/** Rank among everyone who submitted this test (same tenant). Only once the test has settled. */
+/** Rank among everyone who submitted this test (same tenant), "among N students who took this test". Only once the test has settled. */
 export interface Rank {
   /** Competition ranking by score: equal scores share a position (1, 2, 2, 4) */
   position: number;
@@ -286,9 +295,15 @@ export interface SectionResult {
   timeSeconds: number;
 }
 
-/** One cell of the question grid. n is the paper's own numbering (authored order), 1-based. */
+/**
+ * One cell of the question grid. n is the paper's own numbering (authored order), 1-based, and is the key
+ * of the review routes. shownAs is the number this student saw in the exam (their shuffled order, shuffled
+ * within each sub-section, so sections stay together): label cells with shownAs first, n second (decision 4).
+ * shownAs is safe to send while the answer key is held.
+ */
 export interface QuestionCell {
   n: number;
+  shownAs: number;
   questionId: string;
   sectionId: string;
   subject: string | null;
@@ -302,7 +317,7 @@ export interface QuestionCell {
 export interface PublishedResult extends ResultHeadline {
   counts: { correct: number; partial: number; wrong: number; skipped: number; total: number };
   sections: SectionResult[];
-  /** Every question, n ascending */
+  /** Every question, in the student's order: shownAs ascending */
   questions: QuestionCell[];
 }
 
@@ -336,8 +351,6 @@ export interface ReviewOption {
 }
 
 export interface ReviewQuestion extends QuestionCell {
-  /** The number the student saw in the exam (their shuffled order), or null if unknown */
-  shownAs: number | null;
   stem: { en: RichText; hi: RichText | null };
   /** Empty for integer questions */
   options: ReviewOption[];
@@ -351,17 +364,21 @@ export interface ReviewQuestion extends QuestionCell {
 }
 
 export interface ReviewList {
+  /** Server time */
+  now: IsoDateTime;
   filter: ReviewFilter;
   total: number;
-  /** n ascending */
+  /** In the student's order: shownAs ascending */
   items: ReviewQuestion[];
 }
 
 export interface ReviewItem {
+  /** Server time */
+  now: IsoDateTime;
   filter: ReviewFilter;
-  /** 1-based index of this question within the filter, e.g. { index: 2, of: 11 } */
+  /** 1-based index of this question within the filter, in the student's order (shownAs), e.g. { index: 2, of: 11 } */
   position: { index: number; of: number };
-  /** neighbours within the filter; null at the ends */
+  /** Paper numbers (n, the route key) of the neighbours within the filter in the student's order; null at the ends */
   prevN: number | null;
   nextN: number | null;
   item: ReviewQuestion;

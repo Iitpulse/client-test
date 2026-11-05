@@ -111,6 +111,10 @@ const initialStatus: ITestStatus = {
   answeredAndMarkedForReview: [],
 };
 
+// The submit running now and the last test submitted from this page (see submitTest)
+let submitInFlight: { testId: string; promise: Promise<void> } | null = null;
+let submittedTestId: string | null = null;
+
 export const useTestStore = create<TestState>((set, get) => ({
   test: null,
   questions: [],
@@ -496,70 +500,84 @@ export const useTestStore = create<TestState>((set, get) => ({
                    (test as { id?: string; _id?: string })._id;
     if (!testId) throw new Error("Test ID not found");
 
-    // Reconstruct sections with question responses in the format expected by backend
-    const sections = test.sections.map((section) => ({
-      id: section.id,
-      subSections: section.subSections.map((subSection) => {
-        // Build questions object with responses
-        const questionsRecord: Record<string, {
-          selectedOptions?: string[];
-          enteredAnswer?: number;
-          timeTakenInSeconds?: number;
-          status?: string;
-        }> = {};
+    // One submit per test: the exam timer keeps ticking at 00:00:00 and can ask again while the first request is
+    // still out (a slow network answered the second one "already submitted"). A repeat joins the running submit,
+    // or resolves at once when this test was already submitted from this page.
+    if (submittedTestId === testId) return;
+    if (submitInFlight?.testId === testId) return submitInFlight.promise;
+    const promise = (async () => {
+      // Reconstruct sections with question responses in the format expected by backend
+      const sections = test.sections.map((section) => ({
+        id: section.id,
+        subSections: section.subSections.map((subSection) => {
+          // Build questions object with responses
+          const questionsRecord: Record<string, {
+            selectedOptions?: string[];
+            enteredAnswer?: number;
+            timeTakenInSeconds?: number;
+            status?: string;
+          }> = {};
 
-        questions
-          .filter((q) => q.sectionId === section.id && q.subSectionId === subSection.id)
-          .forEach((q) => {
-            questionsRecord[q.id] = {
-              selectedOptions: q.selectedOptions,
-              enteredAnswer: q.enteredAnswer !== undefined && q.enteredAnswer !== "" ? parseFloat(q.enteredAnswer) : undefined,
-              timeTakenInSeconds: q.status.timeTakenInSeconds,
-              status: q.status.status,
-            };
-          });
+          questions
+            .filter((q) => q.sectionId === section.id && q.subSectionId === subSection.id)
+            .forEach((q) => {
+              questionsRecord[q.id] = {
+                selectedOptions: q.selectedOptions,
+                enteredAnswer: q.enteredAnswer !== undefined && q.enteredAnswer !== "" ? parseFloat(q.enteredAnswer) : undefined,
+                timeTakenInSeconds: q.status.timeTakenInSeconds,
+                status: q.status.status,
+              };
+            });
 
-        return {
-          id: subSection.id,
-          questions: questionsRecord,
-        };
-      }),
-    }));
+          return {
+            id: subSection.id,
+            questions: questionsRecord,
+          };
+        }),
+      }));
 
-    // Integrity (M5): the fullscreen-exit count since the last autosave goes with the submit; the server keeps the
-    // higher of this and the saved one on the submission
-    let fullscreenExits = 0;
+      // Integrity (M5): the fullscreen-exit count since the last autosave goes with the submit; the server keeps the
+      // higher of this and the saved one on the submission
+      let fullscreenExits = 0;
+      try {
+        fullscreenExits = Math.min(1000, Math.max(0, parseInt(localStorage.getItem(`IITP_FULLSCREEN_EXITS_${testId}`) || "0", 10) || 0));
+      } catch {
+        // storage blocked: the server still has the last saved count
+      }
+      const submitBody = { testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true, fullscreenExits };
+
+      try {
+        const response = await api.tests.submit(submitBody);
+
+        const outcome = response.data?.data || {};
+        const totalMarks = outcome.totalMarks ?? 0;
+        localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
+        // What the result screen shows: score only when the test's publish setting allows it now
+        localStorage.setItem(
+          "result",
+          JSON.stringify({
+            testId,
+            totalMarks: outcome.totalMarks,
+            resultVisible: outcome.resultVisible !== false,
+            resultReason: outcome.resultReason,
+            resultAvailableAt: outcome.resultAvailableAt,
+          })
+        );
+
+        set({ isSubmitted: true, totalMarks });
+        submittedTestId = testId;
+      } catch (error: unknown) {
+        const axiosError = error as { response?: { data?: { message?: string } } };
+        const message = axiosError?.response?.data?.message ||
+          (error instanceof Error ? error.message : "Failed to submit test");
+        throw new Error(message);
+      }
+    })();
+    submitInFlight = { testId, promise };
     try {
-      fullscreenExits = Math.min(1000, Math.max(0, parseInt(localStorage.getItem(`IITP_FULLSCREEN_EXITS_${testId}`) || "0", 10) || 0));
-    } catch {
-      // storage blocked: the server still has the last saved count
-    }
-    const submitBody = { testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true, fullscreenExits };
-
-    try {
-      const response = await api.tests.submit(submitBody);
-
-      const outcome = response.data?.data || {};
-      const totalMarks = outcome.totalMarks ?? 0;
-      localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
-      // What the result screen shows: score only when the test's publish setting allows it now
-      localStorage.setItem(
-        "result",
-        JSON.stringify({
-          testId,
-          totalMarks: outcome.totalMarks,
-          resultVisible: outcome.resultVisible !== false,
-          resultReason: outcome.resultReason,
-          resultAvailableAt: outcome.resultAvailableAt,
-        })
-      );
-
-      set({ isSubmitted: true, totalMarks });
-    } catch (error: unknown) {
-      const axiosError = error as { response?: { data?: { message?: string } } };
-      const message = axiosError?.response?.data?.message ||
-        (error instanceof Error ? error.message : "Failed to submit test");
-      throw new Error(message);
+      await promise;
+    } finally {
+      if (submitInFlight?.promise === promise) submitInFlight = null;
     }
   },
 

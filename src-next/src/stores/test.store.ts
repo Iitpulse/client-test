@@ -163,7 +163,8 @@ export const useTestStore = create<TestState>((set, get) => ({
         const ids = (st: string) => questions.filter((q) => q.status.status === st).map((q) => q.id);
 
         set({
-          test,
+          // The API sends durationInMinutes; the frozen NTA instructions read the legacy `duration` (else 180).
+          test: { ...test, duration: test.duration ?? test.durationInMinutes },
           questions,
           currentQuestion: current,
           status: {

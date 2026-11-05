@@ -172,6 +172,12 @@ function Desktop({ d, now, range }: { d: ProgressResponse; now: number; range: P
   );
 }
 
+/** "Mock 6": the first test's name without the words it shares with the last ("JEE Main"); its short name when that is still long. */
+function sinceName(last: { name: string }, first: { name: string; shortName: string }): string {
+  const n = shortPair(last.name, first.name)[1];
+  return n.split(/\s+/).length > 2 ? first.shortName : n;
+}
+
 /** The trend's numbers: marks, or percent of marks when the tests have different totals. */
 function trendModel(d: ProgressResponse) {
   const pts = d.scoreTrend;
@@ -183,7 +189,7 @@ function trendModel(d: ProgressResponse) {
   const fmt = (p: (typeof pts)[number]) => (pct ? `${p.percent}%` : num(p.score));
   const diff = first && last && pts.length > 1 ? val(last) - val(first) : null;
   // "since Mock 6": the first test's name without the words it shares with the last one ("JEE Main")
-  const since = first && last ? shortPair(last.name, first.name)[1] : "";
+  const since = first && last ? sinceName(last, first) : "";
   const delta = diff === null ? null : `${diff >= 0 ? "+" : "−"}${num(Math.abs(diff))}${pct ? " points" : ""} since ${since}`;
   return { pts, pct, full, first, last, val, fmt, diff, delta };
 }
@@ -530,7 +536,7 @@ function Phone({ d, now, range }: { d: ProgressResponse; now: number; range: Pro
               {t.diff !== null && t.first && (
                 <span className={t.diff >= 0 ? "badge b-green" : "badge b-grey"}>
                   {t.diff >= 0 ? "▲" : "▼"} {num(Math.abs(t.diff))}
-                  {t.pct ? " points" : ""} since {shortPair(t.last.name, t.first.name)[1]}
+                  {t.pct ? " points" : ""} since {sinceName(t.last, t.first)}
                 </span>
               )}
             </span>

@@ -1,8 +1,17 @@
 "use client";
 
 import { create } from "zustand";
-import { ITest, IQuestionWithStatus, ITestStatus, QuestionStatus } from "@/types";
+import { ITest, IQuestionWithStatus, ITestStatus, QuestionStatus, IAnswerEntry, MatrixAnswer } from "@/types";
 import { api, auth } from "@/lib/api";
+import {
+  acknowledgeAnswerLog,
+  acknowledgeFullscreenEvents,
+  answerValue,
+  clearExamLog,
+  logAnswerEntry,
+  pendingAnswerLog,
+  pendingFullscreenEvents,
+} from "@/lib/exam-log";
 
 // Attempt info from backend
 export interface ITestAttempt {
@@ -10,6 +19,8 @@ export interface ITestAttempt {
   expiresAt: string;
   remainingTimeInSeconds: number;
   durationInMinutes: number;
+  /** M6: extra time given by staff (save-progress answers the new expiry) */
+  extraMinutes?: number;
 }
 
 interface TestState {
@@ -32,6 +43,8 @@ interface TestState {
   previousQuestion: (timeTaken?: number) => void;
   selectOption: (optionId: string) => void;
   setIntegerAnswer: (answer: string) => void;
+  /** M6 matrix grid: tick or untick one cell (row of List I, column of List II) */
+  toggleMatrixCell: (rowId: string, columnId: string) => void;
   clearSelection: () => void;
   saveAndNext: (timeTaken?: number) => void;
   markForReview: (timeTaken?: number) => void;
@@ -75,7 +88,8 @@ function flattenQuestions(test: ITest): IQuestionWithStatus[] {
           id: questionId,
           sectionId: section.id,
           subSectionId: subSection.id,
-          type: subSection.type,
+          // M6: the question's own type wins (paragraph sets of mixed children, matrix)
+          type: (q as { type?: IQuestionWithStatus["type"] }).type ?? subSection.type,
           // Section info for display
           sectionName: section.name,
           sectionSubject: section.subject,
@@ -90,6 +104,7 @@ function flattenQuestions(test: ITest): IQuestionWithStatus[] {
           },
           selectedOptions: [],
           enteredAnswer: "",
+          matrixAnswer: {},
         });
       });
     });
@@ -101,6 +116,38 @@ function flattenQuestions(test: ITest): IQuestionWithStatus[] {
 // Helper to get unique values
 function uniqueValues<T>(arr: T[]): T[] {
   return [...new Set(arr)];
+}
+
+const testIdOf = (test: ITest | null) => (test ? (test as { id?: string; _id?: string }).id || (test as { id?: string; _id?: string })._id || null : null);
+
+/** Has the student given an answer (matrix: any row ticked) */
+function hasAnswerOf(q: IQuestionWithStatus): boolean {
+  if (q.type === "matrix") return Object.values(q.matrixAnswer ?? {}).some((cols) => cols.length > 0);
+  if (q.type === "integer") return !!q.enteredAnswer && q.enteredAnswer.length > 0;
+  return q.selectedOptions.length > 0;
+}
+
+/** The answers in the save-progress / submit shape: sections[].subSections[].questions[questionId] */
+function answerSections(test: ITest, questions: IQuestionWithStatus[]) {
+  return test.sections.map((section) => ({
+    id: section.id,
+    subSections: section.subSections.map((subSection) => {
+      const questionsRecord: Record<string, IAnswerEntry> = {};
+      questions
+        .filter((q) => q.sectionId === section.id && q.subSectionId === subSection.id)
+        .forEach((q) => {
+          const entry: IAnswerEntry = {
+            selectedOptions: q.type === "matrix" ? [] : q.selectedOptions,
+            enteredAnswer: q.enteredAnswer !== undefined && q.enteredAnswer !== "" ? parseFloat(q.enteredAnswer) : undefined,
+            timeTakenInSeconds: q.status.timeTakenInSeconds,
+            status: q.status.status,
+          };
+          if (q.type === "matrix") entry.matrix = q.matrixAnswer ?? {};
+          questionsRecord[q.id] = entry;
+        });
+      return { id: subSection.id, questions: questionsRecord };
+    }),
+  }));
 }
 
 const initialStatus: ITestStatus = {
@@ -137,7 +184,7 @@ export const useTestStore = create<TestState>((set, get) => ({
       const attempt = responseData?.attempt || null;
       const progress = (responseData?.progress || null) as Array<{
         id: string;
-        subSections?: Array<{ id: string; questions?: Record<string, { selectedOptions?: string[]; enteredAnswer?: number; timeTakenInSeconds?: number; status?: string }> }>;
+        subSections?: Array<{ id: string; questions?: Record<string, IAnswerEntry> }>;
       }> | null;
 
       if (test) {
@@ -145,13 +192,14 @@ export const useTestStore = create<TestState>((set, get) => ({
 
         // Resume: apply the student's last saved answers (refresh, crash, new device)
         if (progress) {
-          const saved = new Map<string, { selectedOptions?: string[]; enteredAnswer?: number; timeTakenInSeconds?: number; status?: string }>();
+          const saved = new Map<string, IAnswerEntry>();
           for (const sec of progress) for (const ss of sec.subSections || []) for (const [qid, r] of Object.entries(ss.questions || {})) saved.set(qid, r);
           for (const q of questions) {
             const r = saved.get(q.id);
             if (!r) continue;
             if (Array.isArray(r.selectedOptions)) q.selectedOptions = r.selectedOptions;
             if (r.enteredAnswer !== undefined && r.enteredAnswer !== null) q.enteredAnswer = String(r.enteredAnswer);
+            if (r.matrix && typeof r.matrix === "object") q.matrixAnswer = r.matrix as MatrixAnswer;
             if (typeof r.timeTakenInSeconds === "number") q.status.timeTakenInSeconds = r.timeTakenInSeconds;
             if (r.status) q.status.status = r.status as QuestionStatus;
           }
@@ -164,6 +212,7 @@ export const useTestStore = create<TestState>((set, get) => ({
           questions[current].status.status = "notAnswered";
           questions[current].status.visitedAt = new Date().toISOString();
         }
+        if (questions[current]) logAnswerEntry(testIdOf(test), { questionId: questions[current].id, kind: "visit" });
         const ids = (st: string) => questions.filter((q) => q.status.status === st).map((q) => q.id);
 
         set({
@@ -191,14 +240,17 @@ export const useTestStore = create<TestState>((set, get) => ({
   },
 
   setCurrentQuestion: (index: number) => {
+    const { questions, currentQuestion, test } = get();
+    if (index !== currentQuestion && questions[index]) logAnswerEntry(testIdOf(test), { questionId: questions[index].id, kind: "visit" });
     set({ currentQuestion: index });
   },
 
   goToQuestion: (index: number, timeTaken = 0) => {
-    const { questions, status, currentQuestion } = get();
+    const { questions, status, currentQuestion, test } = get();
     if (index < 0 || index >= questions.length) return;
 
     const targetQuestion = questions[index];
+    if (index !== currentQuestion) logAnswerEntry(testIdOf(test), { questionId: targetQuestion.id, kind: "visit" });
     const isVisited = targetQuestion.status.status !== "notVisited";
 
     if (!isVisited) {
@@ -285,6 +337,7 @@ export const useTestStore = create<TestState>((set, get) => ({
       ...question,
       selectedOptions: newSelectedOptions,
     };
+    logAnswerEntry(testIdOf(get().test), { questionId: question.id, kind: "answer", value: answerValue(updatedQuestions[currentQuestion]) });
 
     set({ questions: updatedQuestions });
   },
@@ -296,6 +349,25 @@ export const useTestStore = create<TestState>((set, get) => ({
       ...updatedQuestions[currentQuestion],
       enteredAnswer: answer,
     };
+    if (updatedQuestions[currentQuestion]) {
+      logAnswerEntry(testIdOf(get().test), { questionId: updatedQuestions[currentQuestion].id, kind: "answer", value: answerValue(updatedQuestions[currentQuestion]) });
+    }
+    set({ questions: updatedQuestions });
+  },
+
+  toggleMatrixCell: (rowId: string, columnId: string) => {
+    const { questions, currentQuestion, test } = get();
+    const question = questions[currentQuestion];
+    if (!question || question.type !== "matrix") return;
+    const current = question.matrixAnswer ?? {};
+    const row = current[rowId] ?? [];
+    const nextRow = row.includes(columnId) ? row.filter((c) => c !== columnId) : [...row, columnId];
+    const matrixAnswer: MatrixAnswer = { ...current };
+    if (nextRow.length) matrixAnswer[rowId] = nextRow;
+    else delete matrixAnswer[rowId];
+    const updatedQuestions = [...questions];
+    updatedQuestions[currentQuestion] = { ...question, matrixAnswer };
+    logAnswerEntry(testIdOf(test), { questionId: question.id, kind: "answer", value: answerValue(updatedQuestions[currentQuestion]) });
     set({ questions: updatedQuestions });
   },
 
@@ -308,11 +380,13 @@ export const useTestStore = create<TestState>((set, get) => ({
       ...question,
       selectedOptions: [],
       enteredAnswer: "",
+      matrixAnswer: {},
       status: {
         ...question.status,
         status: "notAnswered",
       },
     };
+    logAnswerEntry(testIdOf(get().test), { questionId: question.id, kind: "clear" });
 
     set({
       questions: updatedQuestions,
@@ -333,10 +407,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     const question = questions[currentQuestion];
 
     // Check if there's an answer
-    const hasAnswer =
-      question.type === "integer"
-        ? question.enteredAnswer && question.enteredAnswer.length > 0
-        : question.selectedOptions.length > 0;
+    const hasAnswer = hasAnswerOf(question);
 
     if (!hasAnswer) return;
 
@@ -380,6 +451,7 @@ export const useTestStore = create<TestState>((set, get) => ({
         timeTakenInSeconds: timeTaken,
       },
     };
+    logAnswerEntry(testIdOf(get().test), { questionId: question.id, kind: "markReview" });
 
     set({
       questions: updatedQuestions,
@@ -398,10 +470,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     const { questions, currentQuestion, status } = get();
     const question = questions[currentQuestion];
 
-    const hasAnswer =
-      question.type === "integer"
-        ? question.enteredAnswer && question.enteredAnswer.length > 0
-        : question.selectedOptions.length > 0;
+    const hasAnswer = hasAnswerOf(question);
 
     if (!hasAnswer) return;
 
@@ -414,6 +483,7 @@ export const useTestStore = create<TestState>((set, get) => ({
         timeTakenInSeconds: timeTaken,
       },
     };
+    logAnswerEntry(testIdOf(get().test), { questionId: question.id, kind: "markReview" });
 
     set({
       questions: updatedQuestions,
@@ -438,52 +508,46 @@ export const useTestStore = create<TestState>((set, get) => ({
     // submit is a full page load: pending autosave timers and beforeunload can still fire meanwhile.
     if (!test || isSubmitted) return;
 
-    const testId = (test as { id?: string; _id?: string }).id ||
-                   (test as { id?: string; _id?: string })._id;
+    const testId = testIdOf(test);
     if (!testId) return;
 
-    // Reconstruct sections with current answers
-    const sections = test.sections.map((section) => ({
-      id: section.id,
-      subSections: section.subSections.map((subSection) => {
-        const questionsRecord: Record<string, {
-          selectedOptions?: string[];
-          enteredAnswer?: number;
-          timeTakenInSeconds?: number;
-          status?: string;
-        }> = {};
+    const sections = answerSections(test, questions);
 
-        questions
-          .filter((q) => q.sectionId === section.id && q.subSectionId === subSection.id)
-          .forEach((q) => {
-            questionsRecord[q.id] = {
-              selectedOptions: q.selectedOptions,
-              enteredAnswer: q.enteredAnswer !== undefined && q.enteredAnswer !== "" ? parseFloat(q.enteredAnswer) : undefined,
-              timeTakenInSeconds: q.status.timeTakenInSeconds,
-              status: q.status.status,
-            };
-          });
-
-        return {
-          id: subSection.id,
-          questions: questionsRecord,
-        };
-      }),
-    }));
-
-    const fullscreenExits = Math.max(0, parseInt((typeof window !== "undefined" && localStorage.getItem(`IITP_FULLSCREEN_EXITS_${testId}`)) || "0", 10) || 0);
+    let fullscreenExits = 0;
+    try {
+      fullscreenExits = Math.max(0, parseInt(localStorage.getItem(`IITP_FULLSCREEN_EXITS_${testId}`) || "0", 10) || 0);
+    } catch {
+      // storage blocked: the server keeps the last count it had
+    }
+    // M6: fullscreen exits with durations and the answer history since the last acknowledged save
+    const events = pendingFullscreenEvents(testId);
+    const answerLog = pendingAnswerLog(testId);
+    const body = { testId, sections, fullscreenExits, events, answerLog };
     try {
       if (options?.keepalive) {
         // Page is unloading: a keepalive fetch is allowed to finish after the page is gone
         const token = auth.getToken();
-        await fetch(`${process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000"}/tests/test/save-progress`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000"}/tests/test/save-progress`, {
           method: "POST",
           keepalive: true,
           headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ testId, sections, fullscreenExits }),
+          body: JSON.stringify(body),
         });
+        if (res.ok) {
+          acknowledgeFullscreenEvents(testId, events);
+          acknowledgeAnswerLog(testId, answerLog);
+        }
       } else {
-        await api.tests.saveProgress({ testId, sections, fullscreenExits });
+        const response = await api.tests.saveProgress(body);
+        acknowledgeFullscreenEvents(testId, events);
+        acknowledgeAnswerLog(testId, answerLog);
+        // M6 extra time: the answer carries the student's own expiry; the /test timer follows attempt.expiresAt
+        const payload = response?.data as { attempt?: { expiresAt?: string; extraMinutes?: number }; data?: { attempt?: { expiresAt?: string; extraMinutes?: number } } } | undefined;
+        const next = payload?.attempt ?? payload?.data?.attempt;
+        const current = get().attempt;
+        if (current && next?.expiresAt && !Number.isNaN(Date.parse(next.expiresAt)) && Date.parse(next.expiresAt) !== Date.parse(current.expiresAt)) {
+          set({ attempt: { ...current, expiresAt: next.expiresAt, ...(typeof next.extraMinutes === "number" ? { extraMinutes: next.extraMinutes } : {}) } });
+        }
       }
     } catch (error) {
       // Silent fail - auto-save should not interrupt user
@@ -492,12 +556,13 @@ export const useTestStore = create<TestState>((set, get) => ({
   },
 
   submitTest: async (_userId: string, _userType: string, _instituteId?: string, options?: { isAutoSubmitted?: boolean }) => {
+    // M6 submit rules: the device's clock when Submit was pressed (or the timer hit 0); the server records it when it is
+    // not after the deadline
+    const submittedAtDevice = new Date().toISOString();
     const { test, questions } = get();
     if (!test) throw new Error("No test loaded");
 
-    // Get testId from test object - handle both 'id' and '_id' formats
-    const testId = (test as { id?: string; _id?: string }).id ||
-                   (test as { id?: string; _id?: string })._id;
+    const testId = testIdOf(test);
     if (!testId) throw new Error("Test ID not found");
 
     // One submit per test: the exam timer keeps ticking at 00:00:00 and can ask again while the first request is
@@ -506,35 +571,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     if (submittedTestId === testId) return;
     if (submitInFlight?.testId === testId) return submitInFlight.promise;
     const promise = (async () => {
-      // Reconstruct sections with question responses in the format expected by backend
-      const sections = test.sections.map((section) => ({
-        id: section.id,
-        subSections: section.subSections.map((subSection) => {
-          // Build questions object with responses
-          const questionsRecord: Record<string, {
-            selectedOptions?: string[];
-            enteredAnswer?: number;
-            timeTakenInSeconds?: number;
-            status?: string;
-          }> = {};
-
-          questions
-            .filter((q) => q.sectionId === section.id && q.subSectionId === subSection.id)
-            .forEach((q) => {
-              questionsRecord[q.id] = {
-                selectedOptions: q.selectedOptions,
-                enteredAnswer: q.enteredAnswer !== undefined && q.enteredAnswer !== "" ? parseFloat(q.enteredAnswer) : undefined,
-                timeTakenInSeconds: q.status.timeTakenInSeconds,
-                status: q.status.status,
-              };
-            });
-
-          return {
-            id: subSection.id,
-            questions: questionsRecord,
-          };
-        }),
-      }));
+      const sections = answerSections(test, questions);
 
       // Integrity (M5): the fullscreen-exit count since the last autosave goes with the submit; the server keeps the
       // higher of this and the saved one on the submission
@@ -544,25 +581,34 @@ export const useTestStore = create<TestState>((set, get) => ({
       } catch {
         // storage blocked: the server still has the last saved count
       }
-      const submitBody = { testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true, fullscreenExits };
+      // M6: the answer history not yet acknowledged (the server grades the last value logged before the deadline) and
+      // the fullscreen events not yet sent
+      const answerLog = pendingAnswerLog(testId);
+      const events = pendingFullscreenEvents(testId);
+      const submitBody = { testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true, fullscreenExits, submittedAtDevice, answerLog, events };
 
       try {
         const response = await api.tests.submit(submitBody);
 
         const outcome = response.data?.data || {};
         const totalMarks = outcome.totalMarks ?? 0;
-        localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
-        // What the result screen shows: score only when the test's publish setting allows it now
-        localStorage.setItem(
-          "result",
-          JSON.stringify({
-            testId,
-            totalMarks: outcome.totalMarks,
-            resultVisible: outcome.resultVisible !== false,
-            resultReason: outcome.resultReason,
-            resultAvailableAt: outcome.resultAvailableAt,
-          })
-        );
+        clearExamLog(testId);
+        try {
+          localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
+          // What the result screen shows: score only when the test's publish setting allows it now
+          localStorage.setItem(
+            "result",
+            JSON.stringify({
+              testId,
+              totalMarks: outcome.totalMarks,
+              resultVisible: outcome.resultVisible !== false,
+              resultReason: outcome.resultReason,
+              resultAvailableAt: outcome.resultAvailableAt,
+            })
+          );
+        } catch {
+          // storage blocked: the result page falls back to the API
+        }
 
         set({ isSubmitted: true, totalMarks });
         submittedTestId = testId;

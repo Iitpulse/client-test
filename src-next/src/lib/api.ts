@@ -122,9 +122,10 @@ export interface TestUITemplate {
 export const api = {
   tests: {
     getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),
-    submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean }) =>
+    // M6 extras (api-ai docs/m6-api.md SubmitExtras / SaveProgressExtras): submittedAtDevice, answerLog, events
+    submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean; fullscreenExits?: number; submittedAtDevice?: string; answerLog?: unknown[]; events?: unknown[] }) =>
       apiTests.post("/test/submit", data),
-    saveProgress: (data: { testId: string; sections: unknown[]; fullscreenExits?: number }) =>
+    saveProgress: (data: { testId: string; sections: unknown[]; fullscreenExits?: number; events?: unknown[]; answerLog?: unknown[] }) =>
       apiTests.post("/test/save-progress", data),
   },
   uiTemplates: {

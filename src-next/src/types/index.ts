@@ -25,9 +25,33 @@ export interface IQuestionContent {
   options?: IOption[];
 }
 
+/** M6: how the exam app answers a question (paragraph children arrive flattened as their own type) */
+export type ExamQuestionType = "single" | "multiple" | "integer" | "matrix";
+
+/** Ticked cells per row: { A: ["P"], B: ["Q", "R"] } */
+export type MatrixAnswer = Record<string, string[]>;
+
+export interface IMatrixGrid {
+  rows: Array<{ id: string; en: string; hi: string | null }>;
+  columns: Array<{ id: string; en: string; hi: string | null }>;
+}
+
+export interface IParagraphSet {
+  setId: string;
+  index: number;
+  count: number;
+  passage: { en: string; hi: string | null };
+}
+
 export interface IQuestion {
   id: string;
-  type: "single" | "multiple" | "integer";
+  type: ExamQuestionType;
+  /** M6: original bank type (paragraph for a set's child) */
+  sourceType?: "single" | "multiple" | "integer" | "paragraph" | "matrix";
+  /** M6: paragraph children */
+  set?: IParagraphSet | null;
+  /** M6: matrix grid rows (List I) and columns (List II) */
+  matrix?: IMatrixGrid | null;
   en: IQuestionContent;
   hi?: IQuestionContent;
   sectionId: string;
@@ -54,12 +78,39 @@ export interface IQuestionWithStatus extends IQuestion {
   };
   selectedOptions: string[];
   enteredAnswer?: string;
+  /** M6: matrix questions only */
+  matrixAnswer?: MatrixAnswer;
+}
+
+/** One question's entry in save-progress / submit / resume */
+export interface IAnswerEntry {
+  selectedOptions?: string[];
+  enteredAnswer?: number;
+  matrix?: MatrixAnswer;
+  timeTakenInSeconds?: number;
+  status?: string;
+}
+
+/** M6 answer history (store-only; sent as `answerLog` with save-progress and submit) */
+export type AnswerLogValue = { selectedOptions?: string[]; enteredAnswer?: number; matrix?: MatrixAnswer } | null;
+export interface AnswerLogEntry {
+  questionId: string;
+  at: string;
+  kind: "visit" | "answer" | "clear" | "markReview";
+  value?: AnswerLogValue;
+}
+
+/** M6 fullscreen exits with durations (sent as `events` with save-progress) */
+export interface FullscreenEvent {
+  kind: "fullscreenExit";
+  at: string;
+  durationSeconds: number | null;
 }
 
 export interface ISubSection {
   id: string;
   name: string;
-  type: "single" | "multiple" | "integer";
+  type: ExamQuestionType;
   totalQuestions: number;
   toBeAttempted: number;
   description?: string;

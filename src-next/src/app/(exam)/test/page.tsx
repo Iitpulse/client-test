@@ -24,6 +24,7 @@ import {
 } from "@/components/nta/instructions";
 import { RenderLatex } from "@/components/nta/render-latex";
 import { useUITemplate, useTemplateStyles } from "@/components/nta/ui-template.context";
+import { openFullscreenExit, recordFullscreenExit, recordFullscreenReturn } from "@/lib/exam-log";
 
 export default function TestPage() {
   const router = useRouter();
@@ -287,7 +288,7 @@ export default function TestPage() {
 
   // Save progress shortly after every change (answer, clear, review mark), plus a 15s safety net.
   // Previously only every 30s, so a refresh or crash lost recent answers.
-  const answersFingerprint = questions.map((q) => `${q.id}:${q.status.status}:${q.selectedOptions.join(",")}:${q.enteredAnswer ?? ""}`).join("|");
+  const answersFingerprint = questions.map((q) => `${q.id}:${q.status.status}:${q.selectedOptions.join(",")}:${q.enteredAnswer ?? ""}:${q.matrixAnswer ? JSON.stringify(q.matrixAnswer) : ""}`).join("|");
   useEffect(() => {
     if (!test || !questions.length) return;
     const t = setTimeout(() => { if (!replacedRef.current) saveProgress(); }, 1500);
@@ -338,9 +339,15 @@ export default function TestPage() {
       webkitFullscreenElement?: Element | null;
     };
 
+    // M6: each exit with its duration (lib/exam-log, sent with the next autosave). An exit open across a refresh is
+    // picked up from storage.
+    let exitAt: string | null = openFullscreenExit(testId);
+
     function handleFullscreenChange() {
       const isFullscreen = document.fullscreenElement || doc.webkitFullscreenElement;
       if (!isFullscreen) {
+        exitAt = new Date().toISOString();
+        recordFullscreenExit(testId, exitAt);
         // User exited fullscreen - increment counter
         setFullscreenExitCount((prev) => {
           const newCount = prev + 1;
@@ -352,6 +359,8 @@ export default function TestPage() {
         });
         setExitFullscreenModal(true);
       } else {
+        recordFullscreenReturn(testId, exitAt);
+        exitAt = null;
         setExitFullscreenModal(false);
       }
     }

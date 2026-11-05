@@ -388,7 +388,7 @@ function Password({ className }: { className?: string }) {
   });
   const e = m.error instanceof StudentApiError ? m.error : null;
   const errs = {
-    current: local.current ?? (e?.code === "WRONG_PASSWORD" || e?.code === "TOO_MANY_ATTEMPTS" ? sentence(e.message || "Your current password is not right") : undefined),
+    current: local.current ?? (e?.code === "WRONG_PASSWORD" ? "That's not your current password." : e?.code === "TOO_MANY_ATTEMPTS" ? sentence(e.message || "Too many tries. Please wait a few minutes") : undefined),
     next: local.next ?? (e?.code === "WEAK_PASSWORD" ? sentence(e.message || "Use at least 8 characters") : undefined),
     confirm: local.confirm,
   };
@@ -416,24 +416,25 @@ function Password({ className }: { className?: string }) {
       </label>
       <input id={id} type="password" className="input" autoComplete={auto} value={f[k]} onChange={set(k)} aria-invalid={errs[k] ? true : undefined} aria-describedby={errs[k] ? `${id}-err` : undefined} />
       {errs[k] ? (
-        <span id={`${id}-err`} className="field-err">
+        <span id={`${id}-err`} className="field-err pw-err xs row" role="alert">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false" className="flex-none">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7.5v5.5M12 16.5h.01" />
+          </svg>
           {errs[k]}
         </span>
       ) : hint ? (
-        <span className="hint md:hidden">{hint}</span>
+        <span className="hint">{hint}</span>
       ) : null}
     </div>
   );
   return (
     <form id="password" className={`card pad-lg col rise scroll-mt-24 gap-[18px] max-md:gap-3.5 max-md:p-4 ${className ?? ""}`} style={{ "--i": 3 } as React.CSSProperties} onSubmit={submit} noValidate role="tabpanel" aria-label="Password">
-      <div className="col gap-0.5 max-md:hidden">
-        <h2 className="h3">Password</h2>
-        <span className="xs muted">At least 8 characters.</span>
-      </div>
-      <div className="grid grid-cols-3 gap-4 max-lg:grid-cols-1">
+      <h2 className="h3 max-md:hidden">Password</h2>
+      <div className="col max-w-[420px] gap-4 max-md:max-w-none max-md:gap-3.5">
         {field("pw-current", "current", "Current password", "current-password")}
         {field("pw-new", "next", "New password", "new-password", "At least 8 characters")}
-        {field("pw-confirm", "confirm", "Repeat new password", "new-password")}
+        {field("pw-confirm", "confirm", "Confirm new password", "new-password")}
       </div>
       <div className="row wrap justify-end gap-2">
         {general && (

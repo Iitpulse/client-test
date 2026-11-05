@@ -49,6 +49,9 @@
   .pref:last-child { border-bottom: 0 }
   .input[aria-invalid="true"] { border-color: var(--red-600) }
   .field-err { font-size: 12px; color: var(--red-600) }
+  /* Student-Profile / Phone-Profile password errors: red border, alert icon, bold red line */
+  .pw-err { gap: 6px; font-weight: 600; color: #C40000 }
+  #password .input[aria-invalid="true"] { border-color: #C40000 }
 
   /* Doubt chat (Student-Result inline chat, Phone-Doubt). */
   /* Desktop (Student-Result inline chat, Student-Doubts) */

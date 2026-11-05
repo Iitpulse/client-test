@@ -15,14 +15,10 @@
   .day { border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #fff; min-width: 0; transition: border-color 200ms, background 200ms }
   .day:hover { border-color: var(--navy-200) }
   .day.today { border-color: var(--navy); background: linear-gradient(180deg, var(--navy-50) 0%, #fff 100%) }
-  .task { font-size: 12px; line-height: 1.35; padding: 7px 8px; border-radius: 8px; background: var(--line-2); display: flex; gap: 6px; align-items: flex-start; cursor: pointer; overflow-wrap: anywhere }
+  .task { font: inherit; font-size: 12px; line-height: 1.35; padding: 7px 8px; border-radius: 8px; background: var(--line-2); border: 0; text-align: left; color: var(--ink); cursor: pointer; overflow-wrap: anywhere }
+  .task:hover { background: var(--navy-50) }
+  .task:focus-visible { outline: 3px solid var(--navy-200); outline-offset: 1px }
   .day.today .task { background: #fff }
-  .task .check { width: 16px; height: 16px; border-radius: 4px; margin-top: 0 }
-  .task .check:checked::after { width: 8px; height: 4px; border-left-width: 2px; border-bottom-width: 2px }
-  .task:has(.check:checked) .task-t { text-decoration: line-through; text-decoration-color: var(--cl-ink); text-decoration-thickness: 2px; color: var(--muted) }
-  .task-go { font-weight: 600; color: var(--navy); white-space: nowrap; background: none; border: 0; padding: 0; cursor: pointer; font-size: 12px }
-  .task-go:hover { text-decoration: underline }
-  .task-go:disabled { color: var(--muted); cursor: default; text-decoration: none }
 
   /* Phone-Progress "Today": a 44px row per item, done items struck through in blue ink (like .cl-done). */
   .plan { gap: 12px; min-height: 44px; cursor: pointer }
@@ -34,29 +30,44 @@
   .draw-sm { stroke-dasharray: 500; animation: m4-draw 1.4s cubic-bezier(.2,.8,.2,1) .2s both }
 
   /* Student-Profile: switches and the settings nav. */
-  .sw { width: 40px; height: 24px; border-radius: 999px; position: relative; flex: none; padding: 0; border: 0; cursor: pointer; transition: background 200ms }
-  .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left 220ms cubic-bezier(.34,1.56,.64,1) }
-  .sw[aria-checked="true"] { background: var(--navy) }
-  .sw[aria-checked="true"]::after { left: 19px }
-  .sw[aria-checked="false"] { background: #D3D6E2 }
-  .sw:focus-visible { outline: 3px solid var(--navy-200); outline-offset: 2px }
-  .sw:disabled { opacity: .6; cursor: default }
+  .sw { width: 40px; height: 24px; border-radius: 999px; position: relative; flex: none; padding: 0; transition: background 200ms; display: block }
+  .sw::after { content: ""; position: absolute; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left 220ms cubic-bezier(.34,1.56,.64,1) }
+  .sw.on { background: var(--navy) }
+  .sw.on::after { left: 19px }
+  .sw.off { background: #D3D6E2 }
+  .sw.off::after { left: 3px }
+  /* the switch keeps its 40x24 look inside a 44px tap area (Phone-Profile, Phone-ResultPending) */
+  .swhit { display: inline-flex; align-items: center; justify-content: center; min-width: 52px; min-height: 44px; border: 0; background: none; padding: 0; cursor: pointer; margin: -10px -6px -10px 0 }
+  .swhit:focus-visible { outline: 3px solid var(--navy-200); outline-offset: 2px; border-radius: 12px }
+  .swhit:disabled { opacity: .6; cursor: default }
+  select.input.select { appearance: none; -webkit-appearance: none }
   .navlink { display: flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 10px; font-size: 14px; font-weight: 550; color: var(--ink-2); transition: background 160ms; background: none; border: 0; cursor: pointer; text-align: left; width: 100% }
   .navlink:hover { background: var(--line-2); color: var(--ink) }
   .navlink[aria-current="true"] { background: var(--navy-50); color: var(--navy) }
   .pref { padding: 12px 0; border-bottom: 1px solid var(--line-2); gap: 16px }
+  @media (width < 48rem) { .pref { padding: 10px 0; gap: 12px } }
   .pref:last-child { border-bottom: 0 }
   .input[aria-invalid="true"] { border-color: var(--red-600) }
   .field-err { font-size: 12px; color: var(--red-600) }
 
   /* Doubt chat (Student-Result inline chat, Phone-Doubt). */
-  .bubble-me { align-self: flex-end; max-width: 80%; background: linear-gradient(180deg, #1A1A9C 0%, var(--navy) 100%); color: #fff; padding: 10px 14px; border-radius: 18px 18px 4px 18px; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-line }
-  .bubble-ai { align-self: flex-start; max-width: 88%; min-width: 0; background: #fff; border: 1px solid #E1E3F8; padding: 11px 14px; border-radius: 18px 18px 18px 4px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line }
-  /* AI answers are written on exercise-book lines (like .cl-ruled): 28px lines, the rule just under each baseline. */
-  .bubble-ai.ans { line-height: 28px; padding: 6px 14px 8px; background: repeating-linear-gradient(180deg, transparent 0 20px, rgba(0, 0, 126, .09) 20px 21px, transparent 21px 28px) content-box, #fff }
-  .bubble-ai .katex-display { overflow-x: auto; overflow-y: hidden; margin: 0 }
-  .bubble-ai.note { background: var(--line-2); border-color: var(--line); color: var(--ink-2) }
-  .bubble-q { align-self: stretch; max-width: 100% }
+  /* Desktop (Student-Result inline chat, Student-Doubts) */
+  .bubble-me { align-self: flex-end; max-width: 78%; background: var(--navy); color: #fff; padding: 10px 14px; border-radius: 16px 16px 4px 16px; overflow-wrap: anywhere; white-space: pre-line }
+  .bubble-ai { align-self: flex-start; max-width: 86%; min-width: 0; background: #fff; border: 1px solid #E1E3F8; padding: 12px 14px; border-radius: 16px 16px 16px 4px; overflow-wrap: anywhere; white-space: pre-line }
+  /* Phone-Doubt */
+  .chat-log .me { align-self: flex-end; max-width: 80%; background: linear-gradient(180deg, #1A1A9C 0%, var(--navy) 100%); color: #fff; padding: 10px 14px; border-radius: 18px 18px 4px 18px; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; white-space: pre-line }
+  .chat-log .bot { align-self: flex-start; max-width: 88%; min-width: 0; background: #fff; border: 1px solid #E1E3F8; padding: 11px 14px; border-radius: 18px 18px 18px 4px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-line }
+  /* AI answers on the phone are written on exercise-book lines (like .cl-ruled): 28px lines, the rule just under each baseline. */
+  .chat-log .bot.ans { line-height: 28px; padding: 6px 14px 8px; background: repeating-linear-gradient(180deg, transparent 0 20px, rgba(0, 0, 126, .09) 20px 21px, transparent 21px 28px) content-box, #fff }
+  .chat-log .katex-display { overflow-x: auto; overflow-y: hidden; margin: 0 }
+  /* The similar question (Student-Doubts) */
+  .qmsg { align-self: flex-start; width: min(100%, 520px); background: #fff; border: 1px solid #E1E3F8; border-radius: 16px 16px 16px 4px; padding: 14px; display: flex; flex-direction: column; gap: 10px }
+  .qmsg .opt { padding: 8px 12px; align-items: center }
+  /* Student-Doubts thread list */
+  .th { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 16px 18px; text-align: left; font: inherit; color: var(--ink); cursor: pointer; transition: border-color 160ms, background 160ms }
+  .th:hover { border-color: var(--navy-200) }
+  .th.on { border-color: var(--navy); background: var(--navy-50) }
+  .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden }
   .sugg { gap: 6px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; mask-image: linear-gradient(90deg, #000 85%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); padding-right: 24px }
   .sugg::-webkit-scrollbar { display: none }
   .sugg .chip { height: 36px; padding: 0 14px; flex: none; scroll-snap-align: start }
@@ -64,10 +75,39 @@
   .chat-log > * { overflow-anchor: none }
   .chat-log > .anchor { overflow-anchor: auto; height: 1px }
 
-  /* Practice: the selected option before Check. */
-  .opt.pick { cursor: pointer }
-  .opt.pick:hover { border-color: var(--navy-200) }
-  .opt.chosen { border-color: var(--navy); background: var(--navy-50) }
-  .opt.chosen .key { background: var(--navy); border-color: var(--navy); color: #fff }
-
+  /* Student-Practice / Phone-Practice */
+  button.opt { width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; align-items: center }
+  button.opt:hover { border-color: var(--navy-200) }
+  button.opt.sel { border-color: var(--navy); background: var(--navy-50) }
+  button.opt.sel .key { background: var(--navy); border-color: var(--navy); color: #fff }
+  button.opt.done { cursor: default }
+  button.opt.done.correct:hover { border-color: #9ED3B2 }
+  button.opt.done.wrong:hover { border-color: #F2B1B1 }
+  .ans { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--line); background: #fff }
+  .ans.wrong { border-color: #F2B1B1; background: var(--red-50) }
+  .ans.correct { border-color: #9ED3B2; background: var(--green-50) }
+  .timer { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 12px; background: var(--navy-50); color: var(--navy); font-weight: 600 }
+  .timer.up { background: var(--red-50); color: var(--red-600) }
+  .cell { width: 100%; aspect-ratio: 1; border-radius: 8px; border: 1px solid transparent; padding: 0; font: 600 12px/1 var(--font-mono); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: transform 120ms var(--ease) }
+  .cell:hover { transform: scale(1.08) }
+  .cell.correct { background: var(--green-50); color: var(--green); border-color: #BFE3CC }
+  .cell.wrong { background: var(--red-600); color: #fff }
+  .cell.partial { background: var(--amber-50); color: var(--amber); border-color: #E8C27A }
+  .cell.todo { background: #fff; color: var(--muted); border-color: #8A90A8; border-style: dashed }
+  .cell.sel { outline: 2px solid var(--navy); outline-offset: 2px; transform: scale(1.08) }
+  .cell:focus-visible { outline: 3px solid var(--navy-200); outline-offset: 2px }
+  .swatch.todo { background: #fff; border-color: #8A90A8; border-style: dashed }
+  .qc-todo { background: #fff; color: var(--muted); border: 1px dashed #8A90A8 }
+  .pr-sol { padding: 18px; border-radius: 14px; background: #FAFBFE; border: 1px solid var(--line-2) }
+  @media (width < 48rem) {
+    button.opt { padding: 10px 12px }
+    .ans { padding: 12px 14px }
+    .pr-stem { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px }
+    .pr-sol { background: var(--surface); border-color: var(--line); padding: 14px 16px }
+  }
+}
+@layer components {
+  /* Student-Progress "Full mock scores": the line draws itself once */
+  @keyframes m4-draw-lg { from { stroke-dashoffset: 900 } }
+  .draw-lg { stroke-dasharray: 900; animation: m4-draw-lg 1.4s cubic-bezier(.2,.8,.2,1) .2s both }
 }

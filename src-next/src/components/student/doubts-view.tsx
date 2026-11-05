@@ -1,25 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { AiMark, Doodle, InkUnderline, MathText } from "@iitpulse/ui";
+import { AiMark, Doodle, InkUnderline, MathText, Note, Tape } from "@iitpulse/ui";
 import { aiRetry, isAiDown } from "@/lib/ai-api";
 import { m4Api, m4Keys } from "@/lib/m4-api";
 import { StudentApiError } from "@/lib/student-api";
 import { useServerClock } from "@/lib/server-clock";
-import { relativeDayTime } from "@/lib/time";
-import type { DoubtThreadSummary } from "@/types/m4";
+import { useIsDesktop } from "@/lib/use-media";
+import { longDay, relativeDayTime } from "@/lib/time";
+import type { DoubtQuota, DoubtThreadSummary } from "@/types/m4";
 import { PhoneTitleBar } from "@/components/shell/phone-title-bar";
 import { ErrorCard, Skel } from "./common";
-import { LockIcon } from "./icons";
+import { ChevronRightIcon, LockIcon } from "./icons";
 import { sentence } from "./labels";
+import { ThreadPane } from "./doubt-chat";
 
 /**
- * /doubts: the student's doubt threads, newest first, as cards in the Student-Tests / Phone-Tests list style
- * (GET /ai/student/doubts, paged by cursor). A card opens the thread (Phone-Doubt). New doubts start from a
+ * /doubts: Student-Doubts (desktop: the threads on the left, the selected chat on the right) and Phone-Doubts (the
+ * threads as cards; one opens Phone-Doubt). GET /ai/student/doubts, paged by cursor. New doubts start from a
  * question in a test's review ("Ask a doubt").
  */
-export function DoubtsView() {
+export function DoubtsView({ initialThread }: { initialThread: string | null }) {
   const q = useInfiniteQuery({
     queryKey: m4Keys.doubtsPages,
     queryFn: ({ pageParam, signal }) => m4Api.doubts(pageParam, signal),
@@ -27,34 +30,53 @@ export function DoubtsView() {
     getNextPageParam: (last) => last.nextCursor,
     retry: aiRetry,
   });
+  const isDesktop = useIsDesktop();
   const first = q.data?.pages[0];
   const now = useServerClock(first?.now, q.dataUpdatedAt, false);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const quota = first?.quota;
   const e = q.error instanceof StudentApiError ? q.error : null;
+  const [sel, setSel] = useState<string | null>(initialThread);
+  const current = items.find((t) => t.id === sel) ?? items[0];
+  const when = (t: DoubtThreadSummary) => (Number.isNaN(now) ? "" : sentenceCase(relativeDayTime(now, t.updatedAt)));
 
   return (
     <>
-      <PhoneTitleBar title="Doubts" />
+      <PhoneTitleBar title="Doubts" doodle="flask">
+        {quota && <QuotaPhone quota={quota} />}
+      </PhoneTitleBar>
       <div className="col gap-6 md:pt-1 max-md:gap-2.5 max-md:px-4 max-md:pt-3.5">
-        <Doodle name="flask" slot="gl" style={{ top: 380 }} />
-        <header className="row between wrap gap-4 max-md:hidden">
-          <div className="col gap-1">
+        <Doodle name="flask" slot="gl" style={{ top: 384 }} />
+        <Doodle name="integral" slot="gr" style={{ top: 820 }} />
+        <header className="row between wrap items-end gap-3 max-md:hidden">
+          <div className="col gap-0.5">
+            {first && !Number.isNaN(now) ? (
+              <Note size="sm" write rotate={-1.5} delay={150} className="self-start">
+                {longDay(now)}
+              </Note>
+            ) : (
+              <span className="h-6" />
+            )}
             <h1 className="h1">
               <InkUnderline delay={450}>Doubts</InkUnderline>
             </h1>
-            <span className="sm muted mt-1">Your questions to the AI tutor, newest first</span>
+            <span className="sm muted mt-2">Your questions to the AI tutor, newest first</span>
           </div>
-          {quota && <span className="sm muted">{quota.leftToday} of {quota.perDay} questions left today</span>}
+          {quota && (
+            <div className="col min-w-[220px] gap-1.5">
+              <div className="row between sm gap-3">
+                <span className="font-semibold">
+                  {quota.leftToday} of {quota.perDay} questions left today
+                </span>
+                <AiMark iconSize={13}>AI tutor</AiMark>
+              </div>
+              <div className="bar" style={{ height: 6 }}>
+                <i style={{ width: `${(100 * quota.leftToday) / Math.max(1, quota.perDay)}%` }} />
+              </div>
+              <span className="xs muted">Resets at midnight · answers it couldn&apos;t give don&apos;t count</span>
+            </div>
+          )}
         </header>
-        {quota && (
-          <div className="row between gap-2 md:hidden">
-            <AiMark iconSize={13}>AI tutor</AiMark>
-            <span className="xs muted">
-              {quota.leftToday} of {quota.perDay} questions left today
-            </span>
-          </div>
-        )}
 
         {!q.data ? (
           q.isError ? (
@@ -66,32 +88,75 @@ export function DoubtsView() {
               <ErrorCard error={q.error} onRetry={() => q.refetch()} />
             )
           ) : (
-            <div className="grid grid-cols-3 gap-5 max-lg:grid-cols-2 max-md:grid-cols-1 max-md:gap-2.5" aria-busy="true" aria-label="Loading your doubts">
-              {[0, 1, 2].map((k) => (
-                <Skel key={k} className="h-[150px] rounded-card max-md:h-[120px]" />
-              ))}
+            <div className="row items-start gap-5 max-md:col max-md:gap-2.5" aria-busy="true" aria-label="Loading your doubts">
+              <div className="col w-full max-w-[400px] gap-2.5 max-md:max-w-none">
+                {[0, 1, 2].map((k) => (
+                  <Skel key={k} className="h-[132px] rounded-card" />
+                ))}
+              </div>
+              <Skel className="h-[560px] grow rounded-card max-md:hidden" />
             </div>
           )
         ) : items.length === 0 ? (
-          <div className="card col fade items-center gap-2 p-12 text-center max-md:p-8">
-            <span className="h3">No doubts yet</span>
-            <span className="sm muted max-w-[420px]">Open a question in any test&apos;s review and tap &ldquo;Ask a doubt&rdquo;. Your chats with the tutor are kept here.</span>
-            <Link href="/tests?tab=completed" className="btn btn-secondary mt-2">
+          <section className="card pad-lg col rise relative items-center gap-3 px-7 py-14 text-center max-md:mt-6 max-md:gap-2.5 max-md:px-5 max-md:py-9">
+            <Tape rotate={-2} delay={600} />
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#5A5FD0" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true" focusable="false">
+              <path d="M4 5h16v11H9l-5 4z" />
+              <path d="M9.5 9.2a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4" />
+              <path d="M12 15h.01" />
+            </svg>
+            <h2 className="h2 max-md:text-[18px]">No doubts yet</h2>
+            <p className="sm muted m-0 max-w-[420px]" style={{ textWrap: "pretty" }}>
+              Open a question in any test&apos;s review and tap “Ask a doubt”. Your chats with the tutor are kept here.
+            </p>
+            <Link href="/tests?tab=completed" className="btn btn-secondary max-md:h-11">
               Go to your tests
             </Link>
-          </div>
+          </section>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-5 max-lg:grid-cols-2 max-md:grid-cols-1 max-md:gap-2.5">
-              {items.map((t, i) => (
-                <ThreadCard key={t.id} t={t} now={now} i={i} />
-              ))}
+            {/* Student-Doubts */}
+            <div className="flex flex-wrap items-start gap-5 max-md:hidden">
+              <nav className="col max-w-[400px] flex-[1_1_340px] gap-2.5" aria-label="Doubt threads">
+                {items.map((t, i) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={t.id === current?.id ? "card th rise on" : "card th rise"}
+                    aria-current={t.id === current?.id ? "true" : undefined}
+                    style={{ "--i": Math.min(i, 8) } as React.CSSProperties}
+                    onClick={() => setSel(t.id)}
+                  >
+                    <ThreadText t={t} when={when(t)} />
+                  </button>
+                ))}
+                {q.hasNextPage && (
+                  <button type="button" className="btn btn-secondary self-center" disabled={q.isFetchingNextPage} onClick={() => q.fetchNextPage()}>
+                    {q.isFetchingNextPage ? "Loading…" : "Show older doubts"}
+                  </button>
+                )}
+              </nav>
+              {isDesktop === true && current && <ThreadPane key={current.id} t={current} />}
             </div>
-            {q.hasNextPage && (
-              <button type="button" className="btn btn-secondary self-center" disabled={q.isFetchingNextPage} onClick={() => q.fetchNextPage()}>
-                {q.isFetchingNextPage ? "Loading…" : "Show older doubts"}
-              </button>
-            )}
+
+            {/* Phone-Doubts */}
+            <div className="col gap-2.5 md:hidden">
+              {items.map((t, i) => (
+                <Link
+                  key={t.id}
+                  href={`/results/${encodeURIComponent(t.testId)}/q/${t.n}/doubt?thread=${encodeURIComponent(t.id)}`}
+                  className="card pad col cl-lift rise gap-[7px] px-4 py-3.5 text-ink"
+                  style={{ "--i": Math.min(i, 8) } as React.CSSProperties}
+                >
+                  <ThreadText t={t} when={when(t)} phone />
+                </Link>
+              ))}
+              {q.hasNextPage && (
+                <button type="button" className="btn btn-secondary h-11 self-center" disabled={q.isFetchingNextPage} onClick={() => q.fetchNextPage()}>
+                  {q.isFetchingNextPage ? "Loading…" : "Show older doubts"}
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -99,26 +164,52 @@ export function DoubtsView() {
   );
 }
 
-function ThreadCard({ t, now, i }: { t: DoubtThreadSummary; now: number; i: number }) {
+/** "today, 3:59 PM" -> "Today, 3:59 PM" */
+function sentenceCase(s: string): string {
+  return s ? s[0]!.toUpperCase() + s.slice(1) : s;
+}
+
+function ThreadText({ t, when, phone }: { t: DoubtThreadSummary; when: string; phone?: boolean }) {
+  const turns = `${t.turns} ${t.turns === 1 ? "question" : "questions"} asked`;
   return (
-    <Link
-      href={`/results/${encodeURIComponent(t.testId)}/q/${t.n}/doubt?thread=${encodeURIComponent(t.id)}`}
-      className="card pad col cl-lift rise gap-2 text-ink md:p-6"
-      style={{ "--i": Math.min(i, 8) } as React.CSSProperties}
-      aria-label={`${t.testName}, question ${t.shownAs}: ${t.turns} ${t.turns === 1 ? "question" : "questions"} asked`}
-    >
-      <div className="row between gap-2">
+    <>
+      <span className="row between w-full gap-2">
         <span className="badge b-navy">
           {t.testShortName} · Q{t.shownAs}
         </span>
-        <span className="xs muted">{Number.isNaN(now) ? "" : relativeDayTime(now, t.updatedAt)}</span>
-      </div>
-      <MathText className="sm line-clamp-2 font-serif text-[15px]" text={t.questionPreview} />
-      {t.lastMessagePreview && <MathText className="xs muted line-clamp-2" text={t.lastMessagePreview} />}
-      <span className="xs muted mt-auto">
-        {t.testName} · {t.turns} {t.turns === 1 ? "question" : "questions"} asked
+        <span className="xs muted">{when}</span>
       </span>
-    </Link>
+      <MathText className="clamp font-serif text-[15px] leading-[1.45]" text={t.questionPreview} />
+      {t.lastMessagePreview && <MathText className="xs muted clamp" text={t.lastMessagePreview} />}
+      {phone ? (
+        <span className="row between xs muted">
+          <span>
+            {t.testName} · {turns}
+          </span>
+          <ChevronRightIcon size={16} />
+        </span>
+      ) : (
+        <span className="xs muted">
+          {t.testName} · {turns}
+        </span>
+      )}
+    </>
+  );
+}
+
+function QuotaPhone({ quota }: { quota: DoubtQuota }) {
+  return (
+    <div className="col gap-1.5">
+      <div className="row between">
+        <AiMark iconSize={13}>AI tutor</AiMark>
+        <span className="xs muted">
+          {quota.leftToday} of {quota.perDay} questions left today
+        </span>
+      </div>
+      <div className="bar" style={{ height: 4 }}>
+        <i style={{ width: `${(100 * quota.leftToday) / Math.max(1, quota.perDay)}%` }} />
+      </div>
+    </div>
   );
 }
 

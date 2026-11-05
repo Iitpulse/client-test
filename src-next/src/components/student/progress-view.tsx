@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { AiMark, Bar, Doodle, InkArrow, InkUnderline, Note } from "@iitpulse/ui";
+import { Bar, Doodle, InkArrow, InkUnderline, Note } from "@iitpulse/ui";
 import { m4Api, m4Keys } from "@/lib/m4-api";
 import { useServerClock } from "@/lib/server-clock";
 import { dayMonth, ist, longDay, mmss } from "@/lib/time";
@@ -11,7 +11,7 @@ import type { ProgressRange, ProgressResponse, WeakTopic } from "@/types/m4";
 import { PhoneTitleBar } from "@/components/shell/phone-title-bar";
 import { ErrorCard, Skel } from "./common";
 import { ArrowDownIcon, ArrowUpIcon } from "./icons";
-import { num } from "./labels";
+import { num, shortPair } from "./labels";
 import { PracticeButton } from "./practice-button";
 import { PlanTodayCard, PlanWeekCard } from "./study-plan";
 
@@ -51,7 +51,7 @@ export function ProgressView() {
 
   return (
     <>
-      <PhoneTitleBar title="Progress" />
+      <PhoneTitleBar title="Progress" doodle="parabola" />
       <div className="col gap-6 md:pt-1 max-md:gap-2 max-md:px-4 max-md:pt-2.5">
         <Doodle name="pendulum" slot="gl" style={{ top: 520 }} />
         <Doodle name="sine" slot="gr" style={{ top: 1140 }} />
@@ -166,23 +166,106 @@ function Desktop({ d, now, range }: { d: ProgressResponse; now: number; range: P
             <span className="sm muted">Chapters you get right most of the time (8 or more questions) show up here.</span>
           )}
         </article>
-        <article className="card pad-lg col rise gap-2" style={{ "--i": 8 } as React.CSSProperties}>
-          <div className="col gap-0.5">
-            <h2 className="h3">Score trend</h2>
-            <span className="xs muted">{trendCaption(d)}</span>
-          </div>
-          <TrendSvg d={d} big />
-        </article>
+        <ScoresCard d={d} />
       </section>
     </div>
   );
 }
 
-function trendCaption(d: ProgressResponse): string {
-  const n = d.scoreTrend.length;
-  const full = d.headline.average?.basis === "fullMocks";
-  const pct = new Set(d.scoreTrend.map((p) => p.maxScore)).size > 1;
-  return `${full ? `Full mocks` : "All tests"}, last ${n === 1 ? "one" : n}${pct ? " · percent of marks" : ""}`;
+/** The trend's numbers: marks, or percent of marks when the tests have different totals. */
+function trendModel(d: ProgressResponse) {
+  const pts = d.scoreTrend;
+  const pct = new Set(pts.map((p) => p.maxScore)).size > 1;
+  const full = d.headline.average?.basis !== "allTests";
+  const first = pts[0];
+  const last = pts[pts.length - 1];
+  const val = (p: (typeof pts)[number]) => (pct ? p.percent : p.score);
+  const fmt = (p: (typeof pts)[number]) => (pct ? `${p.percent}%` : num(p.score));
+  const diff = first && last && pts.length > 1 ? val(last) - val(first) : null;
+  // "since Mock 6": the first test's name without the words it shares with the last one ("JEE Main")
+  const since = first && last ? shortPair(last.name, first.name)[1] : "";
+  const delta = diff === null ? null : `${diff >= 0 ? "+" : "−"}${num(Math.abs(diff))}${pct ? " points" : ""} since ${since}`;
+  return { pts, pct, full, first, last, val, fmt, diff, delta };
+}
+
+/** Student-Progress "Full mock scores" (where the board's revision list was): the trend with a 3-line scale. */
+function ScoresCard({ d }: { d: ProgressResponse }) {
+  const t = trendModel(d);
+  const n = t.pts.length;
+  const sub = t.pct
+    ? "% of marks · these tests have different totals"
+    : `Last ${n === 1 ? "" : `${n} `}${t.full ? (n === 1 ? "full mock" : "full mocks") : n === 1 ? "test" : "tests"}${t.last ? ` · out of ${num(t.last.maxScore)}` : ""}`;
+  return (
+    <article className="card pad-lg col rise gap-2.5" style={{ "--i": 8 } as React.CSSProperties}>
+      <div className="row between wrap items-start gap-2">
+        <div className="col gap-0.5">
+          <h2 className="h3">{t.full ? "Full mock scores" : "Test scores"}</h2>
+          <span className="xs muted">{sub}</span>
+        </div>
+        {t.last && (
+          <span className="row gap-2">
+            <span className="num h3">{t.fmt(t.last)}</span>
+            {t.delta && t.diff !== null && <DeltaPill v={t.diff} text={t.delta} />}
+          </span>
+        )}
+      </div>
+      {n < 2 ? (
+        <div className="col items-center justify-center gap-1 py-8 text-center">
+          <span className="sm font-semibold">{n ? "One test so far" : "No scores yet"}</span>
+          <span className="sm muted">Your trend appears after two tests.</span>
+        </div>
+      ) : (
+        <ScaleChart t={t} />
+      )}
+    </article>
+  );
+}
+
+const STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500];
+function ScaleChart({ t }: { t: ReturnType<typeof trendModel> }) {
+  const vals = t.pts.map(t.val);
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals);
+  // three gridlines: the smallest step whose two intervals hold every point
+  const step = STEPS.find((s) => Math.floor(lo / s) * s + 2 * s >= hi) ?? 500;
+  const min = Math.floor(lo / step) * step;
+  const max = min + 2 * step;
+  const X0 = 44, X1 = 499, TOP = 31, BOT = 140;
+  const x = (i: number) => X0 + ((X1 - X0) * i) / (t.pts.length - 1);
+  const y = (v: number) => BOT - ((v - min) / (max - min)) * (BOT - TOP);
+  const line = t.pts.map((p, i) => `${x(i).toFixed(1)},${y(t.val(p)).toFixed(1)}`).join(" ");
+  const every = t.pts.length > 8 ? 2 : 1;
+  const label = `${t.full ? "Full mock scores" : "Test scores"} ${t.pct ? "as percent of marks" : `out of ${num(t.last!.maxScore)}`}: ${t.pts.map((p) => `${p.shortName} ${t.fmt(p)}`).join(", ")}`;
+  return (
+    <svg viewBox="0 0 520 172" style={{ width: "100%", height: 172 }} role="img" aria-label={label}>
+      <g stroke="#EEF0F5" strokeWidth="1">
+        <path d={`M${X0} ${TOP}H512M${X0} ${(TOP + BOT) / 2}H512M${X0} ${BOT}H512`} />
+      </g>
+      <path d={`M${line.split(" ").join(" L")} L${X1} ${BOT} L${X0} ${BOT} Z`} fill="#F1F2FC" className="fade" />
+      <polyline className="draw-lg" points={line} fill="none" stroke="#00007E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <g fill="#00007E">
+        {t.pts.map((p, i) => (
+          <circle key={p.testId} cx={x(i)} cy={y(t.val(p))} r={i === t.pts.length - 1 ? 5 : 3.5}>
+            <title>{`${p.name}: ${num(p.score)} of ${num(p.maxScore)}`}</title>
+          </circle>
+        ))}
+      </g>
+      <g fontFamily="Geist, system-ui, sans-serif" fontSize="11" fill="#575C75">
+        {[max, min + step, min].map((v, k) => (
+          <text key={k} x="0" y={[TOP, (TOP + BOT) / 2, BOT][k]! + 4}>
+            {t.pct ? `${v}%` : v}
+          </text>
+        ))}
+        {t.pts.map((p, i) =>
+          (t.pts.length - 1 - i) % every === 0 ? (
+            <text key={p.testId} x={x(i)} y="164" textAnchor="middle">
+              {p.shortName}
+            </text>
+          ) : null
+        )}
+      </g>
+    </svg>
+  );
 }
 
 function DeltaPill({ v, text }: { v: number; text: string }) {
@@ -338,11 +421,13 @@ function topicTitle(w: WeakTopic) {
 
 function HoldingBack({ d, now }: { d: ProgressResponse; now: number }) {
   return (
-    <article className="ai pad-lg col rise col-span-2 gap-3.5 max-lg:col-span-1" style={{ "--i": 5 } as React.CSSProperties} aria-label="What's holding you back">
-      <AiMark>What&apos;s holding you back</AiMark>
+    <article className="card pad-lg col rise col-span-2 gap-3.5 max-lg:col-span-1" style={{ "--i": 5 } as React.CSSProperties} aria-labelledby="holding-h">
+      <h2 id="holding-h" className="h3">
+        What&apos;s holding you back
+      </h2>
       {d.weakTopics.length === 0 && <span className="sm muted">Nothing stands out yet. Chapters with 6 or more questions in this range are compared here.</span>}
       {d.weakTopics.map((w, i) => (
-        <div key={`${w.subject}-${w.chapter}-${w.topic ?? ""}`} className="card pad col gap-1.5">
+        <div key={`${w.subject}-${w.chapter}-${w.topic ?? ""}`} className="col gap-1.5 border-t border-line-2 pt-3.5">
           <div className="row gap-1.5">
             <span className="h3 min-w-0">{topicTitle(w)}</span>
             {i === 0 && (
@@ -433,23 +518,19 @@ function TrendSvg({ d, big }: { d: ProgressResponse; big?: boolean }) {
 // ---------------------------------------------------------------------------------------------
 
 function Phone({ d, now, range }: { d: ProgressResponse; now: number; range: ProgressRange }) {
-  const pts = d.scoreTrend;
-  const first = pts[0];
-  const last = pts[pts.length - 1];
-  const pct = new Set(pts.map((p) => p.maxScore)).size > 1;
-  const diff = first && last && pts.length > 1 ? (pct ? last.percent - first.percent : last.score - first.score) : null;
+  const t = trendModel(d);
   return (
     <div className="col gap-2 md:hidden">
-      <section className="card pad col rise gap-1" aria-label="Scores">
+      <section className="card pad col rise gap-1" aria-label={t.full ? "Full mock scores" : "Test scores"}>
         <div className="row between gap-2">
-          <span className="sm muted">{d.headline.average?.basis === "fullMocks" ? "Full mock scores" : "Test scores"}</span>
-          {last && (
+          <span className="sm muted">{t.full ? "Full mock scores" : "Test scores"}</span>
+          {t.last && (
             <span className="row gap-2">
-              <span className="num h3">{pct ? `${last.percent}%` : num(last.score)}</span>
-              {diff !== null && first && (
-                <span className={diff >= 0 ? "badge b-green" : "badge b-grey"}>
-                  {diff >= 0 ? "▲" : "▼"} {num(Math.abs(diff))}
-                  {pct ? " points" : ""} since {first.shortName}
+              <span className="num h3">{t.fmt(t.last)}</span>
+              {t.diff !== null && t.first && (
+                <span className={t.diff >= 0 ? "badge b-green" : "badge b-grey"}>
+                  {t.diff >= 0 ? "▲" : "▼"} {num(Math.abs(t.diff))}
+                  {t.pct ? " points" : ""} since {shortPair(t.last.name, t.first.name)[1]}
                 </span>
               )}
             </span>
@@ -458,14 +539,16 @@ function Phone({ d, now, range }: { d: ProgressResponse; now: number; range: Pro
         <TrendSvg d={d} />
       </section>
 
-      <section className="ai pad col rise gap-2" style={{ "--i": 1 } as React.CSSProperties} aria-label="Focus on these">
+      <section className="card pad col rise gap-2" style={{ "--i": 1 } as React.CSSProperties} aria-labelledby="focus-h">
         <div className="row between gap-2">
-          <AiMark iconSize={13}>Focus on these</AiMark>
+          <h2 id="focus-h" className="h3">
+            Focus on these
+          </h2>
           <span className="xs muted">Accuracy {rangeSince(range, now)}</span>
         </div>
         {d.weakTopics.length === 0 && <span className="sm muted">Nothing stands out yet. Keep taking tests.</span>}
         {d.weakTopics.map((w, i) => (
-          <div key={`${w.subject}-${w.chapter}-${w.topic ?? ""}`} className="col gap-1.5">
+          <div key={`${w.subject}-${w.chapter}-${w.topic ?? ""}`} className="col gap-[5px]">
             <div className="row sm gap-1.5">
               <b className="min-w-0">{topicTitle(w)}</b>
               {i === 0 && (
@@ -480,25 +563,12 @@ function Phone({ d, now, range }: { d: ProgressResponse; now: number; range: Pro
             </div>
             <Bar value={w.percent} max={100} color="var(--navy-500)" style={{ height: 6, background: "var(--navy-100)" }} label={`${topicTitle(w)}: ${w.percent}% correct`} />
             <span className="xs muted">{w.insight.text}</span>
-            <PracticeButton req={{ ...w.action.practice, source: { kind: "progress" } }} label={w.action.label} now={now} className="btn btn-ghost btn-sm -ml-2" />
+            <PracticeButton req={{ ...w.action.practice, source: { kind: "progress" } }} label={w.action.label} now={now} className="btn btn-secondary btn-sm mt-0.5 h-11" />
           </div>
         ))}
       </section>
 
       <PlanTodayCard now={now} />
-
-      {d.strengths.length > 0 && (
-        <section className="card pad col rise gap-2" style={{ "--i": 3 } as React.CSSProperties}>
-          <h2 className="h3">Strengths to keep</h2>
-          <div className="row wrap gap-2">
-            {d.strengths.map((s) => (
-              <span key={`${s.subject}-${s.chapter}`} className="badge b-green">
-                {s.chapter} {s.percent}%
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 }

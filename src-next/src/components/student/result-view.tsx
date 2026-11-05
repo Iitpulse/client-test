@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Doodle, InkArrow, InkUnderline, Note, Stamp, Sticker, useCountUp } from "@iitpulse/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { m4Api, m4Keys, useProfile } from "@/lib/m4-api";
+import type { StudentProfile } from "@/types/m4";
+import { AiMark, Doodle, InkArrow, InkUnderline, Note, Stamp, Sticker, useCountUp } from "@iitpulse/ui";
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
 import { countdownParts, dayMonth, dowDayMonth, dowDayMonthTime, minutes, relativeDayTime } from "@/lib/time";
 import { useServerClock } from "@/lib/server-clock";
@@ -81,6 +83,137 @@ function Title({ name }: { name: string }) {
       {lead}
       <InkUnderline delay={450}>{tail}</InkUnderline>
     </>
+  );
+}
+
+/**
+ * Phone-ResultPending: the hourglass and "Results come out for everyone on …" on the blueboard with the countdown,
+ * the facts (submitted with the receipt, attempted, "Email me when it's out"), and the AI note with "Continue your
+ * study plan". The switch is the student's "email me when results are out" preference (it covers every test).
+ */
+function PendingPhone({ data, at, left, lead, hidden }: { data: StudentResult; at: string | null; left: number; lead: string; hidden: boolean }) {
+  const s = data.submission;
+  const parts = countdownParts(left);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    <div className="col gap-3.5 p-4 md:hidden">
+      <section className="hero cl-board col pop gap-3.5 rounded-[20px] px-5 py-[22px]">
+        <span className="cl-smudge" aria-hidden="true" style={{ left: -110, top: 120, width: 300, height: 100 }} />
+        <div className="row relative gap-3.5">
+          {!hidden && (
+            <span className="flex-none [&_svg]:size-[72px]">
+              <HourglassRing />
+            </span>
+          )}
+          <div className="col gap-1.5">
+            <span className="badge self-start" style={{ background: "rgba(255,255,255,.14)", color: "#fff" }}>
+              Submitted · answers saved
+            </span>
+            <span className="text-[15px] leading-[1.4]" style={{ color: "#D6D8FA" }}>
+              {at ? (
+                <>
+                  Results come out for everyone on <b className="whitespace-nowrap text-white">{dowDayMonthTime(at)}</b>
+                </>
+              ) : (
+                <>
+                  {lead}
+                  {!hidden && " We'll show it here as soon as it's out."}
+                </>
+              )}
+            </span>
+          </div>
+        </div>
+        {at && left > 0 && (
+          <div className="relative grid grid-cols-4 gap-2" role="timer" aria-label={`Result in ${parts.days} days ${parts.hours} hours ${parts.min} minutes`}>
+            {(
+              [
+                [parts.days, "days"],
+                [parts.hours, "hours"],
+                [parts.min, "min"],
+                [parts.sec, "sec"],
+              ] as const
+            ).map(([n, l]) => (
+              <div key={l} className="col items-center rounded-xl px-1 py-2.5" style={{ background: "rgba(255,255,255,.1)" }} aria-hidden="true">
+                <span className="mono num text-[24px] font-semibold text-white">{pad(n)}</span>
+                <span className="xs" style={{ color: "#C3C6EF" }}>
+                  {l}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {at && (
+          <Note tone="chalk" write rotate={-4} delay={900} className="relative self-end" style={{ fontSize: 19 }}>
+            out on {dayMonth(at)}
+          </Note>
+        )}
+      </section>
+      <section className="card col rise px-4 py-1" style={{ "--i": 1 } as React.CSSProperties}>
+        <div className="row between border-b border-line-2 py-3">
+          <span className="sm muted">Submitted</span>
+          <span className="col items-end gap-0.5">
+            <span className="sm font-semibold">{dowDayMonthTime(s.submittedAt)}</span>
+            <span className="xs muted">
+              Receipt <span className="mono">{s.receiptId}</span>
+            </span>
+          </span>
+        </div>
+        <div className="row between border-b border-line-2 py-3">
+          <span className="sm muted">Attempted</span>
+          <span className="col items-end gap-0.5">
+            <span className="sm num font-semibold">
+              {s.attemptedCount} of {s.totalQuestions}
+            </span>
+            <span className="xs muted">
+              {Math.round(s.timeUsedSeconds / 60)} of {s.durationMinutes} minutes used
+            </span>
+          </span>
+        </div>
+        {!hidden && <EmailWhenOut />}
+      </section>
+      {!hidden && (
+        <section className="ai pad col rise gap-2" style={{ "--i": 2 } as React.CSSProperties}>
+          <AiMark iconSize={13}>AI review unlocks with the result</AiMark>
+          <span className="sm" style={{ textWrap: "pretty" }}>
+            To keep things fair, explanations and doubt chat for this test open once results are out.
+          </span>
+          <Link href="/progress" className="btn btn-secondary h-11 self-start">
+            Continue your study plan
+            <ArrowRightIcon className="arrow" />
+          </Link>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** "Email me when it's out": the emailResults preference (PATCH /users/student/me), shown at once, undone on failure. */
+function EmailWhenOut() {
+  const client = useQueryClient();
+  const me = useProfile();
+  const on = me.data?.profile?.preferences?.emailResults;
+  const m = useMutation({
+    mutationFn: (v: boolean) => m4Api.patchMe({ preferences: { emailResults: v } }),
+    onMutate: (v) => {
+      const before = client.getQueryData<{ now: string; profile: StudentProfile }>(m4Keys.me);
+      if (before) client.setQueryData(m4Keys.me, { ...before, profile: { ...before.profile, preferences: { ...before.profile.preferences, emailResults: v } } });
+      return { before };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.before) client.setQueryData(m4Keys.me, ctx.before);
+    },
+    onSuccess: (res) => client.setQueryData(m4Keys.me, res),
+  });
+  if (on === undefined) return null;
+  return (
+    <div className="row between py-1">
+      <span id="notify-lbl" className="sm font-semibold">
+        Email me when it&apos;s out
+      </span>
+      <button type="button" className="swhit" role="switch" aria-checked={on} aria-labelledby="notify-lbl" onClick={() => m.mutate(!on)}>
+        <span className={on ? "sw on" : "sw off"} aria-hidden="true" />
+      </button>
+    </div>
   );
 }
 
@@ -364,8 +497,9 @@ function Pending({ data, now }: { data: StudentResult; now: number }) {
       <Doodle name="integral" slot="gr" style={{ top: 600 }} />
       <PhoneBar title={data.test.name} />
       <BackToTests className="max-md:hidden" />
+      <PendingPhone data={data} at={at} left={left} lead={lead} hidden={hidden} />
 
-      <div className="col gap-6 max-md:gap-3.5 max-md:p-4">
+      <div className="col gap-6 max-md:hidden">
         <section className="hero cl-board row wrap rise gap-8 p-9 max-md:gap-5 max-md:rounded-[20px] max-md:p-5">
           <span className="cl-smudge" aria-hidden="true" style={{ left: -80, bottom: 10 }} />
           {!hidden && (

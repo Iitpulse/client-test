@@ -1,12 +1,11 @@
 import type { CSSProperties } from "react";
 import { Blueboard, LogoMark, Tape } from "@iitpulse/ui";
-import { PhoneHeader } from "@/components/shell/phone-header";
 
 /**
  * Student-Login board (sign in, forgot password, reset password). The blueboard welcome panel and the taped card
  * belong to this layout, so moving between the three screens keeps them in place and only the card's content
- * fades, as on the board. Below 1024px: one column with Phone-Home's compact header, no tape, no margin rule,
- * no tab bar.
+ * fades, as on the board. Below 1024px (Phone-Login): the blueboard as a band on top (logo, the tagline in chalk,
+ * the headline) with the taped card overlapping it; no margin rule, no tab bar.
  *
  * Classroom budget (student desktop): 1 note, 2 doodles (on the blueboard), 1 taped card, 1 title underline,
  * 1 margin rule; no red pen, no sticker. Phone: none of these render except the title underline.
@@ -14,7 +13,40 @@ import { PhoneHeader } from "@/components/shell/phone-header";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-wrap max-lg:flex-col max-lg:flex-nowrap">
-      <PhoneHeader className="lg:hidden" />
+      {/* Phone-Login: the blueboard band */}
+      <Blueboard as="section" className="auth-board col flex-none gap-[18px] px-5 pt-[calc(22px+env(safe-area-inset-top))] pb-14 text-white lg:hidden" smudge={{ left: -90, top: 120, width: 360, height: 140 }}>
+        <div className="cl-doodle" aria-hidden="true" style={{ right: 18, top: 84 }}>
+          <svg width="88" height="67" viewBox="0 0 110 84" focusable="false">
+            <path d="M8 72H106M18 80V4" />
+            <path d="M30 72Q62 -8 94 72" />
+            <text x="98" y="68">x</text>
+            <text x="22" y="10">y</text>
+          </svg>
+        </div>
+        <span className="inline-flex self-start rounded-[10px] bg-white px-3 py-2">
+          <span role="img" aria-label="IIT-PULSE" className="relative block h-[27px] w-[139px] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element -- the logo is a fixed, unchanged PNG cropped by CSS */}
+            <img src="/iitpulse-logo.png" alt="" className="absolute top-[-7px] left-0 h-[44px] w-auto max-w-none" decoding="async" />
+          </span>
+        </span>
+        <div className="col items-start gap-0">
+          <span className="cl-note chalk cl-write" style={{ "--rot": "-3deg", "--d": 300, fontSize: 30, lineHeight: 1.1 } as CSSProperties}>
+            A vision of success…
+          </span>
+          <svg
+            className="cl-ink chalk inline"
+            width="250"
+            height="10"
+            viewBox="0 0 400 14"
+            aria-hidden="true"
+            focusable="false"
+            style={{ "--d": 1100, margin: "4px 0 0 4px", transform: "rotate(-3deg)" } as CSSProperties}
+          >
+            <path pathLength={1} d="M3 9.5C80 5 180 4.5 280 6.5S372 10 397 7.5" />
+          </svg>
+        </div>
+        <p className="h2 rise m-0 max-w-[300px] text-[24px] text-white">Every test makes the next one easier.</p>
+      </Blueboard>
 
       <Blueboard
         as="section"
@@ -72,10 +104,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
       </Blueboard>
 
-      <section className="relative flex flex-[1_1_480px] items-center justify-center px-6 py-12 max-lg:flex-1 max-lg:items-start max-md:px-4 max-md:pt-6 max-md:pb-10">
+      <section className="relative flex flex-[1_1_480px] items-center justify-center px-6 py-12 max-lg:-mt-9 max-lg:flex-1 max-lg:items-start max-lg:pt-0 max-md:px-4 max-md:pb-6">
         <span className="cl-margin auth-desktop-only" aria-hidden="true" style={{ left: 56 }} />
-        <div className="card pad-lg col pop relative w-full max-w-[420px] gap-[22px] p-9 max-md:p-6">
-          <Tape className="auth-desktop-only" rotate={-2} delay={700} />
+        <div className="card pad-lg col pop relative w-full max-w-[420px] gap-[22px] p-9 max-md:gap-5 max-md:px-5 max-md:py-6">
+          <Tape rotate={-2} delay={700} />
           {children}
         </div>
       </section>

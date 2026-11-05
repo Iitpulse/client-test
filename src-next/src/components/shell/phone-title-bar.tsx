@@ -1,29 +1,16 @@
-"use client";
-
-import Link from "next/link";
-import { InkUnderline } from "@iitpulse/ui";
-import { useAuthHydrated, useAuthStore } from "@/stores/auth.store";
-import { Avatar } from "./avatar";
+import { Doodle, InkUnderline, type DoodleName } from "@iitpulse/ui";
 
 /**
- * The sticky title header of Phone-Progress and the Doubts tab (phones only): the page title underlined in blue ink
- * and the avatar, which opens /profile (as Phone-Home's header does).
+ * The sticky title header of Phone-Progress and Phone-Doubts (phones only): the page title underlined in blue ink
+ * and one pencil doodle on the right, as the boards draw it. `children` go under the title (Phone-Doubts' quota).
  */
-export function PhoneTitleBar({ title, children }: { title: string; children?: React.ReactNode }) {
-  const hydrated = useAuthHydrated();
-  const user = useAuthStore((s) => s.currentUser);
-  const name = hydrated ? user?.name : undefined;
-  const email = hydrated ? user?.email : undefined;
+export function PhoneTitleBar({ title, doodle, children }: { title: string; doodle?: DoodleName; children?: React.ReactNode }) {
   return (
-    <header className="sticky top-0 z-(--z-topbar) col gap-3 border-b border-line bg-white/90 px-4 pt-[calc(14px+env(safe-area-inset-top))] pb-3 backdrop-blur-md md:hidden">
-      <div className="row between gap-3">
-        <h1 className="h2 text-[24px]">
-          <InkUnderline delay={450}>{title}</InkUnderline>
-        </h1>
-        <Link prefetch={false} href="/profile" aria-label={name ? `${name}, profile` : "Your profile"} className="-mr-1.5 flex size-11 items-center justify-center rounded-full">
-          <Avatar name={name} email={email} size={32} />
-        </Link>
-      </div>
+    <header className="sticky top-0 z-(--z-topbar) col relative gap-2.5 border-b border-line bg-white/90 px-4 pt-[calc(18px+env(safe-area-inset-top))] pb-3 backdrop-blur-md md:hidden">
+      {doodle && <Doodle name={doodle} className="[&_svg]:h-[55px] [&_svg]:w-[72px]" style={{ right: 22, top: 4 }} />}
+      <h1 className="h2 text-[24px]">
+        <InkUnderline delay={450}>{title}</InkUnderline>
+      </h1>
       {children}
     </header>
   );

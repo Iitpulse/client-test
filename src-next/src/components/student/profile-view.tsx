@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Doodle, InkUnderline } from "@iitpulse/ui";
 import { m4Api, m4Keys, useProfile } from "@/lib/m4-api";
@@ -10,11 +11,13 @@ import type { StudentPreferences, StudentProfile, StudentProfilePatch } from "@/
 import { Avatar } from "@/components/shell/avatar";
 import { Spinner } from "@/components/shell/icons";
 import { ErrorCard, Skel } from "./common";
+import { ChevronLeftIcon } from "./icons";
 import { sentence } from "./labels";
 
 /**
- * /profile: Student-Profile. Desktop: the settings nav (Profile, Preferences, Password, Sign out) beside the
- * blueboard hero and the cards. Phone (opened from the header avatar): the same cards in one column, Sign out last.
+ * /profile: Student-Profile (desktop): the settings nav (Profile, Preferences, Password, Sign out) beside the
+ * blueboard hero and the cards. Phone-Profile (opened from the header avatar, so a back header and no tab bar):
+ * a compact hero, then Profile / Preferences / Password as tabs showing one card at a time, Sign out last.
  * GET / PATCH /users/student/me, POST /users/student/me/password. City is a select from cityOptions (data).
  * Preferences save on change. Sign out stays client-side (the token in localStorage) until auth v2.
  */
@@ -25,7 +28,10 @@ export function ProfileView() {
   const q = useProfile();
   const p = q.data?.profile;
   const [active, setActive] = useState<Section>("details");
+  const [tab, setTab] = useState<Section>("details"); // Phone-Profile's tabs
   const signOut = useSignOut();
+  const router = useRouter();
+  const phoneOnly = (s: Section) => (tab === s ? "" : "max-md:hidden");
 
   const go = (s: Section) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -34,7 +40,19 @@ export function ProfileView() {
   };
 
   return (
-    <div className="flex flex-wrap gap-7 md:pt-1 max-md:gap-4">
+    <>
+    <header className="sticky top-0 z-(--z-topbar) row box-content h-[60px] gap-1.5 border-b border-line bg-white/90 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-md md:hidden">
+      <button
+        type="button"
+        className="btn btn-ghost btn-icon size-11 flex-none"
+        aria-label="Back"
+        onClick={() => (window.history.length > 1 ? router.back() : router.push("/"))}
+      >
+        <ChevronLeftIcon />
+      </button>
+      <h1 className="h3 grow">Profile</h1>
+    </header>
+    <div className="flex flex-wrap gap-7 md:pt-1 max-md:gap-3 max-md:px-4 max-md:pt-3.5 max-md:pb-6">
       <Doodle name="atom" slot="gl" style={{ top: 420 }} />
       <Doodle name="integral" slot="gr" style={{ top: 760 }} />
       <nav className="col sticky top-24 flex-[1_1_220px] gap-1 self-start max-md:hidden" style={{ maxWidth: 240 }} aria-label="Settings">
@@ -66,16 +84,30 @@ export function ProfileView() {
         ) : (
           <>
             <Hero p={p} />
-            <Details key={p.id} p={p} />
-            <Preferences p={p} />
-            <Password />
-            <button type="button" className="btn btn-secondary self-start md:hidden" style={{ color: "var(--red-600)" }} onClick={signOut}>
+            <div className="seg grid w-full grid-cols-3 md:hidden" role="tablist" aria-label="Settings">
+              {(
+                [
+                  ["details", "Profile"],
+                  ["prefs", "Preferences"],
+                  ["password", "Password"],
+                ] as const
+              ).map(([k, l]) => (
+                <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "tab on h-10 justify-center" : "tab h-10 justify-center"} onClick={() => setTab(k)}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <Details key={p.id} p={p} className={phoneOnly("details")} />
+            <Preferences p={p} className={phoneOnly("prefs")} />
+            <Password className={phoneOnly("password")} />
+            <button type="button" className="btn btn-ghost btn-lg mt-1 self-start md:hidden" style={{ color: "var(--red-600)" }} onClick={signOut}>
               Sign out
             </button>
           </>
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -91,22 +123,27 @@ function Hero({ p }: { p: StudentProfile }) {
   const name = `${p.firstName} ${p.lastName}`.trim();
   const badges = [p.targetLabel && p.batch?.name ? `${p.targetLabel} · ${p.batch.name}` : (p.targetLabel ?? p.batch?.name), p.institute?.name].filter(Boolean) as string[];
   return (
-    <section className="hero cl-board row wrap rise gap-5 p-7 max-md:gap-4 max-md:p-5">
+    <section className="hero cl-board row wrap rise gap-5 p-7 max-md:flex-nowrap max-md:gap-3.5 max-md:rounded-[20px] max-md:p-[18px]">
       <span className="cl-smudge" aria-hidden="true" style={{ right: -60, top: 10 }} />
       <span className="flex-none [&_.avatar]:bg-white">
-        <Avatar name={name} email={p.email} size={36} className="!size-[72px] !text-[24px]" />
+        <Avatar name={name} email={p.email} size={36} className="!size-[72px] !text-[24px] max-md:!size-14 max-md:!text-[19px]" />
       </span>
-      <div className="col min-w-0 gap-1">
-        <h1 className="h1 mb-1.5 text-white max-md:text-[24px]">
+      <div className="col min-w-0 gap-1 max-md:gap-[3px]">
+        <h2 className="h1 mb-1.5 text-white max-md:mb-0.5 max-md:text-[20px] max-md:leading-tight">
           <InkUnderline delay={450}>{p.firstName || name || "You"}</InkUnderline>
           {p.lastName ? ` ${p.lastName}` : ""}
-        </h1>
-        <span className="sm break-words" style={{ color: "#D6D8FA" }}>
+        </h2>
+        <span className="sm break-words max-md:hidden" style={{ color: "#D6D8FA" }}>
           {p.email}
           {p.rollNo ? ` · Roll no. ${p.rollNo}` : ""}
         </span>
+        {p.rollNo && (
+          <span className="xs md:hidden" style={{ color: "#D6D8FA" }}>
+            Roll no. {p.rollNo}
+          </span>
+        )}
         {badges.length > 0 && (
-          <div className="row wrap mt-1.5 gap-2">
+          <div className="row wrap mt-1.5 gap-2 max-md:mt-1 max-md:gap-1.5">
             {badges.map((b) => (
               <span key={b} className="badge text-white" style={{ background: "rgba(255,255,255,.14)" }}>
                 {b}
@@ -119,11 +156,11 @@ function Hero({ p }: { p: StudentProfile }) {
   );
 }
 
-/** "+919826012345" -> "98260 12345" for the input */
+/** "+919826012345" -> "+91 98260 12345" for the input (as the boards show it) */
 function localPhone(v: string | null): string {
   if (!v) return "";
   const d = v.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
-  return d.length === 10 ? `${d.slice(0, 5)} ${d.slice(5)}` : v;
+  return d.length === 10 ? `+91 ${d.slice(0, 5)} ${d.slice(5)}` : v;
 }
 /** An Indian mobile in any common spelling -> its 10 digits, or null when it is not one */
 function tenDigits(v: string): string | null {
@@ -150,7 +187,7 @@ function fieldErrors(err: unknown): { fields: FieldErrors; general: string | nul
   return { fields, general };
 }
 
-function Details({ p }: { p: StudentProfile }) {
+function Details({ p, className }: { p: StudentProfile; className?: string }) {
   const client = useQueryClient();
   const init = initOf(p);
   const [f, setF] = useState(init);
@@ -195,8 +232,8 @@ function Details({ p }: { p: StudentProfile }) {
     if (Object.keys(patch).length) save.mutate(patch);
   };
 
-  const input = (id: string, k: keyof typeof init, label: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}, hint?: string) => (
-    <div className="field">
+  const input = (id: string, k: keyof typeof init, label: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}, hint?: React.ReactNode, cls?: string) => (
+    <div className={cls ? `field ${cls}` : "field"}>
       <label className="label" htmlFor={id}>
         {label}
       </label>
@@ -214,30 +251,37 @@ function Details({ p }: { p: StudentProfile }) {
   );
 
   return (
-    <form id="details" className="card pad-lg col rise scroll-mt-24 gap-[18px]" style={{ "--i": 1 } as React.CSSProperties} onSubmit={submit} noValidate>
-      <h2 className="h3">Personal details</h2>
-      <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+    <form id="details" className={`card pad-lg col rise scroll-mt-24 gap-[18px] max-md:gap-3.5 max-md:p-4 ${className ?? ""}`} style={{ "--i": 1 } as React.CSSProperties} onSubmit={submit} noValidate role="tabpanel" aria-label="Profile">
+      <h2 className="h3 max-md:hidden">Personal details</h2>
+      {/* desktop order (board): first, last, phone, city, parent's phone; phone: first, last, phone, parent's phone, city, email */}
+      <div className="grid grid-cols-2 gap-4 max-md:gap-3">
         {input("pf-first", "firstName", "First name", { autoComplete: "given-name", maxLength: 60 })}
         {input("pf-last", "lastName", "Last name", { autoComplete: "family-name", maxLength: 60 })}
-        {input("pf-phone", "phone", "Phone", { type: "tel", inputMode: "tel", autoComplete: "tel-national", placeholder: "98260 12345", maxLength: 16 })}
-        {input("pf-parent", "parentPhone", "Parent's phone", { type: "tel", inputMode: "tel", placeholder: "Optional", maxLength: 16 }, "Optional. Kept with your details for your institute.")}
-        <div className="field">
+        {input("pf-phone", "phone", "Phone", { type: "tel", inputMode: "tel", autoComplete: "tel-national", placeholder: "+91 98260 12345", maxLength: 16 }, <span className="md:hidden">Used to sign in, so it can&apos;t be left empty</span>, "max-md:col-span-2")}
+        <div className="field max-md:order-5 max-md:col-span-2">
           <label className="label" htmlFor="pf-city">
             City
           </label>
-          <select id="pf-city" className="input" value={f.city} onChange={set("city")} aria-invalid={err.city ? true : undefined}>
-            <option value="">Choose your city</option>
-            {p.cityOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select id="pf-city" className="input select pr-10" value={f.city} onChange={set("city")} aria-invalid={err.city ? true : undefined}>
+              <option value="">Choose your city</option>
+              {p.cityOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#575C75" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false" className="pointer-events-none absolute top-3.5 right-3.5">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
           {err.city && <span className="field-err">{err.city}</span>}
         </div>
-        <div className="field">
+        {input("pf-parent", "parentPhone", "Parent's phone", { type: "tel", inputMode: "tel", placeholder: "Optional", maxLength: 16 }, "Optional. Kept with your details for your institute.", "max-md:order-4 max-md:col-span-2")}
+        <div className="col order-6 col-span-2 gap-0.5 md:hidden">
           <span className="label">Email</span>
-          <span className="sm muted flex min-h-11 items-center break-all">{p.email}</span>
+          <span className="sm muted break-all">{p.email}</span>
+          <span className="hint">Set by your institute</span>
         </div>
       </div>
       <div className="row wrap justify-end gap-2">
@@ -253,7 +297,7 @@ function Details({ p }: { p: StudentProfile }) {
         )}
         <button
           type="button"
-          className="btn btn-ghost"
+          className="btn btn-ghost max-md:h-12 max-md:flex-1 max-md:rounded-xl max-md:text-[15px]"
           disabled={!dirty || save.isPending}
           onClick={() => {
             setF(init);
@@ -263,7 +307,7 @@ function Details({ p }: { p: StudentProfile }) {
         >
           Cancel
         </button>
-        <button type="submit" className="btn btn-primary" disabled={!dirty || save.isPending}>
+        <button type="submit" className="btn btn-primary max-md:h-12 max-md:flex-1 max-md:rounded-xl max-md:text-[15px]" disabled={!dirty || save.isPending}>
           {save.isPending && <Spinner size={16} />}
           Save changes
         </button>
@@ -272,7 +316,7 @@ function Details({ p }: { p: StudentProfile }) {
   );
 }
 
-function Preferences({ p }: { p: StudentProfile }) {
+function Preferences({ p, className }: { p: StudentProfile; className?: string }) {
   const client = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const m = useMutation({
@@ -298,20 +342,22 @@ function Preferences({ p }: { p: StudentProfile }) {
         </span>
         {hint && <span className="xs muted">{hint}</span>}
       </span>
-      <button type="button" className="sw" role="switch" aria-checked={pr[k]} aria-labelledby={id} onClick={() => m.mutate({ [k]: !pr[k] })} />
+      <button type="button" className="swhit" role="switch" aria-checked={pr[k]} aria-labelledby={id} onClick={() => m.mutate({ [k]: !pr[k] })}>
+        <span className={pr[k] ? "sw on" : "sw off"} aria-hidden="true" />
+      </button>
     </div>
   );
   return (
-    <section id="prefs" className="card pad-lg col rise scroll-mt-24 gap-1" style={{ "--i": 2 } as React.CSSProperties} aria-labelledby="prefs-h">
-      <h2 id="prefs-h" className="h3 mb-2">
+    <section id="prefs" className={`card pad-lg col rise scroll-mt-24 gap-1 max-md:gap-0 max-md:px-4 max-md:py-1.5 ${className ?? ""}`} style={{ "--i": 2 } as React.CSSProperties} aria-labelledby="prefs-h" role="tabpanel">
+      <h2 id="prefs-h" className="h3 mb-2 max-md:sr-only">
         Preferences
       </h2>
-      <div className="row between wrap pref">
+      <div className="row between pref max-md:flex-col max-md:items-start">
         <span className="col gap-0.5">
           <span id="pref-lang" className="sm font-semibold">
             Question language
           </span>
-          <span className="xs muted">Practice questions open in it when a translation exists</span>
+          <span className="xs muted">Used for practice questions; you can switch per question</span>
         </span>
         <span className="seg" role="radiogroup" aria-labelledby="pref-lang">
           {(["en", "hi"] as const).map((l) => (
@@ -333,7 +379,7 @@ function Preferences({ p }: { p: StudentProfile }) {
   );
 }
 
-function Password() {
+function Password({ className }: { className?: string }) {
   const [f, setF] = useState({ current: "", next: "", confirm: "" });
   const [local, setLocal] = useState<{ current?: string; next?: string; confirm?: string }>({});
   const m = useMutation({
@@ -363,28 +409,30 @@ function Password() {
     setLocal(l);
     if (!Object.keys(l).length) m.mutate();
   };
-  const field = (id: string, k: keyof typeof f, label: string, auto: string) => (
+  const field = (id: string, k: keyof typeof f, label: string, auto: string, hint?: string) => (
     <div className="field">
       <label className="label" htmlFor={id}>
         {label}
       </label>
       <input id={id} type="password" className="input" autoComplete={auto} value={f[k]} onChange={set(k)} aria-invalid={errs[k] ? true : undefined} aria-describedby={errs[k] ? `${id}-err` : undefined} />
-      {errs[k] && (
+      {errs[k] ? (
         <span id={`${id}-err`} className="field-err">
           {errs[k]}
         </span>
-      )}
+      ) : hint ? (
+        <span className="hint md:hidden">{hint}</span>
+      ) : null}
     </div>
   );
   return (
-    <form id="password" className="card pad-lg col rise scroll-mt-24 gap-[18px]" style={{ "--i": 3 } as React.CSSProperties} onSubmit={submit} noValidate>
-      <div className="col gap-0.5">
+    <form id="password" className={`card pad-lg col rise scroll-mt-24 gap-[18px] max-md:gap-3.5 max-md:p-4 ${className ?? ""}`} style={{ "--i": 3 } as React.CSSProperties} onSubmit={submit} noValidate role="tabpanel" aria-label="Password">
+      <div className="col gap-0.5 max-md:hidden">
         <h2 className="h3">Password</h2>
         <span className="xs muted">At least 8 characters.</span>
       </div>
       <div className="grid grid-cols-3 gap-4 max-lg:grid-cols-1">
         {field("pw-current", "current", "Current password", "current-password")}
-        {field("pw-new", "next", "New password", "new-password")}
+        {field("pw-new", "next", "New password", "new-password", "At least 8 characters")}
         {field("pw-confirm", "confirm", "Repeat new password", "new-password")}
       </div>
       <div className="row wrap justify-end gap-2">
@@ -398,7 +446,7 @@ function Password() {
             Password changed.
           </span>
         )}
-        <button type="submit" className="btn btn-primary" disabled={m.isPending}>
+        <button type="submit" className="btn btn-primary max-md:h-12 max-md:w-full max-md:rounded-xl max-md:text-[15px]" disabled={m.isPending}>
           {m.isPending && <Spinner size={16} />}
           Change password
         </button>

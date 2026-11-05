@@ -21,7 +21,9 @@ import { StudentNav } from "./student-nav";
  */
 type PhoneChrome = "full" | "tabs" | "none";
 function phoneChrome(pathname: string): PhoneChrome {
-  if (pathname.startsWith("/results/") || pathname.startsWith("/practice/")) return "none";
+  // Opened from another page: their own back header, no tab bar (Phone-Result, Phone-Review, Phone-Doubt,
+  // Phone-ResultPending, Phone-Practice, Phone-Profile).
+  if (pathname.startsWith("/results/") || pathname.startsWith("/practice/") || pathname === "/profile") return "none";
   if (pathname === "/tests" || pathname === "/progress" || pathname === "/doubts") return "tabs";
   return "full";
 }

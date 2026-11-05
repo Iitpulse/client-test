@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { MathText, Tape, TypingDots } from "@iitpulse/ui";
 import { isAiDown } from "@/lib/ai-api";
@@ -10,7 +9,6 @@ import { resetsAt } from "@/lib/time";
 import type { StudyPlan, StudyPlanItem, StudyPlanResponse } from "@/types/m4";
 import { Skel } from "./common";
 import { sentence } from "./labels";
-import { PracticeButton } from "./practice-button";
 
 /**
  * "This week's plan" (Student-Progress) and "Today" (Phone-Progress), from GET /ai/student/study-plan.
@@ -97,10 +95,10 @@ function PlanActions({ r, now, restart, compact }: { r: StudyPlanResponse; now: 
   return (
     <div className={compact ? "col gap-1.5" : "col items-end gap-1.5"}>
       <div className="row gap-2">
-        <button type="button" className="btn btn-ghost btn-sm" disabled={busy || !r.actions.lighter.available} title={later(r.actions.lighter)} onClick={() => m.mutate("lighter")}>
+        <button type="button" className={compact ? "btn btn-ghost btn-sm h-11 flex-1" : "btn btn-ghost btn-sm"} disabled={busy || !r.actions.lighter.available} title={later(r.actions.lighter)} onClick={() => m.mutate("lighter")}>
           Make it lighter
         </button>
-        <button type="button" className="btn btn-secondary btn-sm" disabled={busy || !r.actions.rebuild.available} title={later(r.actions.rebuild)} onClick={() => m.mutate("rebuild")}>
+        <button type="button" className={compact ? "btn btn-secondary btn-sm h-11 flex-1" : "btn btn-secondary btn-sm"} disabled={busy || !r.actions.rebuild.available} title={later(r.actions.rebuild)} onClick={() => m.mutate("rebuild")}>
           <RebuildIcon />
           Rebuild plan
         </button>
@@ -164,30 +162,6 @@ function PlanPlaceholder({ st, compact }: { st: Exclude<PlanState, { kind: "read
   );
 }
 
-/** What a practice, drill or redo item opens. */
-function ItemGo({ item, now, compact }: { item: StudyPlanItem; now: number; compact?: boolean }) {
-  if ((item.kind === "practice" || item.kind === "drill") && item.practice) {
-    return (
-      <PracticeButton
-        req={{ ...item.practice, source: { kind: "studyPlan", id: item.id } }}
-        label={compact ? "Start" : "Start →"}
-        now={now}
-        className={compact ? "btn btn-ghost btn-sm" : "task-go"}
-        wrapClassName={compact ? "flex-none items-end" : undefined}
-      />
-    );
-  }
-  if (item.kind === "redo" && item.redo && item.redo.questions.length) {
-    const first = item.redo.questions[0]!;
-    return (
-      <Link href={`/results/${encodeURIComponent(item.redo.testId)}/q/${first.n}`} className={compact ? "btn btn-ghost btn-sm flex-none" : "task-go"}>
-        {compact ? "Open" : "Open →"}
-      </Link>
-    );
-  }
-  return null;
-}
-
 /** Student-Progress: the week, one column per day, today tinted; tick an item to strike it through. */
 export function PlanWeekCard({ now }: { now: number }) {
   const { st, restart } = usePlanState();
@@ -225,13 +199,9 @@ export function PlanWeekCard({ now }: { now: number }) {
                 </span>
                 {d.items.length === 0 && <span className="xs muted">Nothing planned</span>}
                 {d.items.map((i) => (
-                  <div key={i.id} className="col gap-1">
-                    <label className="task">
-                      <input type="checkbox" className="check" checked={i.done} onChange={(e) => tick.toggle(i.id, e.target.checked)} />
-                      <MathText className="task-t min-w-0" text={itemText(i)} />
-                    </label>
-                    <ItemGo item={i} now={now} />
-                  </div>
+                  <button key={i.id} type="button" className={i.done ? "task cl-done" : "task"} aria-pressed={i.done} title={i.done ? "Done · tap to undo" : "Tap when done"} onClick={() => tick.toggle(i.id, !i.done)}>
+                    <MathText text={itemText(i)} />
+                  </button>
                 ))}
               </div>
             );
@@ -278,18 +248,15 @@ export function PlanTodayCard({ now }: { now: number }) {
         <span className="sm muted pt-2">Nothing planned for today. Rest, or redo a question you got wrong.</span>
       ) : (
         day.items.map((i) => (
-          <div key={i.id} className="row gap-2">
-            <label className="row plan grow min-w-0">
-              <input type="checkbox" className="check" checked={i.done} onChange={(e) => tick.toggle(i.id, e.target.checked)} />
-              <MathText className="sm plan-t min-w-0" text={itemText(i)} />
-            </label>
-            <ItemGo item={i} now={now} compact />
-          </div>
+          <label key={i.id} className="row plan min-w-0">
+            <input type="checkbox" className="check" checked={i.done} onChange={(e) => tick.toggle(i.id, e.target.checked)} />
+            <MathText className="sm plan-t min-w-0" text={itemText(i)} />
+          </label>
         ))
       )}
       {tick.isError && <span className="xs muted">Couldn&apos;t save that tick. Try again.</span>}
       {r && (
-        <div className="row mt-2 border-t border-line-2 pt-3">
+        <div className="mt-2">
           <PlanActions r={r} now={now} restart={restart} compact />
         </div>
       )}
@@ -298,7 +265,6 @@ export function PlanTodayCard({ now }: { now: number }) {
           <Rebuilding late={st.late} />
         </span>
       )}
-      {st.kind === "ready" && <span className="xs muted mt-2">Made by AI from your last tests · adjust anything</span>}
     </section>
   );
 }

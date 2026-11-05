@@ -7,7 +7,7 @@ import { AiMark, Doodle, MathText, TypingDots } from "@iitpulse/ui";
 import { useDoubt, type ChatProblem } from "@/lib/use-doubt";
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
 import { relativeDayTime, resetsAt } from "@/lib/time";
-import type { DoubtChip, DoubtMessage, PracticeQuestion } from "@/types/m4";
+import type { DoubtChip, DoubtMessage, DoubtThreadSummary, PracticeQuestion } from "@/types/m4";
 import { ChevronLeftIcon, LockIcon } from "./icons";
 import { sentence } from "./labels";
 import { Skel } from "./common";
@@ -23,38 +23,37 @@ import { Skel } from "./common";
 const HINDI = /[ऀ-ॿ]/;
 const MAX = 600;
 
-function Bubble({ m }: { m: DoubtMessage }) {
-  if (m.role === "student") return <div className="bubble-me rise">{m.text}</div>;
-  if (m.kind === "question" && m.question) return <QuestionMessage m={m} q={m.question} />;
+/** Desktop (Student-Result, Student-Doubts): .bubble-me / .bubble-ai. Phone-Doubt: .me / .bot, answers on ruled lines (.ans). */
+function Bubble({ m, phone }: { m: DoubtMessage; phone?: boolean }) {
+  if (m.role === "student") return <div className={phone ? "me rise" : "bubble-me sm rise"}>{m.text}</div>;
+  if (m.kind === "question" && m.question) return <QuestionMessage q={m.question} />;
   return (
-    <div className="bubble-ai ans rise" lang={HINDI.test(m.text) ? "hi" : undefined}>
+    <div className={phone ? "bot ans rise" : "bubble-ai sm rise"} lang={HINDI.test(m.text) ? "hi" : undefined}>
       <MathText text={m.text} streaming={m.finish === null} />
     </div>
   );
 }
 
-/** The similar-question chip's answer: a real question card. Tapping an option answers it in the chat. */
-function QuestionMessage({ m, q, onAnswer }: { m: DoubtMessage; q: PracticeQuestion; onAnswer?: (key: string) => void }) {
+/** The similar-question chip's answer (Student-Doubts .qmsg): a real bank question; the student replies with an answer. */
+function QuestionMessage({ q }: { q: PracticeQuestion }) {
   return (
-    <div className="bubble-ai bubble-q rise col gap-2.5">
-      {m.text && <MathText className="sm" text={m.text} />}
+    <div className="qmsg rise">
+      <span className="row gap-2">
+        <span className="badge b-grey">Similar question</span>
+        <span className="xs muted">From the question bank</span>
+      </span>
       <MathText html as="div" className="q-stem text-[16px]" text={q.stem.en} />
       {q.options.length > 0 && (
-        <div className="col gap-2" role="list" aria-label="Options">
+        <div className="grid grid-cols-2 gap-2 max-md:grid-cols-1" role="list" aria-label="Options">
           {q.options.map((o) => (
-            <div key={o.id} role="listitem" className="opt items-center px-3 py-2">
+            <div key={o.id} role="listitem" className="opt">
               <span className="key">{o.key}</span>
-              <MathText html as="div" className="q-stem grow min-w-0 text-[16px]" text={o.en} />
-              {onAnswer && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => onAnswer(o.key)} aria-label={`Answer ${o.key}`}>
-                  Pick
-                </button>
-              )}
+              <MathText html as="div" className="q-stem min-w-0 text-[16px]" text={o.en} />
             </div>
           ))}
         </div>
       )}
-      <span className="xs muted">{q.options.length ? "Pick an option or type your answer below; the tutor checks it." : "Type your answer below; the tutor checks it."}</span>
+      <span className="xs muted">Reply with your answer and the tutor checks it against the key.</span>
     </div>
   );
 }
@@ -91,7 +90,7 @@ function ProblemLine({ p, label, now, onNew }: { p: ChatProblem; label: number; 
 type Doubt = ReturnType<typeof useDoubt>;
 
 /** The messages, the typing dots and the answer being streamed. Keeps itself scrolled to the newest line. */
-function Log({ d, empty, top, className }: { d: Doubt; empty: React.ReactNode; top?: React.ReactNode; className?: string }) {
+function Log({ d, empty, top, className, phone }: { d: Doubt; empty: React.ReactNode; top?: React.ReactNode; className?: string; phone?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   useLayoutEffect(() => {
@@ -102,25 +101,20 @@ function Log({ d, empty, top, className }: { d: Doubt; empty: React.ReactNode; t
     const el = box.current;
     if (el) stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
   };
-  const answer = (key: string) => d.send({ text: `My answer is ${key}` }, `My answer is ${key}`);
   return (
     <div ref={box} onScroll={onScroll} className={className} aria-live="polite" aria-busy={d.busy || undefined}>
       {top}
       {d.messages.length === 0 && d.draft === null && !d.thinking && empty}
-      {d.messages.map((m, i) =>
-        m.role === "tutor" && m.kind === "question" && m.question ? (
-          <QuestionMessage key={m.id} m={m} q={m.question} onAnswer={i === d.messages.length - 1 && !d.busy && !d.daily && !d.full ? answer : undefined} />
-        ) : (
-          <Bubble key={m.id} m={m} />
-        )
-      )}
+      {d.messages.map((m) => (
+        <Bubble key={m.id} m={m} phone={phone} />
+      ))}
       {d.thinking && (
-        <div className="bubble-ai fade">
+        <div className={phone ? "bot fade" : "bubble-ai fade"}>
           <TypingDots label="The tutor is writing" />
         </div>
       )}
       {d.draft !== null && (
-        <div className="bubble-ai ans" lang={HINDI.test(d.draft) ? "hi" : undefined}>
+        <div className={phone ? "bot ans" : "bubble-ai sm"} lang={HINDI.test(d.draft) ? "hi" : undefined}>
           <MathText text={d.draft} streaming />
         </div>
       )}
@@ -128,7 +122,7 @@ function Log({ d, empty, top, className }: { d: Doubt; empty: React.ReactNode; t
   );
 }
 
-function Composer({ d, label, phone, held }: { d: Doubt; label: number; phone?: boolean; held?: ChatProblem | null }) {
+function Composer({ d, label, phone, held, placeholder }: { d: Doubt; label: number; phone?: boolean; held?: ChatProblem | null; placeholder?: string }) {
   const [text, setText] = useState("");
   const problem = held ?? d.problem;
   const blocked = d.daily || d.full || problem?.kind === "locked";
@@ -173,7 +167,7 @@ function Composer({ d, label, phone, held }: { d: Doubt; label: number; phone?: 
           id={phone ? "doubt-phone" : "doubt"}
           name="doubt"
           className={phone ? "input rounded-full" : "input"}
-          placeholder={phone ? "Ask about this question…" : "Type your doubt…"}
+          placeholder={placeholder ?? (phone ? "Ask about this question…" : "Type your doubt…")}
           value={text}
           maxLength={MAX}
           disabled={blocked}
@@ -273,6 +267,7 @@ export function PhoneDoubtView({ testId, n, threadId }: { testId: string; n: num
       </header>
       <Log
         d={d}
+        phone
         className="chat-log col min-h-0 flex-1 gap-2.5 overflow-y-auto px-4 pt-4 pb-3 md:max-h-[60vh] md:flex-none md:rounded-card md:border md:border-line md:bg-white"
         top={
           <div className="ai fade col mt-auto gap-1 rounded-xl px-3 py-2.5">
@@ -303,4 +298,63 @@ export function PhoneDoubtView({ testId, n, threadId }: { testId: string; n: num
 /** HTML stem -> plain text with its LaTeX kept (for a two-line preview). */
 function plain(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Student-Doubts' right pane: one thread (from the list on the left), "Open in review", the question, the chat,
+ * and the composer, or "You've used today's 20 questions" once the day's quota is gone.
+ */
+export function ThreadPane({ t }: { t: DoubtThreadSummary }) {
+  const d = useDoubt({ testId: t.testId, n: t.n, threadId: t.id });
+  const left = d.thread?.quota.leftInThread ?? null;
+  return (
+    <article className="card col fade min-w-0 flex-[999_1_560px] overflow-hidden" aria-label={`Doubt about ${t.testShortName} question ${t.shownAs}`}>
+      <div className="row between pad gap-3 border-b border-line-2">
+        <div className="col gap-0.5">
+          <h2 className="h3">
+            Doubt · {t.testShortName}, Q{t.shownAs}
+          </h2>
+          <span className="xs muted">
+            {t.testName}
+            {left !== null ? ` · ${left} ${left === 1 ? "turn" : "turns"} left in this thread` : ""}
+          </span>
+        </div>
+        <Link href={`/results/${encodeURIComponent(t.testId)}/q/${t.n}`} className="btn btn-ghost btn-sm">
+          Open in review
+          <svg className="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false">
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </Link>
+      </div>
+      <Log
+        d={d}
+        className="chat-log col max-h-[640px] min-h-[420px] gap-3 overflow-y-auto bg-[#FAFBFE] p-5"
+        top={
+          <div className="ai col gap-1 rounded-xl px-3.5 py-3">
+            <span className="xs muted font-semibold">
+              {t.testShortName} · Q{t.shownAs}
+            </span>
+            <MathText className="q-stem text-[16px] leading-normal" text={`“${t.questionPreview}”`} />
+          </div>
+        }
+        empty={d.loading ? <Skel className="h-10 w-2/3 self-center rounded-xl" /> : null}
+      />
+      {d.daily ? (
+        <div className="row gap-3 border-t border-line-2 px-5 py-[18px]">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#575C75" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" focusable="false" className="flex-none">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          <span className="col gap-0.5">
+            <span className="sm font-semibold">You&apos;ve used today&apos;s 20 questions</span>
+            <span className="xs muted">You can ask again after midnight. Your chats stay here.</span>
+          </span>
+        </div>
+      ) : (
+        <div className="col gap-2.5 border-t border-line-2 px-5 pt-3.5 pb-5">
+          <Composer d={d} label={t.shownAs} placeholder="Ask about this question…" />
+        </div>
+      )}
+    </article>
+  );
 }

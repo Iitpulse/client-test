@@ -525,8 +525,18 @@ export const useTestStore = create<TestState>((set, get) => ({
       }),
     }));
 
+    // Integrity (M5): the fullscreen-exit count since the last autosave goes with the submit; the server keeps the
+    // higher of this and the saved one on the submission
+    let fullscreenExits = 0;
     try {
-      const response = await api.tests.submit({ testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true });
+      fullscreenExits = Math.min(1000, Math.max(0, parseInt(localStorage.getItem(`IITP_FULLSCREEN_EXITS_${testId}`) || "0", 10) || 0));
+    } catch {
+      // storage blocked: the server still has the last saved count
+    }
+    const submitBody = { testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true, fullscreenExits };
+
+    try {
+      const response = await api.tests.submit(submitBody);
 
       const outcome = response.data?.data || {};
       const totalMarks = outcome.totalMarks ?? 0;

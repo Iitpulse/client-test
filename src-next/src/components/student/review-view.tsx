@@ -2,18 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
 import { mmss, relativeDayTime } from "@/lib/time";
 import { useServerClock } from "@/lib/server-clock";
-import type { QuestionOutcome, ReviewFilter } from "@/types/m2-student";
-import { ArrowLeftIcon, ArrowRightIcon } from "@/components/shell/icons";
+import { useIsDesktop } from "@/lib/use-media";
+import type { QuestionCell, QuestionOutcome, ReviewFilter, ReviewQuestion, StudentResult } from "@/types/m2-student";
+import { reviewExtras } from "@/types/m6-review";
+import { ArrowRightIcon } from "@/components/shell/icons";
 import { ErrorCard, Skel } from "./common";
 import { ChevronLeftIcon, LockIcon } from "./icons";
-import { OUTCOME_BADGE, outcomeText, sentence } from "./labels";
+import { OUTCOME_BADGE, sentence } from "./labels";
 import { LangToggle, QuestionBody, Solution, type Lang } from "./question-body";
-import { canExplain, WhyPanel } from "./ai-review";
+import { canExplain, explainLabel, useWhyState, WhyView } from "./review-ai";
+import { KeyCorrectedNote, PassageBlock, reviewStatus, SetKids, setCells, typeLabel } from "./review-parts";
+import { fixtureItem, reviewFixtureFromUrl, type ReviewFixture } from "./review-fixtures";
+import { ReviewPane } from "./review-pane";
 
 const FILTERS: ReviewFilter[] = ["all", "correct", "wrong", "skipped", "review"];
 
@@ -23,59 +28,113 @@ function inFilter(o: QuestionOutcome, f: ReviewFilter): boolean {
 }
 
 /**
- * /results/[testId]/q/[n]: Phone-Review, one question at a time with a strip of the questions in the filter and
- * Previous / Next. On desktop the same screen sits in the shell, centred (the result page has the pane).
+ * /results/[testId]/q/[n]. Phone (Phone-Review + Student-Review's phone states): one question at a time with a strip of
+ * the questions in the filter and Next. Desktop: Student-Review, the result page's "Question review" (review-pane.tsx)
+ * with this question selected; picking another one moves the route.
  *
  * The question, its place in the filter, its neighbours and the server time come from GET …/questions/:n (the
- * neighbours of the current one are fetched ahead, so Next is instant). The strip comes from the result's grid
- * (already loaded on the result page), filtered here: every cell carries shownAs, in the student's order.
+ * neighbours are fetched ahead, so Next is instant). The strip comes from the result's grid, filtered here.
  * Questions are numbered as the student saw them (shownAs), with the paper's number second; `n` is the route key.
- * M3: "Why this happened" (ai-review.tsx) under the options for wrong, partly correct and skipped questions, as on
- * the board; the institute's own solution still follows it. M4: "Ask a doubt" in the phone footer (Phone-Review)
- * opens Phone-Doubt; Previous stays on desktop (the strip covers it on the phone).
+ * M3/M6: "Why this happened" opens by itself on the phone (Phone-Review), with the board's states (review-ai.tsx).
+ * M6 fixtures (dev / staging / NEXT_PUBLIC_M6_FIXTURES=1): ?fixture=single|multiple|numerical|paragraph|matrix
+ * &kc=1&ai=<state> (review-fixtures.ts) renders the board's data with no calls.
  */
 export function ReviewView({ testId, n }: { testId: string; n: number }) {
   const search = useSearchParams();
   const f = search.get("filter");
   const filter: ReviewFilter = f && (FILTERS as string[]).includes(f) ? (f as ReviewFilter) : "all";
   const client = useQueryClient();
+  const router = useRouter();
+  const isDesktop = useIsDesktop();
+
+  // undefined until read (after mount: it reads the URL), then the fixture or null.
+  const [fixture, setFixture] = useState<ReviewFixture | null | undefined>(undefined);
+  const fixtureKey = search.get("fixture") + "|" + search.get("kc") + "|" + search.get("ai");
+  useEffect(() => setFixture(reviewFixtureFromUrl(testId)), [testId, fixtureKey]);
+  const live = fixture === null;
 
   const itemFn = (m: number) => ({
     queryKey: qk.reviewItem(testId, m, filter),
     queryFn: ({ signal }: { signal: AbortSignal }) => studentApi.reviewItem(testId, m, filter, signal),
     staleTime: 10 * 60_000, // the answer key does not change
   });
-  const itemQ = useQuery(itemFn(n));
-  const resultQ = useQuery({ queryKey: qk.result(testId), queryFn: ({ signal }) => studentApi.result(testId, signal) });
-  const serverNow = itemQ.data?.now ?? resultQ.data?.now;
-  const now = useServerClock(serverNow, itemQ.data ? itemQ.dataUpdatedAt : resultQ.dataUpdatedAt, false);
+  const itemQ = useQuery({ ...itemFn(n), enabled: live && isDesktop === false });
+  const resultQ = useQuery({ queryKey: qk.result(testId), queryFn: ({ signal }) => studentApi.result(testId, signal), enabled: live });
+  const fx = fixture ? fixtureItem(fixture, n, (o) => inFilter(o, filter)) : null;
+  const resultData: StudentResult | undefined = fixture ? fixture.result : resultQ.data;
+  const serverNow = fixture ? fixture.result.now : (itemQ.data?.now ?? resultQ.data?.now);
+  const now = useServerClock(serverNow, fixture ? 0 : itemQ.data ? itemQ.dataUpdatedAt : resultQ.dataUpdatedAt, false);
 
-  const item = itemQ.data;
-  const q = item?.item;
-  const cells = (resultQ.data?.result?.questions ?? []).filter((c) => inFilter(c.outcome, filter));
-  const labelOf = (m: number) => cells.find((c) => c.n === m)?.shownAs ?? m;
+  const q: ReviewQuestion | undefined = fixture ? fx?.item : itemQ.data?.item;
+  const cells = (resultData?.result?.questions ?? []).filter((c) => inFilter(c.outcome, filter));
+  const labelOf = (m: number) => resultData?.result?.questions.find((c) => c.n === m)?.shownAs ?? m;
   const label = q ? q.shownAs : labelOf(n);
-  const position = item?.position;
-  const prevN = item?.prevN ?? null;
-  const nextN = item?.nextN ?? null;
-  const href = (to: number) => `/results/${encodeURIComponent(testId)}/q/${to}${filter !== "all" ? `?filter=${filter}` : ""}`;
+  const position = fixture ? fx?.position : itemQ.data?.position;
+  const prevN = (fixture ? fx?.prevN : itemQ.data?.prevN) ?? null;
+  const nextN = (fixture ? fx?.nextN : itemQ.data?.nextN) ?? null;
+  const qs = (extra: string | null) => [filter !== "all" ? `filter=${filter}` : null, fixture ? fixture.search : null, extra].filter(Boolean).join("&");
+  const href = (to: number) => {
+    const s = qs(null);
+    return `/results/${encodeURIComponent(testId)}/q/${to}${s ? `?${s}` : ""}`;
+  };
   const back = `/results/${encodeURIComponent(testId)}`;
+  const doubtHref = `/results/${encodeURIComponent(testId)}/q/${n}/doubt`;
 
-  // Fetch the neighbours ahead, so Previous / Next show at once.
+  // Fetch the neighbours ahead, so Next shows at once (phone).
   useEffect(() => {
+    if (!live || isDesktop !== false) return;
     for (const m of [nextN, prevN]) if (m !== null) client.prefetchQuery(itemFn(m));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- itemFn is rebuilt every render from testId and filter
-  }, [client, nextN, prevN, testId, filter]);
-
-  const subtitle = [q && label !== q.n ? `Paper Q${q.n}` : null, position ? `${filter === "review" ? "Reviewing" : "Question"} ${position.index} of ${position.of}` : null].filter(Boolean).join(" · ");
-  const [lang, setLang] = useState<Lang>("en");
-  const error: unknown = !q && itemQ.isError ? itemQ.error : null;
+  }, [client, nextN, prevN, testId, filter, live, isDesktop]);
 
   // Keep the current question in view in the strip.
   const strip = useRef<HTMLElement>(null);
   useEffect(() => {
     strip.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [n, cells.length]);
+
+  if (isDesktop === true && fixture !== undefined) {
+    const err: unknown = !resultData && resultQ.isError ? resultQ.error : null;
+    const r = resultData?.result;
+    return (
+      <div className="col w-full gap-4 pb-10">
+        <nav className="row sm gap-2 text-muted" aria-label="Breadcrumb">
+          <Link href="/tests" className="text-muted">
+            Tests
+          </Link>
+          <span aria-hidden="true">/</span>
+          <Link href={back} className="text-muted">
+            {resultData?.test.name ?? "Result"}
+          </Link>
+          <span aria-hidden="true">/</span>
+          <span className="font-semibold text-ink">Review</span>
+        </nav>
+        {err ? (
+          <ReviewProblem error={err} now={null} back={back} onRetry={() => resultQ.refetch()} />
+        ) : !resultData ? (
+          <div className="col gap-3" aria-busy="true" aria-label="Loading the review">
+            <Skel className="h-9 w-64" />
+            <Skel className="h-96 w-full rounded-card" />
+          </div>
+        ) : !r ? (
+          <div className="card col items-start gap-3 p-5">
+            <span className="row gap-2 text-muted">
+              <LockIcon size={18} />
+              <span className="h3 text-ink">Your result isn&apos;t out yet</span>
+            </span>
+            <Link href={back} className="btn btn-secondary">
+              Back to the result
+            </Link>
+          </div>
+        ) : (
+          <ReviewPane data={resultData} r={r} now={now} sel={n} onSel={(m) => router.replace(href(m), { scroll: false })} fixture={fixture} />
+        )}
+      </div>
+    );
+  }
+
+  const subtitle = [q && label !== q.n ? `Paper Q${q.n}` : null, position ? `${filter === "review" ? "Reviewing" : "Question"} ${position.index} of ${position.of}` : null].filter(Boolean).join(" · ");
+  const error: unknown = !q && itemQ.isError ? itemQ.error : null;
 
   return (
     <div className="col mx-auto min-h-dvh w-full max-w-[760px] md:min-h-0 md:gap-4">
@@ -88,7 +147,7 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
             <h1 className="h3">Question {label}</h1>
             {subtitle && <span className="xs muted">{subtitle}</span>}
           </span>
-          {q && <span className={`badge ${q.outcome === "wrong" ? "b-live" : OUTCOME_BADGE[q.outcome]}`}>{outcomeText(q)}</span>}
+          {q && <span className={`badge flex-none ${q.outcome === "wrong" ? "b-live" : OUTCOME_BADGE[q.outcome]}`}>{reviewStatus(q)}</span>}
         </div>
         {cells.length > 1 && (
           <nav ref={strip} className="qstrip" aria-label="Questions in this list">
@@ -105,66 +164,131 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
         )}
       </header>
 
-      <div className="col flex-1 gap-3 px-4 pt-3.5 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-0 md:pb-0" aria-live="polite">
-        {error ? (
+      {error ? (
+        <div className="col flex-1 gap-3 px-4 pt-3.5 md:px-0">
           <ReviewProblem error={error} now={resultQ.data ? now : null} back={back} onRetry={() => itemQ.refetch()} />
-        ) : !q ? (
-          <div className="col gap-3" aria-busy="true" aria-label="Loading the question">
-            <Skel className="h-28 w-full rounded-[14px]" />
-            {[0, 1, 2, 3].map((k) => (
-              <Skel key={k} className="h-14 w-full rounded-xl" />
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="row xs muted gap-2">
-              {q.subject && <span className="badge b-grey flex-none">{q.subject}</span>}
-              <span className="grow min-w-0">
-                Your time <b className="num text-ink">{mmss(q.timeSeconds)}</b>
-                {q.averageTimeSeconds != null ? ` · average ${mmss(q.averageTimeSeconds)}` : ""}
-                {q.correctPercent != null ? ` · ${q.correctPercent}% got it right` : ""}
-              </span>
-              <span className="flex-none">
-                <LangToggle q={q} lang={lang} onChange={setLang} />
-              </span>
-            </div>
-            <QuestionBody key={q.n} q={q} lang={lang} compact />
-            {canExplain(q.outcome, q) && <WhyPanel key={`why-${q.n}`} testId={testId} cell={q} now={serverNow ? now : null} compact />}
-            <Solution q={q} lang={lang} className="rise" />
-          </>
-        )}
-      </div>
+        </div>
+      ) : !q || !resultData ? (
+        <div className="col flex-1 gap-3 px-4 pt-3.5 md:px-0" aria-busy="true" aria-label="Loading the question">
+          <Skel className="h-28 w-full rounded-[14px]" />
+          {[0, 1, 2, 3].map((k) => (
+            <Skel key={k} className="h-14 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : (
+        <PhoneQuestion
+          key={q.n}
+          q={q}
+          data={resultData}
+          cells={resultData.result?.questions ?? []}
+          now={serverNow ? now : null}
+          fixture={fixture ?? null}
+          kidHref={href}
+          footer={(explain) => (
+            <footer className="fixed inset-x-0 bottom-0 z-(--z-topbar) row gap-2 border-t border-line bg-white px-4 pt-3 pb-[max(26px,env(safe-area-inset-bottom))] md:static md:border-0 md:bg-transparent md:px-0 md:pt-4 md:pb-0">
+              {explain ? (
+                <>
+                  {explain}
+                  <Link href={doubtHref} className="btn btn-secondary btn-lg flex-1">
+                    Ask a doubt
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link href={doubtHref} className="btn btn-secondary btn-lg flex-1">
+                    Ask a doubt
+                  </Link>
+                  {nextN !== null ? (
+                    <Link href={href(nextN)} replace className="btn btn-primary btn-lg flex-1">
+                      Next: Q{labelOf(nextN)}
+                      <ArrowRightIcon className="arrow" />
+                    </Link>
+                  ) : (
+                    <Link href={back} className="btn btn-primary btn-lg flex-1">
+                      Done
+                    </Link>
+                  )}
+                </>
+              )}
+            </footer>
+          )}
+        />
+      )}
 
-      {!error && (
-      <footer className="fixed inset-x-0 bottom-0 z-(--z-topbar) row gap-2 border-t border-line bg-white px-4 pt-3 pb-[max(26px,env(safe-area-inset-bottom))] md:static md:border-0 md:bg-transparent md:px-0 md:pt-4 md:pb-0">
-        {q && (
-          <Link href={`/results/${encodeURIComponent(testId)}/q/${n}/doubt`} className="btn btn-secondary btn-lg flex-1 md:hidden">
-            Ask a doubt
-          </Link>
-        )}
-        {prevN !== null ? (
-          <Link href={href(prevN)} replace className={q ? "btn btn-secondary btn-lg flex-1 max-md:hidden" : "btn btn-secondary btn-lg flex-1"}>
-            <ArrowLeftIcon />
-            Previous
-          </Link>
-        ) : (
-          <Link href={back} className={q ? "btn btn-secondary btn-lg flex-1 max-md:hidden" : "btn btn-secondary btn-lg flex-1"}>
+      {error ? (
+        <footer className="fixed inset-x-0 bottom-0 z-(--z-topbar) row gap-2 border-t border-line bg-white px-4 pt-3 pb-[max(26px,env(safe-area-inset-bottom))] md:static md:border-0 md:bg-transparent md:px-0 md:pt-4 md:pb-0">
+          <Link href={back} className="btn btn-primary btn-lg flex-1">
             Back to result
           </Link>
-        )}
-        {nextN !== null ? (
-          <Link href={href(nextN)} replace className="btn btn-primary btn-lg flex-1">
-            Next: Q{labelOf(nextN)}
-            <ArrowRightIcon className="arrow" />
-          </Link>
-        ) : (
-          <Link href={back} className="btn btn-primary btn-lg flex-1">
-            Done
-          </Link>
-        )}
-      </footer>
-      )}
+        </footer>
+      ) : null}
     </div>
+  );
+}
+
+/** Phone: one question with the board's states (key corrected, passage, type, AI). */
+function PhoneQuestion({
+  q,
+  data,
+  cells,
+  now,
+  fixture,
+  kidHref,
+  footer,
+}: {
+  q: ReviewQuestion;
+  data: StudentResult;
+  cells: QuestionCell[];
+  now: number | null;
+  fixture: ReviewFixture | null;
+  kidHref: (n: number) => string;
+  footer: (explain: React.ReactNode | null) => React.ReactNode;
+}) {
+  const [lang, setLang] = useState<Lang>("en");
+  // Phone-Review shows the explanation without a button; the board's not-asked state is the fixture's.
+  const [asked, setAsked] = useState(fixture?.ai !== "not-asked");
+  const hasSolution = !!(q.solution.en || q.solution.hi);
+  const explainable = fixture ? true : canExplain(q.outcome, q);
+  const st = useWhyState(data.test.id, q.n, explainable && asked, hasSolution, explainable && fixture ? fixture.why(q.n) : null);
+  const x = reviewExtras(q);
+  const labelOf = (m: number) => cells.find((c) => c.n === m)?.shownAs ?? m;
+  const showSolution = st.kind !== "locked" && !(st.kind === "ready" && st.noSolution);
+  const explain =
+    explainable && st.kind === "not-asked" ? (
+      <button type="button" className="btn btn-primary btn-lg flex-1" onClick={() => setAsked(true)}>
+        {explainLabel(q.outcome)}
+      </button>
+    ) : null;
+  return (
+    <>
+      <div className="col flex-1 gap-3 px-4 pt-3.5 pb-[calc(96px+env(safe-area-inset-bottom))] md:px-0 md:pb-0" aria-live="polite">
+        <div className="row items-start gap-2">
+          <div className="row wrap grow gap-1.5">
+            {q.subject && <span className="badge b-grey">{q.subject}</span>}
+            <span className="badge b-grey">{typeLabel(q, !!x.set)}</span>
+            {x.keyCorrection && <span className="badge b-navy">Key corrected</span>}
+          </div>
+          <span className="-my-1.5 flex-none">
+            <LangToggle q={q} lang={lang} onChange={setLang} />
+          </span>
+        </div>
+        <span className="xs muted -mt-1">
+          Your time <b className="num text-ink">{mmss(q.timeSeconds)}</b>
+          {q.averageTimeSeconds != null ? ` · batch ${mmss(q.averageTimeSeconds)}` : ""}
+        </span>
+        {x.keyCorrection && <KeyCorrectedNote note={x.keyCorrection} q={q} compact />}
+        {x.set && (
+          <>
+            <PassageBlock set={x.set} lang={lang} labelOf={labelOf} compact />
+            <SetKids kids={setCells(x.set, cells)} current={q.n} hrefOf={kidHref} />
+          </>
+        )}
+        <QuestionBody q={q} lang={lang} compact />
+        {explainable && <WhyView st={st} testId={data.test.id} n={q.n} now={now} hasSolution={hasSolution} compact fixture={!!fixture} />}
+        {showSolution && <Solution q={q} lang={lang} className="rise" />}
+      </div>
+      {footer(explain)}
+    </>
   );
 }
 

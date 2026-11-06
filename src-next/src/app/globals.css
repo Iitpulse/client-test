@@ -188,3 +188,48 @@
     .pf-tst .cls { width: 44px; height: 44px }
   }
 }
+
+/* ── M6 Student-Review / Phone-Review (review-parts.tsx, review-pane.tsx, review-view.tsx) ── */
+@layer components {
+  .q-cell { position: relative }
+  .q-cell.rv-grp::after { content: ""; position: absolute; left: 2px; right: 2px; bottom: -5px; height: 2px; border-radius: 2px; background: #8A8FD6 }
+  .q-cell.rv-kc::before { content: ""; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--navy); border: 1.5px solid #fff }
+  .legend-grp { width: 16px; height: 2px; border-radius: 2px; background: #8A8FD6; flex: none }
+  .legend-kc { width: 8px; height: 8px; border-radius: 50%; background: var(--navy); flex: none }
+  .kc-note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #F1F2FC; border: 1px solid #C3C6EF; color: var(--ink); font-size: 14px; line-height: 1.45 }
+  .passage { border: 1px solid #E1E3F8; background: #F8F9FE; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px }
+  .passage .passage-text { font-size: 15px }
+  .rv-kids { display: flex; gap: 8px; flex-wrap: wrap }
+  .rv-kid {
+    display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: #fff; font: 600 13px var(--font-sans, inherit); color: #2B2F4A; cursor: pointer; text-decoration: none
+  }
+  .rv-kid.h-11 { height: 44px }
+  .rv-kid.on { border-color: var(--navy); background: #F1F2FC; color: var(--navy) }
+  .rv-kids .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none }
+  .rv-kids .dot.correct { background: #0E7A3D } .rv-kids .dot.partial { background: #8A4F00 } .rv-kids .dot.wrong { background: #C40000 }
+  .rv-kids .dot.skipped { background: #fff; border: 1.5px dashed #8A8FA8; box-sizing: border-box }
+  .ansrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+  .ansbox { border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--line) }
+  .ansbox.mine { background: #FFF0F0; border-color: #F2B1B1 }
+  .ansbox.key { background: #E9F6EE; border-color: #BFE3CC }
+  .ans-v { font-size: 26px; font-weight: 650; line-height: 1.2 }
+  .rv-mx { border-collapse: separate; border-spacing: 6px; margin: -6px }
+  .rv-mx th { font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; padding: 0 2px }
+  .rv-mx th.rh { text-align: left; font-size: 13px; color: var(--ink); white-space: nowrap }
+  .rv-mx td { padding: 0 }
+  .rv-mx-label { font-weight: 400 }
+  .rv-mc { width: 44px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: #fff; display: flex; align-items: center; justify-content: center }
+  .rv-mc.hit { background: #E9F6EE; border-color: #7CC79A; color: #0E7A3D }
+  .rv-mc.miss { background: #fff; border: 1.5px dashed #0E7A3D; color: #0E7A3D }
+  .rv-mc.bad { background: #C40000; border-color: #C40000; color: #fff }
+  .rv-mc.rv-mc-key { width: 18px; height: 16px; display: inline-flex; flex: none }
+  .rv-rowres { font-size: 12px; font-weight: 600; white-space: nowrap }
+  .sol { border-top: 1px solid #EEF0F5; padding-top: 14px; display: flex; flex-direction: column; gap: 6px }
+  .sol .q-stem { font-size: 16px }
+  @media (width < 48rem) {
+    .ansrow { grid-template-columns: minmax(0, 1fr) }
+    .rv-mc { width: 40px; height: 34px }
+    .kc-note { font-size: 13px }
+  }
+}

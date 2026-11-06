@@ -1,11 +1,11 @@
 "use client";
 
-import { AiMark, InkArrow, MathText, Note, SparkleIcon, TypingDots } from "@iitpulse/ui";
-import { isAiDown, useAiExplanation, useAiFeedback, useAiSummary } from "@/lib/ai-api";
+import { AiMark, InkArrow, MathText, Note } from "@iitpulse/ui";
+import { isAiDown, useAiSummary } from "@/lib/ai-api";
 import { StudentApiError } from "@/lib/student-api";
 import { relativeDayTime } from "@/lib/time";
-import type { QuestionCell, QuestionOutcome, ReviewQuestion, StudentResult } from "@/types/m2-student";
-import type { Explanation, Leak, SummaryResponse } from "@/types/m3-ai";
+import type { StudentResult } from "@/types/m2-student";
+import type { Leak, SummaryResponse } from "@/types/m3-ai";
 import { Skel } from "./common";
 import { LockIcon } from "./icons";
 import { num, sentence } from "./labels";
@@ -226,139 +226,7 @@ function SummaryPlaceholder({ st, now, compact }: { st: Exclude<SummaryState, { 
 }
 
 // ---------------------------------------------------------------------------------------------
-// "Why this happened" (desktop question pane, Phone-Review)
+// "Why this happened" (desktop question pane, Phone-Review): M6 Student-Review states, in review-ai.tsx
 // ---------------------------------------------------------------------------------------------
 
-/**
- * Wrong, partly correct and skipped questions with an official solution get an explanation (the contract answers
- * not_applicable for the rest; the button is not offered there).
- */
-export function canExplain(outcome: QuestionOutcome, q: Pick<ReviewQuestion, "solution"> | undefined): boolean {
-  return outcome !== "correct" && !!q && !!(q.solution.en || q.solution.hi);
-}
-
-/** The board's button label: "Explain my mistake", or "Explain the concept" for a skipped question. */
-export function explainLabel(outcome: QuestionOutcome): string {
-  return outcome === "skipped" ? "Explain the concept" : "Explain my mistake";
-}
-
-/** Desktop pane: the primary button that opens the panel. */
-export function ExplainButton({ outcome, onClick }: { outcome: QuestionOutcome; onClick: () => void }) {
-  return (
-    <button type="button" className="btn btn-primary" onClick={onClick}>
-      <SparkleIcon size={15} />
-      {explainLabel(outcome)}
-    </button>
-  );
-}
-
-/**
- * The panel itself: "Comparing your answer with the solution…" while it loads or is being written, then why,
- * the worked steps, the key idea and the trap, and "Was this helpful?".
- * `n` is the paper number (as the M2 question routes take it), not the number the student saw.
- */
-export function WhyPanel({ testId, cell, now, compact }: { testId: string; cell: Pick<QuestionCell, "n">; now: number | null; compact?: boolean }) {
-  const n = cell.n;
-  const { query, late, retry } = useAiExplanation(testId, n, true);
-  const d = query.data;
-  const e = query.error instanceof StudentApiError ? query.error : null;
-  const box = compact ? "ai pad col rise gap-2" : "ai fade col gap-2.5 p-[18px]";
-  const shell = (children: React.ReactNode, busy = false) => (
-    <section className={box} aria-label="Why this happened" aria-busy={busy || undefined} aria-live="polite">
-      <AiMark iconSize={13}>Why this happened</AiMark>
-      {children}
-    </section>
-  );
-
-  if (!d && query.isError) {
-    if (e?.code === "AI_NOT_AVAILABLE_YET") {
-      const at = typeof e.details?.availableAt === "string" ? e.details.availableAt : null;
-      return (
-        <div className="row gap-3 rounded-xl bg-[var(--line-2)] p-4">
-          <LockedLine message={e.message} at={now !== null ? at : null} now={now ?? 0} />
-        </div>
-      );
-    }
-    if (e && isAiDown(e)) return shell(<span className="sm muted">{sentence(downMessage(e))}</span>);
-    // Not this student's question, or no AI service behind the gateway yet: the official solution is enough.
-    if (e && e.status >= 400 && e.status < 500) return null;
-    return shell(<QuietLine message="Couldn't load the explanation." retry={() => query.refetch()} />);
-  }
-  if (!d || d.status === "generating") {
-    if (late)
-      return shell(
-        <QuietLine message="This one is taking longer than usual" retry={retry} />
-      );
-    return (
-      <div className={compact ? "ai pad row rise gap-2.5" : "ai fade row gap-2.5 p-4"} aria-live="polite">
-        <TypingDots label="Comparing your answer with the solution" />
-        <span className="sm muted">Comparing your answer with the solution…</span>
-      </div>
-    );
-  }
-  if (d.status === "not_applicable" || !d.explanation) {
-    if (d.reason === "CORRECT") return null;
-    return shell(<span className="sm muted">There&apos;s no official solution to compare with yet, so there&apos;s no AI explanation. Ask your teacher.</span>);
-  }
-  return (
-    <section className={box} aria-label="Why this happened">
-      <div className="row between wrap gap-2">
-        <AiMark iconSize={13}>Why this happened</AiMark>
-        <span className="xs muted">AI explanation</span>
-      </div>
-      <ExplanationBody x={d.explanation} compact={compact} />
-      {d.explanationId && <Helpful testId={testId} n={n} id={d.explanationId} mine={d.myFeedback} />}
-    </section>
-  );
-}
-
-function downMessage(e: StudentApiError): string {
-  if (e.message) return e.message;
-  if (e.code === "AI_RATE_LIMITED") return "You have asked for a lot of explanations. Try again in a few minutes";
-  if (e.code === "AI_PAUSED") return "AI help is paused right now. The official solution is still here";
-  return "Couldn't answer this one, ask your teacher";
-}
-
-function ExplanationBody({ x, compact }: { x: Explanation; compact?: boolean }) {
-  const text = compact ? "sm m-0 leading-[1.55]" : "body m-0";
-  return (
-    <>
-      <MathText as="p" className={text} text={x.why} />
-      {x.steps.length > 0 && (
-        <ol className={`${text} col list-decimal gap-1 pl-5`} aria-label="Steps">
-          {x.steps.map((s, i) => (
-            <MathText key={i} as="li" text={s} />
-          ))}
-        </ol>
-      )}
-      {x.keyIdea && (
-        <p className="sm m-0">
-          <b>Key idea.</b> <MathText text={x.keyIdea} />
-        </p>
-      )}
-      {x.trap && (
-        <p className="sm m-0">
-          <b>Trap.</b> <MathText text={x.trap} />
-        </p>
-      )}
-    </>
-  );
-}
-
-function Helpful({ testId, n, id, mine }: { testId: string; n: number; id: string; mine: "helpful" | "not_helpful" | null }) {
-  const m = useAiFeedback(testId, n);
-  const send = (helpful: boolean) => m.mutate({ id, helpful });
-  const cls = (on: boolean) => (on ? "btn btn-secondary btn-sm" : "btn btn-ghost btn-sm");
-  return (
-    <div className="row wrap fade gap-2">
-      <span className="xs muted">Was this helpful?</span>
-      <button type="button" className={cls(mine === "helpful")} aria-label="Helpful" aria-pressed={mine === "helpful"} onClick={() => send(true)}>
-        Yes
-      </button>
-      <button type="button" className={cls(mine === "not_helpful")} aria-label="Not helpful" aria-pressed={mine === "not_helpful"} onClick={() => send(false)}>
-        No
-      </button>
-      {m.isError ? <span className="xs muted">Couldn&apos;t save that. Try again.</span> : mine ? <span className="xs muted">Thanks, noted.</span> : null}
-    </div>
-  );
-}
+export { canExplain, explainLabel, ExplainButton, useWhyState, WhyView } from "./review-ai";

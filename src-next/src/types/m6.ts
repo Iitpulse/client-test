@@ -29,3 +29,28 @@ export interface StudentGateResponse {
   fullscreenPolicy: FullscreenPolicy;
   reminderEmailOn: boolean;
 }
+
+/* Exam UI template v2 as the exam app gets it (StudentExamTemplate in api-ai src/contracts/m6.ts) */
+export type ExamLang = "en" | "hi";
+/** Labels on the frozen NTA screen a template may reword (≤ 32 characters each) */
+export type WordingKey = "clear" | "saveNext" | "saveMarkReview" | "markReviewNext" | "submit" | "notAnswered";
+export interface InstructionsDoc {
+  heading: string;
+  /** numbered lines per block; placeholders already filled for this test */
+  blocks: Array<{ id: string; title: string; lines: string[] }>;
+  declaration: string;
+}
+export interface ExamTools {
+  calculator: "off" | "basic" | "scientific";
+  markForReview: boolean;
+  viewQuestionPaper: boolean;
+  viewInstructions: boolean;
+  languageSwitch: boolean;
+  roughSheet: boolean;
+}
+export interface StudentExamTemplate {
+  id: string;
+  wording: Record<ExamLang, Record<WordingKey, string>>;
+  instructions: Record<ExamLang, InstructionsDoc>;
+  tools: ExamTools;
+}

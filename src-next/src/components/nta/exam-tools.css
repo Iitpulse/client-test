@@ -1,0 +1,78 @@
+/* M6 additions to the frozen NTA exam screens (board Exam-Additions, owner-approved 5 Nov): header tool buttons,
+   on-screen calculator, rough sheet, matrix grid, inline /instructions message. Only these new parts are styled here;
+   nta.css and the frozen components stay untouched. NTA / TCS iON look: grey body, blue title bar, square keys. */
+
+.btn-header-slate { background: #64748b; color: #fff; }
+.btn-header-slate:hover { background: #475569; }
+
+/* PROCEED stays grey until the declaration is ticked, but can be pressed (it then shows the inline message) */
+.btn-proceed.btn-proceed[aria-disabled="true"],
+.btn-proceed.btn-proceed[aria-disabled="true"]:hover { background: #ccc; color: #666; }
+
+/* ---- calculator + rough sheet windows ---- */
+.nta-win { position: fixed; z-index: 40; background: #e9ecef; border: 1px solid #94a3b8; border-radius: 4px; font-family: Inter, system-ui, sans-serif; color: #0a0a0a; box-shadow: 0 8px 24px rgba(15, 23, 42, .18); display: flex; flex-direction: column; }
+.nta-win-t { background: #3b82f6; color: #fff; font-size: 14px; line-height: 20px; font-weight: 600; padding: 6px 8px 6px 12px; display: flex; justify-content: space-between; align-items: center; cursor: move; border-radius: 3px 3px 0 0; user-select: none; touch-action: none; }
+.nta-win-t:focus-visible { outline: 2px solid #1e3a8a; outline-offset: -2px; }
+.nta-win-x { display: flex; gap: 4px; }
+.nta-win-x button { background: transparent; color: #fff; border: 1px solid rgba(255, 255, 255, .7); border-radius: 3px; font-size: 12px; line-height: 18px; padding: 0 7px; min-width: 24px; cursor: pointer; font-family: inherit; }
+.nta-win-x button:hover { background: rgba(255, 255, 255, .15); }
+.nta-win-x button:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.nta-win.is-phone { left: 0 !important; right: 0; width: auto !important; border-radius: 0; border-left: 0; border-right: 0; }
+.nta-win.is-phone .nta-win-t { cursor: default; border-radius: 0; }
+
+.nta-calc-b { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.nta-calc-d { height: 30px; border: 1px solid #94a3b8; background: #fff; text-align: right; font: 15px/28px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 0 8px; color: #0a0a0a; overflow: hidden; white-space: nowrap; position: relative; }
+.nta-calc-d.is-expr { font-size: 13px; color: #4b5563; height: 26px; line-height: 24px; direction: rtl; text-overflow: clip; }
+.nta-calc-d.is-expr > span { direction: ltr; unicode-bidi: bidi-override; }
+.nta-calc-mem { position: absolute; left: 8px; top: 0; font-size: 11px; color: #64748b; }
+.nta-calc-r0 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.nta-calc-rad { display: inline-flex; gap: 10px; font-size: 13px; align-items: center; border: 0; margin: 0; padding: 0; }
+.nta-calc-rad label { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+.nta-calc-mr { display: inline-flex; gap: 4px; margin-left: auto; }
+.nta-calc-mr .nta-k { width: 40px; }
+.nta-k { height: 30px; border: 1px solid #a3acb9; border-radius: 3px; background: #f8fafc; font-size: 12px; color: #111827; padding: 0; font-family: Inter, system-ui, sans-serif; cursor: pointer; }
+.nta-k:hover { filter: brightness(.96); }
+.nta-k:active { filter: brightness(.9); }
+.nta-k:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 1px; position: relative; z-index: 1; }
+.nta-k.n { background: #fff; font-weight: 600; font-size: 14px; }
+.nta-k.m { background: #e2e8f0; }
+.nta-k.r { background: #ef4444; border-color: #dc2626; color: #fff; font-weight: 600; }
+.nta-k.e { background: #22c55e; border-color: #16a34a; color: #fff; font-weight: 700; font-size: 15px; }
+.nta-calc-k { display: grid; gap: 4px; }
+.nta-calc-k.sci { grid-template-columns: repeat(11, minmax(0, 1fr)); }
+.nta-calc-k.bas { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.nta-calc-k .w2 { grid-column: span 2; }
+.nta-calc-k .h2 { grid-row: span 2; height: auto; }
+.nta-calc-k.phs { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.nta-calc-k.phs .nta-k { height: 36px; font-size: 13px; }
+.nta-calc-k.phb .nta-k { height: 44px; font-size: 16px; }
+.nta-calc-k.phb .h2 { height: auto; }
+.nta-calc-help { background: #fff; border: 1px solid #cbd5e1; border-radius: 3px; padding: 8px 10px; font-size: 12px; line-height: 18px; color: #374151; }
+.nta-calc-help ul { margin: 0; padding-left: 16px; list-style: disc; }
+
+.nta-rs-tools { display: flex; align-items: center; gap: 6px; padding: 6px 8px; flex-wrap: wrap; border-bottom: 1px solid #cbd5e1; }
+.nta-rt { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border: 1px solid #a3acb9; border-radius: 3px; background: #f8fafc; font-size: 12px; color: #111827; cursor: pointer; font-family: inherit; }
+.nta-rt:disabled { opacity: .5; cursor: default; }
+.nta-rt.on { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
+.nta-rt:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 1px; }
+.nta-rs-pg { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; font-size: 12px; color: #374151; }
+.nta-rs-c { background: #fff; margin: 8px; border: 1px solid #cbd5e1; flex: 1; min-height: 0; overflow: hidden; position: relative; }
+.nta-rs-c canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+.nta-rs-f { font-size: 12px; line-height: 16px; color: #4b5563; padding: 0 10px 8px; }
+
+/* ---- matrix match ---- */
+.nta-ml { border-collapse: collapse; margin: 12px 0 4px; font-size: 14px; line-height: 20px; color: #374151; width: 100%; }
+.nta-ml th { background: #f3f4f6; font-weight: 600; text-align: left; padding: 5px 8px; border: 1px solid #d1d5db; }
+.nta-ml td { padding: 4px 8px; border: 1px solid #d1d5db; vertical-align: middle; }
+.nta-ml td.k1 { width: 34px; font-weight: 600; white-space: nowrap; }
+.nta-mga { margin-top: 10px; }
+.nta-mga p { margin: 0 0 6px; color: #6b7280; }
+.nta-mg { border-collapse: collapse; font-size: 14px; }
+.nta-mg th { width: 42px; height: 30px; background: #f3f4f6; border: 1px solid #d1d5db; font-weight: 600; text-align: center; }
+.nta-mg td { width: 42px; height: 30px; border: 1px solid #d1d5db; text-align: center; }
+.nta-mg input { width: 16px; height: 16px; margin: 0; vertical-align: middle; cursor: pointer; }
+@media (width < 48rem) {
+  .nta-mg th, .nta-mg td { width: 46px; height: 40px; }
+  .nta-mg input { width: 20px; height: 20px; }
+}
+.nta-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

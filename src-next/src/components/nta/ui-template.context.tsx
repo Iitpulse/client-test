@@ -2,7 +2,7 @@
 // Frozen NTA copy of contexts/ui-template.context.tsx (M1 NTA freeze). The exam screens must stay pixel-identical: do not restyle.
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
-import { api, TestUITemplate } from "@/lib/api";
+import type { TestUITemplate } from "@/lib/api";
 
 // Default template values (Classic Blue)
 const DEFAULT_TEMPLATE: TestUITemplate = {
@@ -64,31 +64,15 @@ export function UITemplateProvider({ children }: { children: React.ReactNode }) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load template by ID or default.
-  // Memoized: consumers put it in effect deps, and a fresh function per render caused an
-  // infinite reload loop (thousands of /ui-template/default requests per minute).
+  // M6 (contract item 5): the exam layout keeps the NTA values above. Colours, fonts and branding are no longer part of
+  // an exam template (templates v2 carry wording, instructions and tools, delivered with the exam payload), so the old
+  // /ui-template routes are not read any more. Kept as a no-op so callers stay unchanged.
+  // Memoized: consumers put it in effect deps.
   const loadTemplate = useCallback(async (templateId?: string) => {
-    setIsLoading(true);
+    void templateId;
+    setTemplate(DEFAULT_TEMPLATE);
     setError(null);
-
-    try {
-      let response;
-      if (templateId) {
-        response = await api.uiTemplates.getById(templateId);
-      } else {
-        response = await api.uiTemplates.getDefault();
-      }
-
-      if (response.data?.data) {
-        setTemplate(response.data.data);
-      }
-    } catch (err) {
-      console.error("Failed to load UI template:", err);
-      setError("Failed to load UI template");
-      // Keep default template on error
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(false);
   }, []);
 
   // Generate CSS variables from template

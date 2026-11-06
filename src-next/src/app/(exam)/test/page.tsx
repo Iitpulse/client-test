@@ -14,17 +14,15 @@ import {
 import { useAuthStore, useTestStore, useAuthHydrated } from "@/stores";
 import { QuestionObjective } from "@/components/nta/question-objective";
 import { QuestionInteger } from "@/components/nta/question-integer";
+import { QuestionMatrix } from "@/components/nta/question-matrix";
+import { Calculator } from "@/components/nta/calculator";
+import { RoughSheet } from "@/components/nta/rough-sheet";
 import { Legend } from "@/components/nta/legend";
 import { cn } from "@/components/nta/utils";
-import {
-  GENERAL_INSTRUCTIONS,
-  NAVIGATING_INSTRUCTIONS,
-  ANSWERING_INSTRUCTIONS,
-  SECTION_INSTRUCTIONS,
-} from "@/components/nta/instructions";
 import { RenderLatex } from "@/components/nta/render-latex";
 import { useUITemplate, useTemplateStyles } from "@/components/nta/ui-template.context";
 import { openFullscreenExit, recordFullscreenExit, recordFullscreenReturn } from "@/lib/exam-log";
+import { dialogInstructions, toolsOf, wordingOf } from "@/lib/exam-template";
 
 export default function TestPage() {
   const router = useRouter();
@@ -48,6 +46,8 @@ export default function TestPage() {
     goToQuestion,
     submitTest,
     attempt,
+    template: examTemplate,
+    toggleMatrixCell,
   } = useTestStore();
   const storeError = useTestStore((state) => state.error);
 
@@ -80,6 +80,13 @@ export default function TestPage() {
     seconds: "00",
   });
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
+  // M6 tools (board Exam-Additions): on-screen calculator and rough sheet, only when the exam template turns them on
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [roughSheetOpen, setRoughSheetOpen] = useState(false);
+  const calculatorButtonRef = useRef<HTMLButtonElement>(null);
+  const roughSheetButtonRef = useRef<HTMLButtonElement>(null);
+  const tools = toolsOf(examTemplate);
+  const wording = wordingOf(examTemplate, language);
 
   const timeTakenRef = useRef<Record<string, number>>({});
   const timerEndTimeRef = useRef<number | null>(null);
@@ -497,7 +504,9 @@ export default function TestPage() {
   const handleSaveAndNext = () => {
     const question = questions[currentQuestion];
     const hasAnswer =
-      question.type === "integer"
+      question.type === "matrix"
+        ? Object.values(question.matrixAnswer ?? {}).some((cols) => cols.length > 0)
+        : question.type === "integer"
         ? question.enteredAnswer && question.enteredAnswer.length > 0
         : question.selectedOptions.length > 0;
 
@@ -529,7 +538,9 @@ export default function TestPage() {
   const handleSaveAndMarkForReview = () => {
     const question = questions[currentQuestion];
     const hasAnswer =
-      question.type === "integer"
+      question.type === "matrix"
+        ? Object.values(question.matrixAnswer ?? {}).some((cols) => cols.length > 0)
+        : question.type === "integer"
         ? question.enteredAnswer && question.enteredAnswer.length > 0
         : question.selectedOptions.length > 0;
 
@@ -627,6 +638,8 @@ export default function TestPage() {
 
   // Get current question (safely)
   const question = questions.length > 0 ? questions[currentQuestion] : null;
+  const hasToolButtons = tools.calculator !== "off" || tools.roughSheet;
+  const extraMinutes = Math.max(0, Math.round(attempt?.extraMinutes ?? 0));
 
   // Check if current question's subsection has reached toBeAttempted limit
   const currentSubSectionKey = question ? `${question.sectionId}:${question.subSectionId}` : "";
@@ -717,7 +730,42 @@ export default function TestPage() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 max-md:w-full">
+        <div className={cn("flex items-center gap-2 max-md:w-full", hasToolButtons && "max-md:flex-wrap")}>
+          {/* M6: Calculator and Rough Sheet beside View Question Paper (desktop); their own row on a phone */}
+          {hasToolButtons && (
+            <div className="contents max-md:flex max-md:w-full max-md:gap-2 max-md:order-last">
+              {tools.calculator !== "off" && (
+                <button
+                  ref={calculatorButtonRef}
+                  type="button"
+                  onClick={() => setCalculatorOpen((o) => !o)}
+                  aria-expanded={calculatorOpen}
+                  className="flex items-center gap-2 px-4 py-2 btn-header-slate rounded text-sm max-md:flex-auto max-md:justify-center max-md:px-3"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="5" y="3" width="14" height="18" rx="2" strokeWidth={2} />
+                    <path strokeLinecap="round" strokeWidth={2} d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 14.5h.01M12 14.5h.01M16 14.5h.01M8 18h.01M12 18h.01M16 18h.01" />
+                  </svg>
+                  Calculator
+                </button>
+              )}
+              {tools.roughSheet && (
+                <button
+                  ref={roughSheetButtonRef}
+                  type="button"
+                  onClick={() => setRoughSheetOpen((o) => !o)}
+                  aria-expanded={roughSheetOpen}
+                  className="flex items-center gap-2 px-4 py-2 btn-header-slate rounded text-sm max-md:flex-auto max-md:justify-center max-md:px-3"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.2 5.2l3.6 3.6M4 20l4.2-1 10.6-10.6a2.5 2.5 0 00-3.6-3.6L4.6 15.4z" />
+                  </svg>
+                  Rough Sheet
+                </button>
+              )}
+            </div>
+          )}
+          {tools.viewQuestionPaper && (
           <button
             type="button"
             onClick={() => setQuestionPaperModal(true)}
@@ -728,6 +776,8 @@ export default function TestPage() {
             </svg>
             View Question Paper
           </button>
+          )}
+          {tools.viewInstructions && (
           <button
             type="button"
             onClick={() => setInstructionsModal(true)}
@@ -738,6 +788,7 @@ export default function TestPage() {
             </svg>
             View Instruction
           </button>
+          )}
         </div>
       </header>
 
@@ -776,10 +827,17 @@ export default function TestPage() {
                 >
                   {timer.hours} : {timer.minutes} : {timer.seconds}
                 </span>
+                {/* M6: extra time from the centre (attempt.extraMinutes, refreshed by each autosave); no pop-up */}
+                {extraMinutes > 0 && (
+                  <span className="inline-block ml-2 text-xs font-medium text-green-700 whitespace-nowrap max-md:block max-md:ml-0 max-md:mt-1 max-md:w-max" data-testid="extra-time">
+                    +{extraMinutes} min added by your centre
+                  </span>
+                )}
               </div>
             )}
           </div>
         </div>
+        {tools.languageSwitch && (
         <select
           title="Select Language"
           value={language}
@@ -790,6 +848,7 @@ export default function TestPage() {
           <option value="en">English</option>
           <option value="hi">Hindi</option>
         </select>
+        )}
       </div>
 
       {/* Main Content */}
@@ -829,11 +888,13 @@ export default function TestPage() {
                 "px-2 py-0.5 text-xs font-medium rounded",
                 question.type === "single" && "bg-green-100 text-green-700",
                 question.type === "multiple" && "bg-purple-100 text-purple-700",
-                question.type === "integer" && "bg-orange-100 text-orange-700"
+                question.type === "integer" && "bg-orange-100 text-orange-700",
+                question.type === "matrix" && "bg-sky-100 text-sky-700"
               )}>
                 {question.type === "single" && "Single Choice"}
                 {question.type === "multiple" && "Multiple Choice"}
                 {question.type === "integer" && "Numerical"}
+                {question.type === "matrix" && "Matrix Match"}
               </span>
             </div>
           </div>
@@ -885,6 +946,22 @@ export default function TestPage() {
                 onTimeUpdate={handleTimeUpdate}
               />
             )}
+            {question.type === "matrix" && question.matrix && (
+              <QuestionMatrix
+                question={{
+                  en: question.en,
+                  hi: question.hi,
+                }}
+                matrix={question.matrix}
+                id={question.id}
+                index={currentQuestion}
+                answer={question.matrixAnswer ?? {}}
+                language={language}
+                timeTakenInSeconds={question.status.timeTakenInSeconds}
+                onToggle={toggleMatrixCell}
+                onTimeUpdate={handleTimeUpdate}
+              />
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -894,29 +971,31 @@ export default function TestPage() {
               onClick={handleSaveAndNext}
               className="px-4 py-2 rounded text-sm btn-save-next"
             >
-              Save &amp; Next
+              {wording.saveNext}
             </button>
             <button
               type="button"
               onClick={clearSelection}
               className="px-4 py-2 rounded text-sm btn-clear"
             >
-              Clear
+              {wording.clear}
             </button>
+            {tools.markForReview && (<>
             <button
               type="button"
               onClick={handleSaveAndMarkForReview}
               className="px-4 py-2 rounded text-sm btn-save-mark-review"
             >
-              Save &amp; Mark For Review
+              {wording.saveMarkReview}
             </button>
             <button
               type="button"
               onClick={() => markForReview(getCurrentTimeTaken())}
               className="px-4 py-2 rounded text-sm btn-mark-review-next"
             >
-              Mark For Review &amp; Next
+              {wording.markReviewNext}
             </button>
+            </>)}
           </div>
 
           {/* Navigation Buttons */}
@@ -945,7 +1024,7 @@ export default function TestPage() {
               disabled={isSubmitting}
               className="px-6 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
             >
-              {isSubmitting ? "Submitting..." : "Submit"}
+              {isSubmitting ? "Submitting..." : wording.submit}
             </button>
           </div>
         </main>
@@ -1008,7 +1087,7 @@ export default function TestPage() {
               )}
 
               {/* Legend */}
-              <Legend status={status} />
+              <Legend status={status} notAnsweredLabel={wording.notAnswered} showReview={tools.markForReview} />
 
               {/* Question Buttons */}
               <div className="overflow-y-auto question-buttons-container">
@@ -1047,26 +1126,14 @@ export default function TestPage() {
             <DialogDescription>Review the test instructions below.</DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
-            <InstructionSection
-              title="General Instructions:"
-              instructions={GENERAL_INSTRUCTIONS}
-              language={language}
-            />
-            <InstructionSection
-              title="Navigating to a Question"
-              instructions={NAVIGATING_INSTRUCTIONS}
-              language={language}
-            />
-            <InstructionSection
-              title="Answering a Question"
-              instructions={ANSWERING_INSTRUCTIONS}
-              language={language}
-            />
-            <InstructionSection
-              title="Navigation through sections"
-              instructions={SECTION_INSTRUCTIONS}
-              language={language}
-            />
+            {dialogInstructions(examTemplate, language).map((block) => (
+              <InstructionSection
+                key={block.id}
+                title={block.title}
+                instructions={block.lines.map((line) => ({ content: { en: line, hi: line } }))}
+                language={language}
+              />
+            ))}
           </div>
         </DialogContent>
       </Dialog>
@@ -1159,6 +1226,26 @@ export default function TestPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* M6 tools (board Exam-Additions): non-modal windows; closing returns focus to the header button */}
+      {calculatorOpen && tools.calculator !== "off" && (
+        <Calculator
+          kind={tools.calculator}
+          onClose={() => {
+            setCalculatorOpen(false);
+            calculatorButtonRef.current?.focus();
+          }}
+        />
+      )}
+      {roughSheetOpen && tools.roughSheet && (
+        <RoughSheet
+          testId={testId}
+          onClose={() => {
+            setRoughSheetOpen(false);
+            roughSheetButtonRef.current?.focus();
+          }}
+        />
+      )}
 
       {/* Alert Modal */}
       <Dialog

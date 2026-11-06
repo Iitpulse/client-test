@@ -1,13 +1,17 @@
 "use client";
 // Frozen NTA copy of components/legend.tsx (M1 NTA freeze). The exam screens must stay pixel-identical: do not restyle.
+// M6 (owner-approved, board Exam-Additions): the template may reword "Not Answered", and a template with Mark for
+// review off drops the two review statuses. Defaults render the frozen legend.
 
 import { ITestStatus } from "@/types";
 
 interface LegendProps {
   status: ITestStatus;
+  notAnsweredLabel?: string;
+  showReview?: boolean;
 }
 
-export function Legend({ status }: LegendProps) {
+export function Legend({ status, notAnsweredLabel = "Not Answered", showReview = true }: LegendProps) {
   const {
     notVisited,
     notAnswered,
@@ -32,7 +36,7 @@ export function Legend({ status }: LegendProps) {
         >
           {notAnswered.length}
         </div>
-        <span className="ml-[10px] text-sm">Not Answered</span>
+        <span className="ml-[10px] text-sm">{notAnsweredLabel}</span>
       </div>
 
       <div className="flex items-center justify-start min-w-[150px] min-h-[40px]">
@@ -45,6 +49,7 @@ export function Legend({ status }: LegendProps) {
         <span className="ml-[10px] text-sm">Answered</span>
       </div>
 
+      {showReview && (<>
       <div className="flex items-center justify-start min-w-[150px] min-h-[40px]">
         <div
           className="w-[30px] h-[30px] rounded-full flex items-center justify-center p-[5px_7px] text-white text-sm"
@@ -67,6 +72,7 @@ export function Legend({ status }: LegendProps) {
           Answered &amp; Marked for Review (will be considered for evaluation)
         </span>
       </div>
+      </>)}
     </div>
   );
 }

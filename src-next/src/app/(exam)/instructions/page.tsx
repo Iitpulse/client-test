@@ -3,21 +3,24 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore, useTestStore, useAuthHydrated } from "@/stores";
-import {
-  GENERAL_INSTRUCTIONS,
-  NAVIGATING_INSTRUCTIONS,
-  ANSWERING_INSTRUCTIONS,
-  SECTION_INSTRUCTIONS,
-  INSTRUCTIONS_WARNING,
-  INSTRUCTIONS_CONFIRMATION,
-} from "@/components/nta/instructions";
+import { INSTRUCTIONS_WARNING } from "@/components/nta/instructions";
+import { pageInstructions } from "@/lib/exam-template";
+import "@/components/nta/exam-tools.css";
+
+// M6 (owner-approved, board Exam-Additions D1/P1): heading, blocks and declaration come from the test's exam template
+// (frozen NTA text without one); pressing PROCEED before ticking shows the old alert text inline, under the declaration.
+const CONFIRM_MESSAGE = {
+  en: "Please confirm that you have read the instructions",
+  hi: "कृपया पुष्टि करें कि आपने निर्देश पढ़ लिए हैं",
+};
 
 export default function InstructionsPage() {
   const router = useRouter();
   const { checkAuth, isAuthenticated, testId, currentUser } = useAuthStore();
-  const { test, fetchTest, isLoading, error: testError } = useTestStore();
+  const { test, fetchTest, isLoading, error: testError, template } = useTestStore();
 
   const [confirmed, setConfirmed] = useState(false);
+  const [showConfirmMessage, setShowConfirmMessage] = useState(false);
   const [language, setLanguage] = useState<"en" | "hi">("en");
   // Wait for the persisted test id / session to be restored (SSR-safe)
   const hydrated = useAuthHydrated();
@@ -43,7 +46,7 @@ export default function InstructionsPage() {
 
   const handleProceed = () => {
     if (!confirmed) {
-      alert("Please confirm that you have read the instructions");
+      setShowConfirmMessage(true);
       return;
     }
 
@@ -84,6 +87,8 @@ export default function InstructionsPage() {
     );
   }
 
+  const instructions = pageInstructions(template, test, language);
+
   return (
     <div className="flex min-h-screen flex-col bg-white">
       {/* Header */}
@@ -113,38 +118,17 @@ export default function InstructionsPage() {
       {/* Main Content */}
       <main className="flex-1 overflow-auto instructions-main">
         <h3 className="text-xl font-medium text-center mb-6">
-          {language === "en"
-            ? "Please read the instructions carefully"
-            : "कृपया निर्देशों को ध्यान से पढ़ें"}
+          {instructions.heading}
         </h3>
 
-        {/* General Instructions */}
-        <InstructionSection
-          title={language === "en" ? "General Instructions:" : "सामान्य निर्देश:"}
-          instructions={getGeneralInstructionsWithTestName(test, language)}
-          language={language}
-        />
-
-        {/* Navigating Instructions */}
-        <InstructionSection
-          title={language === "en" ? "Navigating to a Question" : "प्रश्न पर जाना"}
-          instructions={NAVIGATING_INSTRUCTIONS}
-          language={language}
-        />
-
-        {/* Answering Instructions */}
-        <InstructionSection
-          title={language === "en" ? "Answering a Question" : "प्रश्न का उत्तर देना"}
-          instructions={ANSWERING_INSTRUCTIONS}
-          language={language}
-        />
-
-        {/* Section Instructions */}
-        <InstructionSection
-          title={language === "en" ? "Navigation through sections" : "अनुभागों में नेविगेट करना"}
-          instructions={SECTION_INSTRUCTIONS}
-          language={language}
-        />
+        {instructions.blocks.map((block) => (
+          <InstructionSection
+            key={block.id}
+            title={block.title}
+            instructions={block.lines.map((line) => ({ content: { en: line, hi: line } }))}
+            language={language}
+          />
+        ))}
 
         <hr className="my-6" />
 
@@ -160,17 +144,26 @@ export default function InstructionsPage() {
           <input
             type="checkbox"
             checked={confirmed}
-            onChange={(e) => setConfirmed(e.target.checked)}
+            onChange={(e) => {
+              setConfirmed(e.target.checked);
+              if (e.target.checked) setShowConfirmMessage(false);
+            }}
+            aria-describedby={showConfirmMessage ? "confirm-message" : undefined}
             className="mt-1 cursor-pointer"
           />
-          <span>{INSTRUCTIONS_CONFIRMATION[language]}</span>
+          <span>{instructions.declaration}</span>
         </label>
+        {showConfirmMessage && !confirmed && (
+          <p id="confirm-message" role="alert" className="mt-3 ml-[21px] text-sm text-red-500">
+            {CONFIRM_MESSAGE[language]}
+          </p>
+        )}
 
         {/* Proceed Button */}
         <button
           type="button"
           onClick={handleProceed}
-          disabled={!confirmed}
+          aria-disabled={!confirmed}
           className="block w-full mt-8 py-4 text-center font-semibold text-base rounded btn-proceed"
         >
           {language === "en" ? "PROCEED" : "आगे बढ़ें"}
@@ -200,22 +193,5 @@ function InstructionSection({
         ))}
       </ol>
     </div>
-  );
-}
-
-function getGeneralInstructionsWithTestName(test: { name?: string; duration?: number } | null, language: "en" | "hi") {
-  const duration = test?.duration || 180;
-  const testName = test?.name || "this test";
-
-  return GENERAL_INSTRUCTIONS.map((instruction, i) =>
-    i === 0
-      ? {
-          ...instruction,
-          content: {
-            en: `Total duration of ${testName} is ${duration} min.`,
-            hi: `${testName} की कुल अवधि ${duration} मिनट है।`,
-          },
-        }
-      : instruction
   );
 }

@@ -12,6 +12,9 @@ import {
   pendingAnswerLog,
   pendingFullscreenEvents,
 } from "@/lib/exam-log";
+import { parseExamTemplate } from "@/lib/exam-template";
+import { clearRoughSheets } from "@/lib/rough-sheet";
+import type { StudentExamTemplate } from "@/types/m6";
 
 // Attempt info from backend
 export interface ITestAttempt {
@@ -34,6 +37,8 @@ interface TestState {
   isSubmitted: boolean;
   totalMarks: number | null;
   attempt: ITestAttempt | null;
+  /** M6: the test's exam template (wording, instructions, tools); null = the frozen NTA screen */
+  template: StudentExamTemplate | null;
 
   // Actions
   fetchTest: (testId: string) => Promise<void>;
@@ -172,6 +177,7 @@ export const useTestStore = create<TestState>((set, get) => ({
   isSubmitted: false,
   totalMarks: null,
   attempt: null,
+  template: null,
   serverFullscreenExits: 0,
 
   fetchTest: async (testId: string) => {
@@ -228,6 +234,7 @@ export const useTestStore = create<TestState>((set, get) => ({
             answeredAndMarkedForReview: ids("answeredAndMarkedForReview"),
           },
           attempt,
+          template: parseExamTemplate(responseData?.template),
           serverFullscreenExits: Number(responseData?.fullscreenExits) || 0,
           isLoading: false,
         });
@@ -593,6 +600,8 @@ export const useTestStore = create<TestState>((set, get) => ({
         const outcome = response.data?.data || {};
         const totalMarks = outcome.totalMarks ?? 0;
         clearExamLog(testId);
+        // The rough sheet stays on this device for this attempt only: cleared on submit
+        clearRoughSheets(testId);
         try {
           localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
           // What the result screen shows: score only when the test's publish setting allows it now
@@ -648,6 +657,7 @@ export const useTestStore = create<TestState>((set, get) => ({
       isSubmitted: false,
       totalMarks: null,
       attempt: null,
+      template: null,
     });
   },
 }));

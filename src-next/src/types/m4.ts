@@ -127,7 +127,10 @@ export interface StudentProfile {
 export interface StudentPreferences {
   questionLanguage: "en" | "hi";
   emailResults: boolean;
+  /** the 1-hour reminder email only */
   testReminders: boolean;
+  /** Added M6 (owner, 6 Nov): "a new test is published" emails (and a moved test); default true */
+  testPublished: boolean;
   rebuildPlanAfterResult: boolean;
 }
 

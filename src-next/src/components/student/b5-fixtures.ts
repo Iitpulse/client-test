@@ -281,7 +281,7 @@ function profile(): { now: string; profile: StudentProfile } {
       targetLabel: "JEE 2027",
       batch: { id: "bt_indore_a", name: "Indore A" },
       institute: { name: "IIT-PULSE Indore" },
-      preferences: { questionLanguage: "en", emailResults: true, testReminders: true, rebuildPlanAfterResult: true },
+      preferences: { questionLanguage: "en", emailResults: true, testReminders: true, testPublished: true, rebuildPlanAfterResult: true },
     },
   };
 }

@@ -715,7 +715,7 @@ function Preferences({ p, fx, onToast, className }: { p: StudentProfile; fx: str
     },
   });
   const pr = p.preferences;
-  const toggle = (k: "emailResults" | "testReminders" | "rebuildPlanAfterResult", id: string, label: string, hint?: string) => (
+  const toggle = (k: "emailResults" | "testReminders" | "testPublished" | "rebuildPlanAfterResult", id: string, label: string, hint?: string, on = pr[k] !== false) => (
     <div className="row between pref">
       <span className="col gap-0.5">
         <span id={id} className="sm font-semibold">
@@ -723,8 +723,8 @@ function Preferences({ p, fx, onToast, className }: { p: StudentProfile; fx: str
         </span>
         {hint && <span className="xs muted">{hint}</span>}
       </span>
-      <button type="button" className="swhit" role="switch" aria-checked={pr[k]} aria-labelledby={id} onClick={() => m.mutate({ [k]: !pr[k] })}>
-        <span className={pr[k] ? "sw on" : "sw off"} aria-hidden="true" />
+      <button type="button" className="swhit" role="switch" aria-checked={on} aria-labelledby={id} onClick={() => m.mutate({ [k]: !on })}>
+        <span className={on ? "sw on" : "sw off"} aria-hidden="true" />
       </button>
     </div>
   );
@@ -750,6 +750,7 @@ function Preferences({ p, fx, onToast, className }: { p: StudentProfile; fx: str
       </div>
       {toggle("emailResults", "pref-2", "Email me when results are out")}
       {toggle("testReminders", "pref-3", "Remind me 1 hour before a test")}
+      {toggle("testPublished", "pref-5", "Email me when a new test is published")}
       {toggle("rebuildPlanAfterResult", "pref-4", "AI study plan", "Rebuild my plan after every result")}
     </section>
   );

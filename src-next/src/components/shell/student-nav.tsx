@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LogoMark } from "@iitpulse/ui";
 import { cn } from "@/lib/utils";
 import { Avatar } from "./avatar";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { NAV_ITEMS, activeNav } from "./nav-items";
 
 /**
@@ -18,8 +19,8 @@ export function StudentNav({ name, email }: { name?: string; email?: string }) {
     <nav className="topbar max-md:hidden" aria-label="Main">
       <div className="row between mx-auto h-[72px] max-w-[1200px] gap-6 px-8">
         <div className="row gap-9">
-          <Link prefetch={false} href="/" aria-label="IIT-PULSE home" className="flex">
-            <LogoMark />
+          <Link prefetch={false} href="/" aria-label="Home" className="flex">
+            <BrandLogo fallback={<LogoMark />} />
           </Link>
           <div className="row gap-1">
             {NAV_ITEMS.filter((i) => i.desktop).map(({ key, href, label }) => {

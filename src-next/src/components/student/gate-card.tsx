@@ -8,14 +8,20 @@ import { useAuthHydrated, useAuthStore } from "@/stores/auth.store";
 import { Avatar } from "@/components/shell/avatar";
 import { cn } from "@/lib/utils";
 import { StateIco, type StateTone } from "./states";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import type { StateIconName } from "./state-icons";
 
 function Logo({ width = 139 }: { width?: number }) {
   return (
-    <span role="img" aria-label="IIT-PULSE" className="relative block h-[27px] overflow-hidden" style={{ width }}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- the logo is a fixed, unchanged PNG cropped by CSS */}
-      <img src="/iitpulse-logo.png" alt="" className="absolute top-[-7px] left-0 h-[44px] w-auto max-w-none" decoding="async" />
-    </span>
+    <BrandLogo
+      size="sm"
+      fallback={
+        <span role="img" aria-label="IIT-PULSE" className="relative block h-[27px] overflow-hidden" style={{ width }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- the logo is a fixed, unchanged PNG cropped by CSS */}
+          <img src="/iitpulse-logo.png" alt="" className="absolute top-[-7px] left-0 h-[44px] w-auto max-w-none" decoding="async" />
+        </span>
+      }
+    />
   );
 }
 

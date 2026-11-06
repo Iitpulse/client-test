@@ -12,6 +12,7 @@ import { PhoneTabBar } from "./phone-tabbar";
 import { StudentNav } from "./student-nav";
 import { OnboardingPrompt } from "@/components/onboarding/onboarding-prompt";
 import { ReacceptPrompt } from "@/components/legal/reaccept-prompt";
+import { InstituteNotices } from "@/components/brand/institute-notices";
 
 /**
  * What a phone (below 768px) shows around a screen, as the Phone-* boards draw it:
@@ -30,6 +31,11 @@ function phoneChrome(pathname: string): PhoneChrome {
   return "full";
 }
 
+/** Screens where AI review, doubt chat or the study plan appear (the AI-paused bar shows there). */
+function aiScreen(pathname: string): boolean {
+  return pathname === "/" || pathname.startsWith("/progress") || pathname.startsWith("/doubts") || pathname.startsWith("/results/");
+}
+
 /**
  * The signed-in student shell. Desktop (768px and up): StudentNav and a 1136px column with the red margin rule
  * 20px to its left. Phone: see phoneChrome(); no margin rule. 100dvh, so the browser's own bars never hide the
@@ -37,7 +43,8 @@ function phoneChrome(pathname: string): PhoneChrome {
  */
 export function StudentShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const chrome = phoneChrome(usePathname());
+  const pathname = usePathname();
+  const chrome = phoneChrome(pathname);
   const hydrated = useAuthHydrated();
   const { currentUser, checkAuth, setUserName } = useAuthStore();
   const askedName = useRef(false);
@@ -88,6 +95,8 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           chrome === "none" ? "max-md:pb-0" : "max-md:pb-[calc(92px+env(safe-area-inset-bottom))]"
         )}
       >
+        {/* Student-InstituteStates: paused institute (every screen), AI paused (Home, Progress, Doubts, results) */}
+        <InstituteNotices ai={aiScreen(pathname)} />
         {children}
       </main>
       {chrome !== "none" && <PhoneTabBar />}

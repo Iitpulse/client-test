@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Doodle, LogoMark, Note } from "@iitpulse/ui";
+import { BrandLogo, DefaultBrandOnly } from "@/components/brand/brand-logo";
 
 /**
  * Student-SignInLink board frame: the logo with the tagline in blue ink, one centred card and "Not you?".
@@ -19,10 +20,12 @@ export function SignInFrame({ children, footer = true }: { children: ReactNode; 
         <Doodle name="flask" slot="gl" style={{ top: 190 }} />
         <Doodle name="parabola" slot="gr" style={{ top: 470 }} />
         <div className="col fade items-center gap-1.5">
-          <LogoMark size="lg" />
-          <Note size="sm" write rotate={-2} delay={250}>
-            A vision of success…
-          </Note>
+          <BrandLogo size="lg" fallback={<LogoMark size="lg" />} />
+          <DefaultBrandOnly>
+            <Note size="sm" write rotate={-2} delay={250}>
+              A vision of success…
+            </Note>
+          </DefaultBrandOnly>
         </div>
         {children}
         {footer && (

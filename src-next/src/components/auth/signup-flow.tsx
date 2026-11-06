@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Blueboard, LogoMark } from "@iitpulse/ui";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Spinner } from "@/components/shell/icons";
 import { Picker } from "@/components/onboarding/picker";
 import { useAuthStore } from "@/stores/auth.store";
@@ -282,7 +283,7 @@ export function SignupFlow() {
       <Blueboard as="section" className="su-board auth-board" smudge={{ left: -90, top: 300, width: 560, height: 200 }}>
         <div className="row gap-3">
           <span className="inline-flex rounded-[10px] bg-white px-3.5 py-2.5">
-            <LogoMark size="lg" />
+            <BrandLogo size="lg" fallback={<LogoMark size="lg" />} />
           </span>
         </div>
         <div className="col max-w-[460px] gap-[18px]">

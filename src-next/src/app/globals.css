@@ -480,4 +480,26 @@
   .legal ul, .legal ol { padding-left: 22px; display: flex; flex-direction: column; gap: 6px; margin: 6px 0 }
   .legal .fill { background: #FFF1DE; color: #7A4300; border-radius: 4px; padding: 0 3px; font-weight: 600 }
   .legal .draft { padding: 12px 14px; border-radius: 12px; background: #FFF6E8; border: 1px solid #F3D7A8; color: #6B3D00; font-size: 14px }
+  /* M7b tenant branding (lib/brand.ts, components/brand): IIT-PULSE's logo stays hidden on another institute's host
+     until React swaps that institute's in (html[data-brand] is set by the <head> boot script before the first paint) */
+  .brand-default { display: contents }
+  html[data-brand] .brand-default { visibility: hidden }
+  .brand-logo { display: block; height: 26px; width: auto; max-width: 170px; object-fit: contain }
+  .brand-logo.lg { height: 36px; max-width: 240px }
+  .brand-logo.sm { height: 24px; max-width: 139px }
+  .brand-wordmark { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 650; letter-spacing: -.01em; font-size: 15px; white-space: nowrap }
+  .brand-wordmark.lg { font-size: 19px; gap: 12px }
+  .brand-wordmark.on-dark { color: #fff }
+  .brand-wordmark .brand-initials, .brand-wordmark .brand-icon { width: 30px; height: 30px; border-radius: 9px; flex: none }
+  .brand-wordmark.lg .brand-initials, .brand-wordmark.lg .brand-icon { width: 36px; height: 36px; border-radius: 10px }
+  .brand-wordmark .brand-initials { display: inline-flex; align-items: center; justify-content: center; background: var(--navy); color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0 }
+  .brand-wordmark .brand-icon { object-fit: cover }
+  .brand-wordmark .brand-name { overflow: hidden; text-overflow: ellipsis; max-width: 220px }
+  .powered-by { font-size: 12px; color: var(--muted) }
+  .powered-by b { font-weight: 650; color: var(--ink-2, var(--ink)) }
+  /* Student-InstituteStates: paused institute / AI paused bars */
+  .inst-notice { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.45 }
+  .inst-notice.warn { background: #FFF4E2; color: #5C3600; border: 1px solid #F1D29A }
+  .inst-notice.ai { background: var(--navy-50); color: var(--ink); border: 1px solid var(--navy-100) }
+  .inst-notice .inst-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; background: currentColor; opacity: .7 }
 }

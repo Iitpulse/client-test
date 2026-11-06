@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Paper } from "@iitpulse/ui";
 import { homeEarlyFetchScript } from "@/lib/student-api";
+import { brandBootScript } from "@/lib/brand-shared";
+import { BrandEffects } from "@/components/brand/brand-logo";
 import { studentFonts } from "../fonts";
 import "../globals.css";
 
@@ -26,7 +28,14 @@ export default function StudentRootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={studentFonts}>
+    <html lang="en" className={studentFonts} suppressHydrationWarning>
+      <head>
+        {/*
+          M7b tenant theming before the first paint (lib/brand-shared.ts): on another institute's host this writes the
+          link to its theme stylesheet and sets <html data-brand>; for IIT-PULSE (no cookie) it does nothing.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: brandBootScript() }} />
+      </head>
       <body>
         {/*
           Home (/) only, signed in: start its data request while the JavaScript downloads (mobile LCP budget).
@@ -38,6 +47,7 @@ export default function StudentRootLayout({
         <Paper surface="student" className="min-h-dvh">
           {children}
         </Paper>
+        <BrandEffects />
       </body>
     </html>
   );

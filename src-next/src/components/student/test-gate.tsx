@@ -19,6 +19,7 @@ import type { StudentGateResponse } from "@/types/m6";
 import { GateCard, GateFrame } from "./gate-card";
 import { Facts, Note, StateCard, supportCode } from "./states";
 import { StateIcon } from "./state-icons";
+import { useInstituteState } from "@/components/brand/institute-notices";
 import { Skel } from "./common";
 
 /* ───────────── formatting (IST) ───────────── */
@@ -234,6 +235,8 @@ export function TestGate({ testId }: { testId: string }) {
     if (opened && !fixture) query.refetch();
   }, [opened, fixture, query]);
 
+  // Student-InstituteStates: a paused institute starts no new tests; a test already started can still be resumed
+  const institute = useInstituteState();
   const name = currentUser?.name;
   const clientState = fixture?._client ?? (!online ? "offline" : browser && !browser.supported ? "unsupported" : null);
 
@@ -292,6 +295,12 @@ export function TestGate({ testId }: { testId: string }) {
         </>}>
           <Checks items={desktop === false ? phoneChecks : desktopChecks} />
         </GateCard>
+      );
+    }
+
+    if (institute.suspended && (data.state === "ready" || data.state === "opensSoon")) {
+      return (
+        <GateCard tone="amber" icon="lock" title="New tests can't start right now" body="Your institute's account is paused. Your results, reviews and practice are still here. Ask your institute when tests will be back." test={strip} actions={back} />
       );
     }
 
@@ -401,7 +410,7 @@ export function TestGate({ testId }: { testId: string }) {
         );
     }
     // `now` is read for the countdown and time left
-  }, [data, clientState, browser, desktop, fsOk, name, copied, now, opensIn, testId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, clientState, browser, desktop, fsOk, name, copied, now, opensIn, testId, institute.suspended]); // eslint-disable-line react-hooks/exhaustive-deps
 
   let content: React.ReactNode = body;
   if (!data) {

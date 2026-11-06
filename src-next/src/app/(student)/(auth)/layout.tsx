@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { Blueboard, LogoMark, Tape } from "@iitpulse/ui";
 import { LegalFooter } from "@/components/auth/legal-footer";
+import { BrandLogo, DefaultBrandOnly, PoweredBy, WhiteLabelIntro } from "@/components/brand/brand-logo";
 
 /**
  * Student-Login board (sign in, forgot password, reset password). The blueboard welcome panel and the taped card
@@ -25,11 +26,17 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </svg>
         </div>
         <span className="inline-flex self-start rounded-[10px] bg-white px-3 py-2">
-          <span role="img" aria-label="IIT-PULSE" className="relative block h-[27px] w-[139px] overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element -- the logo is a fixed, unchanged PNG cropped by CSS */}
-            <img src="/iitpulse-logo.png" alt="" className="absolute top-[-7px] left-0 h-[44px] w-auto max-w-none" decoding="async" />
-          </span>
+          <BrandLogo
+            size="sm"
+            fallback={
+              <span role="img" aria-label="IIT-PULSE" className="relative block h-[27px] w-[139px] overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element -- the logo is a fixed, unchanged PNG cropped by CSS */}
+                <img src="/iitpulse-logo.png" alt="" className="absolute top-[-7px] left-0 h-[44px] w-auto max-w-none" decoding="async" />
+              </span>
+            }
+          />
         </span>
+        <DefaultBrandOnly>
         <div className="col items-start gap-0">
           <span className="cl-note chalk cl-write" style={{ "--rot": "-3deg", "--d": 300, fontSize: 30, lineHeight: 1.1 } as CSSProperties}>
             A vision of success…
@@ -46,7 +53,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <path pathLength={1} d="M3 9.5C80 5 180 4.5 280 6.5S372 10 397 7.5" />
           </svg>
         </div>
+        </DefaultBrandOnly>
         <p className="h2 rise m-0 max-w-[300px] text-[24px] text-white">Every test makes the next one easier.</p>
+        <PoweredBy className="sm text-on-brand-2" />
       </Blueboard>
 
       <Blueboard
@@ -72,9 +81,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
         <div className="row gap-3">
           <span className="inline-flex rounded-[10px] bg-white px-3.5 py-2.5">
-            <LogoMark size="lg" />
+            <BrandLogo size="lg" fallback={<LogoMark size="lg" />} />
           </span>
         </div>
+        <DefaultBrandOnly>
         <div className="col items-start gap-0">
           {/* The logo's tagline, written in chalk */}
           <span className="cl-note chalk cl-write" style={{ "--rot": "-3deg", "--d": 300, fontSize: 46, lineHeight: 1.1 } as CSSProperties}>
@@ -92,16 +102,22 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <path pathLength={1} d="M3 9.5C80 5 180 4.5 280 6.5S372 10 397 7.5" />
           </svg>
         </div>
+        </DefaultBrandOnly>
         <div className="col max-w-[460px] gap-[18px]">
+          <WhiteLabelIntro part="name" className="h2 rise m-0 text-white" />
           <p className="d1 rise text-white">Every test makes the next one easier.</p>
-          <p className="body rise m-0 text-on-brand-2" style={{ "--i": 1 } as CSSProperties}>
-            Take your mock tests, see exactly where marks slipped, and get a study plan built from your own answers.
-          </p>
-          <div className="row wrap rise gap-2.5" style={{ "--i": 2 } as CSSProperties}>
-            <span className="badge bg-white/12 text-white">JEE Main &amp; Advanced</span>
-            <span className="badge bg-white/12 text-white">NEET</span>
-            <span className="badge bg-white/12 text-white">AI review after every test</span>
-          </div>
+          <DefaultBrandOnly>
+            <p className="body rise m-0 text-on-brand-2" style={{ "--i": 1 } as CSSProperties}>
+              Take your mock tests, see exactly where marks slipped, and get a study plan built from your own answers.
+            </p>
+            <div className="row wrap rise gap-2.5" style={{ "--i": 2 } as CSSProperties}>
+              <span className="badge bg-white/12 text-white">JEE Main &amp; Advanced</span>
+              <span className="badge bg-white/12 text-white">NEET</span>
+              <span className="badge bg-white/12 text-white">AI review after every test</span>
+            </div>
+          </DefaultBrandOnly>
+          <WhiteLabelIntro part="about" className="body rise m-0 text-on-brand-2" />
+          <PoweredBy className="sm text-on-brand-2" />
         </div>
       </Blueboard>
 

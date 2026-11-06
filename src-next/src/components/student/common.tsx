@@ -108,6 +108,14 @@ export function useFixture(): string | null {
   return useSyncExternalStore(noop, fixtureParam, () => null);
 }
 
+/**
+ * The `?fixture=` state for views that must not call the API before they know there is none: undefined on the server
+ * and while hydrating (the URL is not read yet), then the state or null.
+ */
+export function useFixtureAfterHydration(): string | null | undefined {
+  return useSyncExternalStore(noop, fixtureParam, () => undefined);
+}
+
 /** A query key under the fixture's own namespace, so fixture data never mixes with the real cache. */
 export function fxKey<K extends readonly unknown[]>(fx: string | null, key: K): readonly unknown[] {
   return fx ? ["fixture", fx, ...key] : key;

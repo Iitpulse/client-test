@@ -42,6 +42,7 @@ function DoubtsInner({ initialThread, fx }: { initialThread: string | null; fx: 
   });
   const isDesktop = useIsDesktop();
   const online = useOnline() && !fx?.offline;
+  const [fxAt] = useState(() => Date.now()); // a fixture's "loaded at" (DoubtsInner mounts per fixture)
   // Fixtures: "loading" and "error" are the list's states on the phone (Phone-Doubts) and the chat's on the desktop
   // (Student-Doubts draws them in the right pane, under a loaded list).
   const fxListState = fx && isDesktop === false && (fx.state === "loading" || fx.state === "error") ? fx.state : null;
@@ -96,7 +97,7 @@ function DoubtsInner({ initialThread, fx }: { initialThread: string | null; fx: 
 
         {!online && data && isDesktop === false && (
           <OfflineBanner className="bnr-flush md:hidden -mx-4 -mt-3.5 mb-1">
-            Showing your chats from {istTime(fx ? Date.now() : q.dataUpdatedAt)}.
+            Showing your chats from {istTime(fx ? fxAt : q.dataUpdatedAt)}.
           </OfflineBanner>
         )}
         {!data ? (

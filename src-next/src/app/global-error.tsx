@@ -35,6 +35,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
                   Try again
                 </button>
                 {/* a plain link: the app's router may be what failed */}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a full page load on purpose: the root layout crashed, so the client router can't be trusted */}
                 <a href="/" className="btn btn-lg btn-ghost max-md:w-full">
                   Go home
                 </a>

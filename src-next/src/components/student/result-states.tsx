@@ -6,6 +6,7 @@
 // StudentResultExtras; 403 RESULT_HIDDEN, 404 NO_SUBMISSION details, 404 TEST_NOT_FOUND).
 
 import Link from "next/link";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { qk, studentApi, StudentApiError } from "@/lib/student-api";
 import { ist } from "@/lib/time";
@@ -147,6 +148,7 @@ export function ResultBlank({ error, testId, onRetry }: { error: unknown; testId
   const known = e?.code === "RESULT_HIDDEN" || e?.code === "NO_SUBMISSION";
   const gate = useQuery({ queryKey: qk.gate(testId), queryFn: ({ signal }) => studentApi.gate(testId, signal), enabled: known, staleTime: 60_000, retry: false });
   const startGate = useStartTestGate();
+  const [shownAt] = useState(() => Date.now());
   const name = gate.data?.test?.name ?? "";
   const back = { label: "Back to tests", href: "/tests?tab=completed" };
 
@@ -169,7 +171,7 @@ export function ResultBlank({ error, testId, onRetry }: { error: unknown; testId
       );
     } else if (state === "upcoming") {
       const opensAt = d.opensAt ?? gate.data?.test?.opensAt ?? null;
-      const open = opensAt ? Date.parse(opensAt) <= Date.now() : false;
+      const open = opensAt ? Date.parse(opensAt) <= shownAt : false;
       card = open ? (
         // open now and not started (not on the board: the same card with "Start test")
         <StateCard tone="navy" icon="clipboard" eyebrow={name} title="You haven't taken this test yet" body={`It's open${d.closesAt ? ` until ${dayTime(d.closesAt)}` : ""}. Your result shows here after you take it.`} primary={{ label: "Start test", onClick: () => startGate(testId) }} secondary={back} headingLevel={1} />

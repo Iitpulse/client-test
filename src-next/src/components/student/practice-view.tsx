@@ -1,20 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Doodle, InkUnderline, MathText, Stamp } from "@iitpulse/ui";
 import { m4Api, m4Keys, useProfile, useStartPractice } from "@/lib/m4-api";
 import { StudentApiError } from "@/lib/student-api";
 import { useServerClock } from "@/lib/server-clock";
 import { useOnline } from "@/lib/use-online";
-import { fixtureParam } from "@/lib/fixtures";
 import { asPracticeFx, fxCheck, practiceFixture, type PracticeFxName } from "@/lib/practice-fixtures";
 import { dayMonth, mmss, resetsAt } from "@/lib/time";
 import type { PracticeRequest } from "@/types/m4";
 import type { PracticeAnswer, PracticeCheckM6, PracticeQuestionM6, PracticeSetM6 } from "@/types/practice-m6";
 import { ArrowLeftIcon, ArrowRightIcon, Spinner } from "@/components/shell/icons";
-import { Skel } from "./common";
+import { Skel, useFixtureAfterHydration } from "./common";
 import { ChevronLeftIcon } from "./icons";
 import { sentence } from "./labels";
 import { OfflineBanner, supportCode } from "./states";
@@ -40,11 +39,10 @@ const OUT_WORD = { correct: "correct", partial: "partly correct", wrong: "wrong"
 
 export type PracticeProblem = { code: "NO_PRACTICE_QUESTIONS" | "PRACTICE_LIMIT" | "PRACTICE_UNAVAILABLE"; req: PracticeRequest; resetsAt: string | null };
 
-/** The `?fixture=` practice state (dev and staging only), read after mount: undefined until then. */
+/** The `?fixture=` practice state (dev and staging only): undefined until the URL is read (after hydration). */
 function usePracticeFx(): PracticeFxName | null | undefined {
-  const [fx, setFx] = useState<PracticeFxName | null | undefined>(undefined);
-  useEffect(() => setFx(asPracticeFx(fixtureParam())), []);
-  return fx;
+  const name = useFixtureAfterHydration();
+  return name === undefined ? undefined : asPracticeFx(name);
 }
 
 export function PracticeView({ setId, problem }: { setId: string; problem?: PracticeProblem | null }) {
@@ -67,7 +65,8 @@ function nextMidnight(): string {
 function SetView({ setId, fxName }: { setId: string; fxName: PracticeFxName | null }) {
   const client = useQueryClient();
   const online = useOnline();
-  const fx = useMemo(() => (fxName && fxName !== "loading" && fxName !== "error" && fxName !== "notfound" ? practiceFixture(fxName, Date.now()) : null), [fxName]);
+  const [fxAt] = useState(() => Date.now());
+  const fx = useMemo(() => (fxName && fxName !== "loading" && fxName !== "error" && fxName !== "notfound" ? practiceFixture(fxName, fxAt) : null), [fxName, fxAt]);
   const q = useQuery({ queryKey: m4Keys.practice(setId), queryFn: ({ signal }) => m4Api.practice(setId, signal), staleTime: 10 * 60_000, enabled: !fxName });
   const [fxSet, setFxSet] = useState<PracticeSetM6 | null>(fx?.set ?? null);
   const set: PracticeSetM6 | undefined = fx ? (fxSet ?? undefined) : (q.data?.set as PracticeSetM6 | undefined);
@@ -585,7 +584,7 @@ function Message({ kind, error, onRetry, chapter, when, busy }: { kind: MsgKind;
 /** /practice/new?problem=…: why a set couldn't be made (practice-button.tsx), with "Try again" for the bank. */
 function ProblemPage({ p, fixture }: { p: PracticeProblem; fixture?: boolean }) {
   const start = useStartPractice();
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
   const kind: MsgKind = p.code === "NO_PRACTICE_QUESTIONS" ? "noleft" : p.code === "PRACTICE_LIMIT" ? "limit" : "unavailable";
   const r = p.resetsAt ? resetsAt(now, p.resetsAt) : null;
   const when = r === "tomorrow" ? "tomorrow at 12:00 AM" : (r ?? undefined);

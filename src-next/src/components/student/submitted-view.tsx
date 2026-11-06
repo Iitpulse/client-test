@@ -21,7 +21,7 @@ import type { ResultHiddenDetails, StudentResultExtras } from "@/types/m6-studen
 import { GateCard, GateFrame } from "./gate-card";
 import { Facts, Note, StateCard, supportCode } from "./states";
 import { StateIcon } from "./state-icons";
-import { Skel } from "./common";
+import { Skel, useFixture } from "./common";
 
 const LAST_KEY = "IITP_LAST_SUBMITTED";
 
@@ -161,7 +161,8 @@ export function SubmittedView() {
   const online = useOnline();
   const [view, setView] = useState<View>({ kind: "loading" });
   const [emailPref, setEmailPref] = useState<boolean | null>(null);
-  const fixture = useRef<string | null>(null);
+  // the `?fixture=` state for rendering (null on the server and while hydrating); the first-load effect reads the URL itself
+  const fixture = useFixture();
   const attempt = useRef(0);
 
   /** The submitted result: published / pending / hidden; NO_SUBMISSION means the submit never arrived. */
@@ -218,7 +219,6 @@ export function SubmittedView() {
     if (!hydrated) return;
     const f = fixtureParam();
     if (f) {
-      fixture.current = f;
       const v = fixtureView(f);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- fixture states are set once after mount
       if (v) setView(v);
@@ -262,28 +262,32 @@ export function SubmittedView() {
 
   // The "Email me" switch starts from the saved preference.
   useEffect(() => {
-    if (view.kind !== "done" || emailPref !== null || fixture.current) return;
+    if (view.kind !== "done" || emailPref !== null || fixture) return;
     m4Api
       .me()
       .then((r) => setEmailPref(r.profile.preferences.emailResults))
       .catch(() => setEmailPref(true));
-  }, [view.kind, emailPref]);
+  }, [view.kind, emailPref, fixture]);
 
-  // Offline-saved: count down and retry; coming back online retries at once.
+  // Offline-saved: count down and retry when the wait ends (online); coming back online retries at once (below).
   const nextIn = view.kind === "offline" ? view.nextIn : null;
   useEffect(() => {
-    if (view.kind !== "offline" || fixture.current) return;
-    if (online && view.nextIn <= 0) {
-      void send(view.pending);
-      return;
-    }
-    const t = setTimeout(() => setView((v) => (v.kind === "offline" ? { ...v, nextIn: Math.max(0, v.nextIn - 1) } : v)), 1000);
+    if (view.kind !== "offline" || fixture) return;
+    const { pending, nextIn: left } = view;
+    const t = setTimeout(() => {
+      if (online && left <= 1) void send(pending);
+      else setView((v) => (v.kind === "offline" ? { ...v, nextIn: Math.max(0, v.nextIn - 1) } : v));
+    }, 1000);
     return () => clearTimeout(t);
-  }, [view, nextIn, online, send]);
+  }, [view, nextIn, online, send, fixture]);
+  // Back online: send at once (the browser's "online" event, so only on the switch back).
   useEffect(() => {
-    if (online && view.kind === "offline" && !fixture.current) void send(view.pending);
-    // only on the switch back online
-  }, [online]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (view.kind !== "offline" || fixture) return;
+    const { pending } = view;
+    const back = () => void send(pending);
+    window.addEventListener("online", back);
+    return () => window.removeEventListener("online", back);
+  }, [view, fixture, send]);
 
   const offlineBanner = (
     <div className="gate-banner" role="status">
@@ -380,7 +384,7 @@ export function SubmittedView() {
             </span>
             <span className="xs muted max-md:hidden">Everyone&apos;s result comes out together.</span>
           </div>
-          {emailPref !== null || fixture.current ? <EmailMe id="em-sub" initial={emailPref ?? true} /> : null}
+          {emailPref !== null || fixture ? <EmailMe id="em-sub" initial={emailPref ?? true} /> : null}
         </div>
       );
       if (auto === "timeUp") {
@@ -392,7 +396,7 @@ export function SubmittedView() {
         );
       } else if (auto === "exitLimit") {
         content = (
-          <GateCard tone="amber" icon="exit" title="Your test was submitted for you" body={`You left full screen ${view.maxExits ?? (fixture.current ? 3 : null) ? `${view.maxExits ?? 3} times` : "too many times"}, the limit for this test, so it was submitted then.`} actions={<Acts primary={published ? { label: "See your result", href: resultHref } : { label: "Back to tests", href: "/tests" }} />}>
+          <GateCard tone="amber" icon="exit" title="Your test was submitted for you" body={`You left full screen ${view.maxExits ?? (fixture ? 3 : null) ? `${view.maxExits ?? 3} times` : "too many times"}, the limit for this test, so it was submitted then.`} actions={<Acts primary={published ? { label: "See your result", href: resultHref } : { label: "Back to tests", href: "/tests" }} />}>
             <Facts items={[{ k: "Test", v: view.testName }, { k: "Submitted", v: `${dayTime(s.submittedAt)} · automatically` }, { k: "Answered", v: answered }, receipt]} />
             {!published && pendingBox}
             <Note tone="warn">If this happened by mistake (a call, a pop-up), tell your teacher. They can see the time of each exit.</Note>
@@ -449,7 +453,7 @@ export function SubmittedView() {
   }
 
   return (
-    <GateFrame back={null} banner={view.kind === "offline" && !online ? offlineBanner : view.kind === "offline" && fixture.current ? offlineBanner : null}>
+    <GateFrame back={null} banner={view.kind === "offline" && !online ? offlineBanner : view.kind === "offline" && fixture ? offlineBanner : null}>
       {content}
     </GateFrame>
   );

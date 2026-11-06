@@ -1,19 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AiMark, Doodle, MathText, TypingDots } from "@iitpulse/ui";
 import { useDoubt, type ChatProblem } from "@/lib/use-doubt";
 import { asDoubtFxState, doubtFixture, FIXED_ENDING, type DoubtFx } from "@/lib/doubt-fixtures";
-import { fixtureParam } from "@/lib/fixtures";
 import { useOnline } from "@/lib/use-online";
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
 import { relativeDayTime, resetsAt } from "@/lib/time";
 import type { DoubtChip, DoubtMessage, DoubtThreadSummary, PracticeQuestion } from "@/types/m4";
 import { ChevronLeftIcon } from "./icons";
 import { sentence } from "./labels";
-import { Skel } from "./common";
+import { Skel, useFixtureAfterHydration } from "./common";
 import { istTime, OfflineBanner, StateIco, supportCode } from "./states";
 import { StateIcon } from "./state-icons";
 
@@ -38,14 +37,15 @@ const COUNT_FROM = 540;
 
 type Doubt = ReturnType<typeof useDoubt>;
 
-/** The `?fixture=` doubt state (dev and staging only), read after mount. */
+/** The `?fixture=` doubt state (dev and staging only): undefined until the URL is read (after hydration). */
 export function useDoubtFixture(): DoubtFx | null | undefined {
-  const [fx, setFx] = useState<DoubtFx | null | undefined>(undefined);
-  useEffect(() => {
-    const s = asDoubtFxState(fixtureParam());
-    setFx(s ? doubtFixture(s, Date.now()) : null);
-  }, []);
-  return fx;
+  const name = useFixtureAfterHydration();
+  const [at] = useState(() => Date.now());
+  return useMemo(() => {
+    if (name === undefined) return undefined;
+    const s = asDoubtFxState(name);
+    return s ? doubtFixture(s, at) : null;
+  }, [name, at]);
 }
 
 /** The fixed ending api-ai puts on a refused / failed answer; what comes before it is the answer's own text. */

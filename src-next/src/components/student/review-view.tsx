@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
@@ -11,13 +11,13 @@ import { useIsDesktop } from "@/lib/use-media";
 import type { QuestionCell, QuestionOutcome, ReviewFilter, ReviewQuestion, StudentResult } from "@/types/m2-student";
 import { reviewExtras } from "@/types/m6-review";
 import { ArrowRightIcon } from "@/components/shell/icons";
-import { ErrorCard, Skel } from "./common";
+import { ErrorCard, Skel, useFixtureAfterHydration } from "./common";
 import { ChevronLeftIcon, LockIcon } from "./icons";
 import { OUTCOME_BADGE, sentence } from "./labels";
 import { LangToggle, QuestionBody, Solution, type Lang } from "./question-body";
 import { canExplain, explainLabel, useWhyState, WhyView } from "./review-ai";
 import { KeyCorrectedNote, PassageBlock, reviewStatus, SetKids, setCells, typeLabel } from "./review-parts";
-import { fixtureItem, reviewFixtureFromUrl, type ReviewFixture } from "./review-fixtures";
+import { fixtureItem, reviewFixtureFor, type ReviewFixture } from "./review-fixtures";
 import { B7ToastBar, RevisionToggle, useB7Toast } from "./revision-bits";
 import { ReviewPane } from "./review-pane";
 
@@ -48,10 +48,11 @@ export function ReviewView({ testId, n }: { testId: string; n: number }) {
   const router = useRouter();
   const isDesktop = useIsDesktop();
 
-  // undefined until read (after mount: it reads the URL), then the fixture or null.
-  const [fixture, setFixture] = useState<ReviewFixture | null | undefined>(undefined);
-  const fixtureKey = search.get("fixture") + "|" + search.get("kc") + "|" + search.get("ai");
-  useEffect(() => setFixture(reviewFixtureFromUrl(testId)), [testId, fixtureKey]);
+  // undefined until the URL is read (after hydration), then the fixture or null.
+  const fxType = useFixtureAfterHydration();
+  const kc = search.get("kc");
+  const aiFx = search.get("ai");
+  const fixture = useMemo<ReviewFixture | null | undefined>(() => (fxType === undefined ? undefined : reviewFixtureFor(testId, fxType, kc, aiFx)), [testId, fxType, kc, aiFx]);
   const live = fixture === null;
 
   const itemFn = (m: number) => ({

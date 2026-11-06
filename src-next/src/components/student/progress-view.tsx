@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { AiMark, Bar, Doodle, InkArrow, InkUnderline, Note } from "@iitpulse/ui";
-import { fixtureParam } from "@/lib/fixtures";
 import { m4Api, m4Keys } from "@/lib/m4-api";
 import { progressFixture, type PlanFixture, type ProgressFixture } from "@/lib/progress-fixtures";
 import { useServerClock } from "@/lib/server-clock";
@@ -13,7 +12,7 @@ import { useOnline } from "@/lib/use-online";
 import { longDay, mmss } from "@/lib/time";
 import type { ProgressRange, ProgressResponse, WeakTopic } from "@/types/m4";
 import { PhoneTitleBar } from "@/components/shell/phone-title-bar";
-import { Skel } from "./common";
+import { Skel, useFixtureAfterHydration } from "./common";
 import { ArrowDownIcon, ArrowUpIcon } from "./icons";
 import { num, shortPair } from "./labels";
 import { PracticeButton } from "./practice-button";
@@ -47,8 +46,8 @@ function rangeLast(r: ProgressRange): string {
 export function ProgressView() {
   const [range, setRange] = useState<ProgressRange>("90d");
   // undefined until the URL is read (after mount): no API call before we know there is no fixture
-  const [fx, setFx] = useState<ProgressFixture | null | undefined>(undefined);
-  useEffect(() => setFx(progressFixture(fixtureParam())), []);
+  const fxName = useFixtureAfterHydration();
+  const fx = useMemo<ProgressFixture | null | undefined>(() => (fxName === undefined ? undefined : progressFixture(fxName)), [fxName]);
   const q = useQuery({
     queryKey: m4Keys.progress(range),
     queryFn: ({ signal }) => m4Api.progress(range, signal),
@@ -77,8 +76,8 @@ export function ProgressView() {
       <PhoneTitleBar title="Progress" doodle="parabola" />
       {!online && (
         <OfflineBanner className="pg-bnr">
-          <span className="max-md:hidden">Showing what loaded at {istTime(updatedAt || Date.now())}. Practice and plan changes wait until you&apos;re back.</span>
-          <span className="md:hidden">Showing what loaded at {istTime(updatedAt || Date.now())}.</span>
+          <span className="max-md:hidden">Showing what loaded at {istTime(updatedAt || fxAt)}. Practice and plan changes wait until you&apos;re back.</span>
+          <span className="md:hidden">Showing what loaded at {istTime(updatedAt || fxAt)}.</span>
         </OfflineBanner>
       )}
       <div className="col gap-6 md:pt-1 max-md:gap-2 max-md:px-4 max-md:pt-2.5">

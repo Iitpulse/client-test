@@ -120,10 +120,8 @@ export function useDoubt({ testId, n, threadId: given, fx }: { testId: string; n
     const t = window.setTimeout(() => setDropped((d) => ({ text: d?.text ?? "", phase: "retry" })), POLL_MS);
     return () => window.clearTimeout(t);
   }, [live, isPending, threadQ.dataUpdatedAt]);
-  // The rest arrived (the pending message has a finish): the drop is over.
-  useEffect(() => {
-    if (live && dropped && !isPending && threadQ.isSuccess && !threadQ.isFetching && dropped.phase === "getting") setDropped(null);
-  }, [live, dropped, isPending, threadQ.isSuccess, threadQ.isFetching]);
+  // The rest arrived (the pending message has a finish): the drop is over (cleared while rendering, before it shows).
+  if (live && dropped && !isPending && threadQ.isSuccess && !threadQ.isFetching && dropped.phase === "getting") setDropped(null);
 
   const setThread = useCallback(
     (id: string, fn: (t: DoubtThread) => DoubtThread) => {

@@ -4,7 +4,6 @@
 //   type  single | multiple | numerical | paragraph | matrix   (the question shown first: Q12, Q38, Q63, Q32, Q24)
 //   kc    1 = the answer key of that question was corrected
 //   ai    not-asked | generating | ready | failed | refused | rate-limited | paused | credits-out | locked | no-solution
-import { fixtureParam } from "@/lib/fixtures";
 import type { QuestionCell, QuestionOutcome, ReviewOption, ReviewQuestion, StudentResult } from "@/types/m2-student";
 import type { Explanation } from "@/types/m3-ai";
 import type { ReviewQuestionM6, StudentKeyCorrectionNote } from "@/types/m6-review";
@@ -32,13 +31,10 @@ const CORRECTED_AT = "2026-11-04T06:30:00.000Z"; // Wed 4 Nov, 12:00 PM IST
 const RATE_AT = Date.parse("2026-11-04T13:42:00.000Z"); // 7:12 PM IST
 const LOCKED_AT = "2026-11-04T15:30:00.000Z"; // 9:00 PM IST
 
-/** The fixture asked for in the URL, or null (no fixture, or fixtures not allowed). Call in an effect. */
-export function reviewFixtureFromUrl(testId: string): ReviewFixture | null {
-  const t = fixtureParam();
+/** The fixture the URL asks for (`?fixture=` when fixtures are allowed, `kc`, `ai`), or null (none). */
+export function reviewFixtureFor(testId: string, t: string | null, kcParam: string | null, a: string | null): ReviewFixture | null {
   if (!t || !(REVIEW_FIXTURE_TYPES as string[]).includes(t)) return null;
-  const sp = new URLSearchParams(window.location.search);
-  const kc = sp.get("kc") === "1";
-  const a = sp.get("ai");
+  const kc = kcParam === "1";
   const ai = a && (WHY_FIXTURE_STATES as string[]).includes(a) ? (a as WhyFixtureState) : "ready";
   return buildReviewFixture(testId, t as ReviewFixtureType, kc, ai);
 }

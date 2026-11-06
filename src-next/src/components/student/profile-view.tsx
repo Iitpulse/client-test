@@ -77,12 +77,14 @@ export function ProfileView() {
   const signOut = useSignOut();
   const router = useRouter();
 
-  // Fixture states that open on a given tab or with a toast showing.
-  useEffect(() => {
+  // Fixture states that open on a given tab or with a toast showing (set while rendering when the fixture is first read).
+  const [fxSeen, setFxSeen] = useState<string | null>(null);
+  if (fx !== fxSeen) {
+    setFxSeen(fx);
     if (fxTab) setTab(fxTab);
     if (fx === "saved") setToast({ kind: "ok", msg: "Profile saved" });
     if (fx === "pref-rollback") setToast({ kind: "err", msg: "Couldn't save that setting.", retry: () => setToast(null) });
-  }, [fx, fxTab]);
+  }
 
   // "Saved" toasts leave by themselves; an error stays until Try again or ×.
   useEffect(() => {
@@ -771,7 +773,7 @@ function Password({ fx, offline, className }: { fx: string | null; offline: bool
   const [local, setLocal] = useState<{ current?: string; next?: string; confirm?: string }>(
     fx === "weak-password" ? { next: "Too short. Use at least 8 characters." } : fx === "wrong-password" ? { current: "That's not your current password." } : {}
   );
-  const [lockedUntil, setLockedUntil] = useState<number | null>(fx === "too-many-attempts" ? Date.now() + 15 * 60_000 : null);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(() => (fx === "too-many-attempts" ? Date.now() + 15 * 60_000 : null));
   const [done, setDone] = useState(false);
   const m = useMutation({
     mutationFn: () => api.password({ currentPassword: f.current, newPassword: f.next }),

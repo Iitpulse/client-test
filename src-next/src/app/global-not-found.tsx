@@ -17,14 +17,22 @@ export default function GlobalNotFound() {
     <html lang="en" className={studentFonts}>
       <body>
         <Paper surface="student" className="min-h-dvh">
-          <main className="col min-h-dvh items-center justify-center gap-3 px-4 text-center">
-            <h1 className="h1">
-              Page not <InkUnderline delay={300}>found</InkUnderline>
-            </h1>
-            <p className="body muted m-0">This page does not exist.</p>
-            <Link href="/" className="btn btn-secondary mt-2">
-              Go to your tests
-            </Link>
+          <main className="col min-h-dvh items-center justify-center px-4">
+            {/* Kit-States "Not found · 404": short and calm, the way home */}
+            <section className="card st-card w-full max-w-[560px]">
+              <span className="num" aria-hidden="true" style={{ fontSize: 32, fontWeight: 650, color: "#C3C6EF", letterSpacing: "-.02em" }}>
+                404
+              </span>
+              <h1 className="h2" style={{ margin: 0 }}>
+                Page not <InkUnderline delay={300}>found</InkUnderline>
+              </h1>
+              <p className="body muted m-0">The link may be old or mistyped.</p>
+              <div className="st-acts">
+                <Link href="/" className="btn btn-lg btn-primary max-md:w-full">
+                  Go home
+                </Link>
+              </div>
+            </section>
           </main>
         </Paper>
       </body>

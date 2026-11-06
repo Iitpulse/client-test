@@ -1,0 +1,60 @@
+/*
+ * Student-ResultPDF: the A4 result report (794 × 1123 px at 96 dpi), printed by the browser. Only the print route
+ * loads this file. On screen: the sheet on the paper with a small toolbar; in print: the sheet alone, A4 margins,
+ * page numbers in the bottom margin.
+ */
+@layer components {
+  .pdf-screen { min-height: 100dvh; padding: 24px 16px 48px; display: flex; flex-direction: column; align-items: center; gap: 16px }
+  .pdf-tools { width: 100%; max-width: 794px; display: flex; justify-content: space-between; gap: 10px }
+  .pdf-page {
+    width: 100%; max-width: 794px; min-height: 1123px; box-sizing: border-box; padding: 48px 56px 40px; display: flex; flex-direction: column; gap: 18px;
+    font-family: var(--font-sans), Arial, sans-serif; color: #0D0F2B; background: #fff; border: 1px solid var(--line); border-radius: 4px
+  }
+  .pdf-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 14px; border-bottom: 2px solid #00007E }
+  .pdf-k { font-size: 12px; color: #575C75 }
+  .pdf-h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: -.01em }
+  .pdf-h2 { font-size: 14px; font-weight: 650; margin: 0 }
+  .pdf-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px }
+  .pdf-stats .stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid #D3D6E2; border-radius: 8px }
+  .pdf-stats .k { font-size: 12px; color: #575C75 }
+  .pdf-stats .v { font-size: 22px; font-weight: 650; letter-spacing: -.01em; font-variant-numeric: tabular-nums }
+  .pdf-stats .v small { font-size: 13px; color: #575C75; font-weight: 500 }
+  .pdf-sum { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid #C3C6EF; border-radius: 8px; background: #F7F8FE }
+  .pdf-sum p { margin: 0; font-size: 13px; line-height: 1.5 }
+  .pdf-page .t { width: 100%; border-collapse: collapse; font-size: 12px }
+  .pdf-page .t th { text-align: left; font-weight: 600; color: #575C75; border-bottom: 1.5px solid #0D0F2B; padding: 5px 6px }
+  .pdf-page .t td { border-bottom: 1px solid #D3D6E2; padding: 5px 6px; vertical-align: top }
+  .pdf-page .t .r { text-align: right; font-variant-numeric: tabular-nums }
+  .pdf-page .t .m { font-family: var(--font-mono), monospace; font-size: 11.5px }
+  .pdf-page .pill { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; border: 1px solid }
+  .pdf-page .pill.ok { color: #0E7A3D; border-color: #7CC79A }
+  .pdf-page .pill.bad { color: #C40000; border-color: #E89A9A }
+  .pdf-page .pill.part { color: #8A4F00; border-color: #E0B66A }
+  .pdf-page .pill.skip { color: #575C75; border-color: #B8BCCB }
+  .pdf-foot { margin-top: auto; padding-top: 10px; border-top: 1px solid #D3D6E2; font-size: 12px; color: #575C75; display: flex; justify-content: space-between }
+  @media (width < 48rem) {
+    .pdf-screen { padding: 12px 0 32px }
+    .pdf-tools { padding: 0 16px }
+    .pdf-page { padding: 24px 16px; min-height: 0; border-left: 0; border-right: 0; border-radius: 0 }
+    .pdf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+    .pdf-page .t { font-size: 11px }
+    .pdf-page section:has(> .t) { overflow-x: auto }
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm 14mm 14mm;
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 9pt Arial, sans-serif; color: #575C75 }
+}
+@media print {
+  html, body { background: #fff !important }
+  [data-surface], .cl-paper { background: #fff !important }
+  .pdf-screen { padding: 0; min-height: 0; display: block }
+  .pdf-tools { display: none !important }
+  .pdf-page { max-width: none; min-height: 0; padding: 0; border: 0; border-radius: 0 }
+  .pdf-break { break-before: page }
+  .pdf-page .t tr { break-inside: avoid }
+  .pdf-head, .pdf-stats, .pdf-sum { break-inside: avoid }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact }
+}

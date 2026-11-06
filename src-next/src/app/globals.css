@@ -145,48 +145,221 @@
   }
 }
 
-/* ---------- Batch 5 state props: Home, Tests, Profile (Student-Home, -Tests, -Profile and Phone-*) ---------- */
+/* ---------- M6 page states (Kit-States, Student-TestGate, -Submitted, -ResultStates) ---------- */
 @layer components {
-  /* Offline strip: edge to edge under the phone header */
-  @media (width < 48rem) { .bnr-ph { border-radius: 0; border-width: 0 0 1px; font-size: 13px; line-height: 1.4; padding: 10px 16px } }
-  /* Home "many live": one row per live test on the blueboard */
-  .lrow { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, .08); position: relative }
-  @media (width < 48rem) { .lrow { gap: 10px; padding: 10px 12px } }
-  /* Home "Today's plan" rows (desktop card; phone AI card: 44px rows, done items struck through in blue ink) */
-  .plan-row { transition: background 160ms }
-  .plan-row:hover { background: rgba(225, 227, 248, .45) }
-  .hplan { gap: 12px; min-height: 44px; cursor: pointer }
-  .hplan .check { width: 22px; height: 22px }
-  .hplan .hplan-t { font-weight: 600; transition: color 160ms }
-  .hplan:has(.check:checked) .hplan-t { text-decoration: line-through; text-decoration-color: var(--cl-ink); text-decoration-thickness: 2px; color: var(--muted); font-weight: 400 }
-  /* Profile: field error line, top summary, city list group + state, disabled button, toast (Kit-Forms, Kit-Pickers, Kit-Feedback) */
-  .pf-err { display: flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 600; color: #C40000 }
-  .pf-sum { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; background: #FFF5F5; border: 1px solid #F2B1B1; color: #7A1010 }
-  .pf-sum > span:first-child { flex: none; margin-top: 2px }
-  .pf-sum a { color: #7A1010; text-decoration: underline }
-  @media (width < 48rem) { .pf-sum { padding: 12px } .pf-sum a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px } }
-  .pf-grp { padding: 8px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); list-style: none }
-  .pf-end { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap }
-  .au-li .pf-end + .tick { margin-left: 0 }
-  .pf-pop { top: calc(100% + 6px) }
-  .btn.pf-off, .btn.pf-off:disabled { background: #E1E3F8; color: var(--muted); border-color: transparent; cursor: not-allowed; opacity: 1 }
-  .pf-tst {
-    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 70; min-width: 260px; max-width: calc(100vw - 32px);
-    display: flex; align-items: center; gap: 12px; box-sizing: border-box; padding: 12px 12px 12px 14px;
-    background: #0D0F2B; color: #fff; border-radius: 12px; font-size: 13px
+  .st-ico { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex: none }
+  .st-ico.navy { background: var(--navy-50); color: var(--navy) }
+  .st-ico.red { background: #FFF0F0; color: #C40000 }
+  .st-ico.amber { background: #FFF4E2; color: #9A5800 }
+  .st-ico.grey { background: #EEF0F5; color: var(--muted) }
+  .st-ico.green { background: #E9F6EE; color: #0E7A3D }
+  @media (width < 48rem) { .st-ico { width: 44px; height: 44px } }
+
+  .st-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 56px 40px }
+  @media (width < 48rem) { .st-card { padding: 28px 18px; gap: 10px } }
+  .st-acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 4px }
+  @media (width < 48rem) { .st-acts { flex-direction: column; align-self: stretch } }
+
+  /* Offline / stale banner: a strip over the page, never instead of it */
+  .bnr { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; font-size: 14px; line-height: 1.45 }
+  .bnr svg { flex: none }
+  .bnr.warn { background: #FFF4E2; color: #5C3600; border: 1px solid #F1D29A }
+
+  /* Notes inside cards */
+  .nt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45 }
+  .nt svg { flex: none; margin-top: 2px }
+  .nt.info { background: #E8F1FD; border: 1px solid #BBD5F5; color: #0D2E57 }
+  .nt.warn { background: #FFF4E2; border: 1px solid #F1D29A; color: #5C3600 }
+  .nt.err { background: #FFF0F0; border: 1px solid #F2B1B1; color: #7A1010 }
+  .nt.grey { background: #F5F6FA; border: 1px solid var(--line); color: #2B2F4A }
+
+  .facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 16px; margin: 0; text-align: left }
+  .facts dt { font-size: 13px; color: var(--muted) }
+  .facts dd { margin: 0; font-size: 14px; font-weight: 550; color: var(--ink) }
+}
+
+/* ---------- Kit-Overlays: dialog on desktop, bottom sheet on phones ---------- */
+@layer components {
+  .sheet-scrim { position: fixed; inset: 0; z-index: 80; background: rgba(13, 15, 43, .32) }
+  .sheet {
+    position: fixed; z-index: 81; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); display: flex; flex-direction: column;
+    background: #fff; border: 1px solid var(--line); border-radius: 16px; overflow: hidden
   }
-  .pf-tst > svg { flex: none }
-  .pf-tst .msg { flex: 1; min-width: 0 }
-  .pf-tst .msg b { font-weight: 600 }
-  .pf-tst .act { background: none; border: 0; padding: 0 6px; min-height: 32px; font: 600 13px var(--font-sans, inherit); color: #fff; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, .45); white-space: nowrap; flex: none }
-  .pf-tst .cls { width: 32px; height: 32px; border: 0; padding: 0; background: none; border-radius: 8px; color: #A9ACDF; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex: none }
-  .pf-tst .cls:hover { background: rgba(255, 255, 255, .1); color: #fff }
-  .pf-tst.err { background: #3A0A0A }
+  .sheet-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 8px }
+  .sheet-x { width: 36px; height: 36px; margin: -6px -8px 0 0; flex: none }
+  .sheet-bd { padding: 8px 20px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px }
+  .sheet-ft { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--line) }
+  .sheet-grab { display: block; width: 36px; height: 4px; border-radius: 999px; background: #C3C6CF; margin: 8px auto 0 }
   @media (width < 48rem) {
-    .pf-tst { left: 16px; right: 16px; transform: none; min-width: 0; max-width: none; gap: 8px; padding: 4px 4px 4px 14px; min-height: 52px; bottom: calc(24px + env(safe-area-inset-bottom)) }
-    .pf-tst .act { min-height: 44px; padding: 0 8px }
-    .pf-tst .cls { width: 44px; height: 44px }
+    .sheet {
+      left: 0; right: 0; top: auto; bottom: 0; transform: none; width: 100%; max-height: 92dvh;
+      border-radius: 16px 16px 0 0; border-bottom: 0; padding-bottom: env(safe-area-inset-bottom)
+    }
+    .sheet.sheet-full { height: 100dvh; max-height: 100dvh; border-radius: 0 }
+    .sheet-hd { padding: 12px 16px 6px }
+    .sheet-x { width: 44px; height: 44px }
+    .sheet-bd { padding: 6px 16px 16px; flex: 1 }
+    .sheet-ft { flex-direction: column-reverse; padding: 12px 16px; position: sticky; bottom: 0; background: #fff }
+    .sheet-ft .btn { width: 100%; min-height: 44px }
   }
+}
+
+/* ---------- M6 one-card screens: Student-TestGate, Student-Submitted, sign-in link problems ---------- */
+@layer components {
+  .gate-page { min-height: 100dvh; display: flex; flex-direction: column }
+  .gate-top {
+    height: 64px; flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 24px;
+    background: rgba(255, 255, 255, .9); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: var(--z-topbar);
+    backdrop-filter: blur(12px)
+  }
+  .gate-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; gap: 14px }
+  .gate { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 20px; display: flex; flex-direction: column; gap: 18px; padding: 32px; width: 100%; max-width: 560px; box-sizing: border-box }
+  .gate-head { display: flex; gap: 14px; align-items: flex-start }
+  .gate.has-stamp .gate-head { padding-right: 180px }
+  .gate-stamp { position: absolute; top: 26px; right: 26px; white-space: nowrap }
+  .gate-acts { display: flex; gap: 10px; flex-wrap: wrap }
+  .gate-acts .btn.off, .gate-acts .btn[aria-disabled="true"] { background: #E1E3F8; color: var(--muted); border-color: transparent; cursor: not-allowed }
+  .gate-checks { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none }
+  .chk { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.4 }
+  .chk .dot { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; color: #fff }
+  .chk .dot.ok { background: #0E7A3D } .chk .dot.no { background: #C40000 } .chk .dot.warn { background: #9A5800 }
+  .cd { display: flex; gap: 8px }
+  .cd > div { display: flex; flex-direction: column; align-items: center; min-width: 64px; padding: 10px 6px; border-radius: 12px; background: var(--navy-50) }
+  .cd .v { font: 600 26px/1.1 var(--font-mono); color: var(--navy) }
+  .cd .l { font-size: 11px; color: var(--muted) }
+  .gate-404 { width: 100%; max-width: 560px }
+  /* Student-Submitted: the submit steps, the result-date box */
+  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px }
+  .steps li { display: flex; align-items: center; gap: 12px; font-size: 15px }
+  .steps .sd { width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box }
+  .steps .sd.done { background: #0E7A3D; color: #fff }
+  .steps .sd.active { border: 2px solid #E1E3F8 }
+  .steps .sd.wait { border: 2px solid var(--line) }
+  .steps .spin { width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--navy); border-right-color: transparent; animation: gate-spin .8s linear infinite }
+  @keyframes gate-spin { to { transform: rotate(360deg) } }
+  @media (prefers-reduced-motion: reduce) { .steps .spin { animation: none } }
+  .res { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid #E1E3F8; background: var(--navy-50) }
+  .res.ok { background: #E9F6EE; border-color: #BFE3CC }
+  .tstrip { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #F5F6FA; border: 1px solid #EEF0F5 }
+  .gate-banner { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; line-height: 1.4; background: #FFF4E2; color: #5C3600; border-bottom: 1px solid #F1D29A; flex: none }
+  .gate-banner svg { flex: none }
+  @media (width < 48rem) {
+    .gate-top { height: 60px; padding: 0 16px }
+    .gate-main { justify-content: flex-start; padding: 16px }
+    .gate { border-radius: 16px; padding: 22px 18px; gap: 16px }
+    .gate-head { flex-direction: column; gap: 16px }
+    .gate.has-stamp .gate-head { padding-right: 0 }
+    .gate-stamp { position: static; align-self: flex-start; --rot: -6deg !important }
+    .gate-h { font-size: 22px }
+    .gate-body { font-size: 14px }
+    .gate-acts { flex-direction: column }
+    .gate-acts .btn { width: 100% }
+    .cd > div { min-width: 0; flex: 1 }
+    .cd .v { font-size: 22px }
+  }
+}
+
+/* ---------- Sign-up, sign-in errors, test key, "Complete your profile" (Student-Signup, Student-Login, Student-SignInLink) ---------- */
+@layer components {
+  .input.e, .au-affix.e, .au-cb.e { border-color: #C40000; box-shadow: 0 0 0 4px #FFF0F0 }
+  .au-e { box-shadow: 0 0 0 4px #FFF0F0 }
+  .au-err { display: flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; color: #C40000 }
+  .au-err svg, .au-ok svg { flex: none }
+  .au-ok { display: flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; color: #0E7A3D }
+  .au-msg { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere }
+  .au-msg svg { flex: none; margin-top: 2px }
+  .au-msg.ok { background: #E9F6EE; border: 1px solid #BFE3CC; color: #0B5E2F }
+  /* Student-Login form-level boxes: error summary, server/offline, info */
+  .au-box { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px }
+  .au-box > svg { flex: none; margin-top: 2px }
+  .au-box.sum { background: #FFF5F5; border: 1px solid #F2B1B1; color: #7A1010 }
+  .au-box.srv { background: #FFF4E2; border: 1px solid #F1D29A; color: #5C3600 }
+  .au-box.inf { background: #F1F2FC; border: 1px solid #C3C6EF; color: #0D0F2B }
+  .au-inl { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; min-height: 32px; display: inline-flex; align-items: center; align-self: flex-start }
+  .au-btn-off, .au-btn-off:disabled { width: 100%; background: #E1E3F8 !important; color: var(--muted) !important; border-color: transparent !important; cursor: not-allowed }
+  /* steps (sign-up 1-2-3, wizard 1-2-3) */
+  .au-steps { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; list-style: none }
+  .au-st { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap }
+  .au-st .n { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font: 600 12px var(--mono); border: 1.5px solid #C3C6CF; color: var(--muted); background: #fff; flex: none }
+  .au-st.done .n { background: var(--navy); border-color: var(--navy); color: #fff }
+  .au-st.cur { color: var(--ink) }
+  .au-st.cur .n { border-color: var(--navy); color: var(--navy); box-shadow: 0 0 0 4px var(--navy-100) }
+  button.au-st { border: 0; background: none; padding: 0; font-family: inherit; cursor: pointer; min-height: 32px }
+  .au-line { flex: 1; height: 2px; border-radius: 1px; background: var(--line); min-width: 16px }
+  .au-line.done { background: var(--navy) }
+  /* affix group: +91, Show */
+  .au-affix { display: flex; align-items: stretch; height: 44px; border: 1px solid var(--line); border-radius: 10px; background: #fff; overflow: hidden; font-size: 15px; transition: border-color var(--t), box-shadow var(--t) }
+  .au-affix:focus-within { border-color: var(--navy); box-shadow: 0 0 0 4px var(--navy-100) }
+  .au-affix .pre { display: flex; align-items: center; padding: 0 12px; background: #F5F6FA; color: var(--muted); font-weight: 600; border-right: 1px solid var(--line); flex: none }
+  .au-affix input { border: 0; outline: 0; flex: 1; min-width: 0; padding: 0 12px; font: inherit; background: none; color: var(--ink); font-variant-numeric: tabular-nums }
+  .au-affix .sb { border: 0; border-left: 1px solid var(--line); background: #F5F6FA; color: var(--ink-2); font-family: inherit; font-size: 13px; font-weight: 600; padding: 0 12px; cursor: pointer; min-width: 56px }
+  .au-affix .sb:focus-visible { outline: 3px solid var(--navy-200); outline-offset: -3px }
+  /* 6-digit code */
+  .au-otp { width: 48px; height: 56px; border: 1px solid var(--line); border-radius: 10px; text-align: center; font: 600 22px var(--mono); color: var(--ink); background: #fff; padding: 0; min-width: 0 }
+  .au-otp:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px var(--navy-100) }
+  .au-otp.e { border-color: #C40000; box-shadow: 0 0 0 3px #FFF0F0 }
+  /* combobox trigger (Kit-Pickers, 44px) */
+  .au-cb { display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 10px 0 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; font: inherit; font-size: 15px; color: var(--ink); text-align: left; cursor: pointer; box-sizing: border-box }
+  .au-cb:hover { border-color: #CDD0DE }
+  .au-cb:focus-visible { outline: 3px solid var(--navy-200); outline-offset: 2px }
+  .au-cb .v { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+  .au-cb .ph { color: #6B7089 }
+  .au-cb > svg { flex: none; color: var(--muted) }
+  .au-cb.open { border-color: var(--navy); box-shadow: 0 0 0 4px var(--navy-100) }
+  .au-cb input { border: 0; outline: 0; flex: 1; min-width: 0; font: inherit; background: none; color: inherit; padding: 0 }
+  .au-pop { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 90; background: #fff; border: 1px solid #D3D6E2; border-radius: 12px; padding: 6px; display: flex; flex-direction: column; gap: 6px; min-width: 220px }
+  .au-list { display: flex; flex-direction: column; gap: 1px; max-height: 352px; overflow-y: auto; margin: 0; padding: 0; list-style: none }
+  .au-li { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 8px; font-size: 15px; color: var(--ink-2); cursor: pointer; border: 0; background: none; font-family: inherit; text-align: left; width: 100% }
+  .au-li b { font-weight: 700; color: var(--ink) }
+  .au-li.focus, .au-li:hover { background: var(--navy-50); color: var(--ink) }
+  .au-li .tick { margin-left: auto; color: var(--navy); flex: none }
+  .au-li.none { cursor: default; color: var(--muted) }
+  @media (width < 48rem) { .au-li { min-height: 48px } }
+  /* password meter */
+  .au-meter { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px }
+  .au-meter i { height: 6px; border-radius: 3px; background: var(--line); transition: background var(--t) }
+  /* segmented 44 (wizard) */
+  .au-seg { display: flex; width: 100% }
+  .au-seg .tab { height: 40px; font-size: 14px; flex: 1; justify-content: center; padding: 0 6px; min-width: 0 }
+  .au-promo { text-transform: uppercase; letter-spacing: .2em; font-family: var(--mono); font-weight: 600 }
+  .au-keyin { font-family: var(--mono); font-size: 18px; letter-spacing: .18em; text-transform: uppercase }
+  .au-keyin::placeholder { letter-spacing: .18em }
+  .au-g2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px }
+  .au-dob { display: grid; grid-template-columns: 80px minmax(0, 1fr) 100px; gap: 8px }
+  /* SignInLink problem cards: 52px tinted tile */
+  .au-ico { width: 52px; height: 52px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; flex: none }
+  .au-ico.amber { background: #FFF4E2; color: #9A5800 }
+  .au-ico.grey { background: #EEF0F5; color: var(--muted) }
+  .au-acts { display: flex; flex-wrap: wrap; gap: 10px }
+  .au-acts .btn { min-height: 44px }
+  /* Student-Signup: welcome blueboard + card; phone: card only */
+  .su-page { display: flex; flex-wrap: wrap; min-height: 100dvh }
+  .su-board { flex: 1 1 520px; min-height: 100dvh; color: #fff; padding: 48px 56px; display: flex; flex-direction: column; justify-content: space-between }
+  .su-main { flex: 1 1 480px; display: flex; align-items: center; justify-content: center; padding: 40px 20px }
+  .su-card { width: 100%; max-width: 440px; gap: 20px; padding: 32px; position: relative }
+  /* "Complete your profile": dialog over Home; phone: bottom sheet */
+  .wiz-scrim { position: fixed; inset: 0; z-index: 80; background: rgba(13, 15, 43, .4) }
+  .wiz { position: fixed; z-index: 81; left: 50%; top: 64px; transform: translateX(-50%); width: calc(100% - 32px); max-width: 560px; box-sizing: border-box; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 18px }
+  .wiz:focus { outline: none }
+  @media (width < 48rem) {
+    .su-board { display: none }
+    .su-main { padding: 16px; align-items: flex-start }
+    .su-card { padding: 24px 18px; border-radius: 16px }
+    .au-st .stlabel { display: none }
+    .au-otp { width: auto; flex: 1 1 0; max-width: 48px; height: 52px }
+    .au-g2 { grid-template-columns: minmax(0, 1fr) }
+    .au-acts { flex-direction: column; align-items: stretch }
+    .au-acts .btn { width: 100% }
+    .wiz { left: 0; right: 0; top: auto; bottom: 0; transform: none; width: 100%; max-width: none; max-height: 92dvh; overflow-y: auto; border-radius: 20px 20px 0 0; padding: 20px 18px calc(24px + env(safe-area-inset-bottom)) }
+  }
+}
+
+/* ---------- M6 Student-ResultStates: key corrected note, the old score struck through ---------- */
+@layer components {
+  .kc { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: var(--navy-50); border: 1px solid #C3C6EF; font-size: 14px; line-height: 1.5 }
+  .kc > svg { flex: none; margin-top: 3px }
+  .was { font-size: 13px; color: var(--muted); text-decoration: line-through; text-decoration-color: #C40000; text-decoration-thickness: 2px }
 }
 
 /* ── M6 Student-Review / Phone-Review (review-parts.tsx, review-pane.tsx, review-view.tsx) ── */
@@ -231,5 +404,49 @@
     .ansrow { grid-template-columns: minmax(0, 1fr) }
     .rv-mc { width: 40px; height: 34px }
     .kc-note { font-size: 13px }
+  }
+}
+
+/* ---------- Batch 5 state props: Home, Tests, Profile (Student-Home, -Tests, -Profile and Phone-*) ---------- */
+@layer components {
+  /* Offline strip: edge to edge under the phone header */
+  @media (width < 48rem) { .bnr-ph { border-radius: 0; border-width: 0 0 1px; font-size: 13px; line-height: 1.4; padding: 10px 16px } }
+  /* Home "many live": one row per live test on the blueboard */
+  .lrow { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, .08); position: relative }
+  @media (width < 48rem) { .lrow { gap: 10px; padding: 10px 12px } }
+  /* Home "Today's plan" rows (desktop card; phone AI card: 44px rows, done items struck through in blue ink) */
+  .plan-row { transition: background 160ms }
+  .plan-row:hover { background: rgba(225, 227, 248, .45) }
+  .hplan { gap: 12px; min-height: 44px; cursor: pointer }
+  .hplan .check { width: 22px; height: 22px }
+  .hplan .hplan-t { font-weight: 600; transition: color 160ms }
+  .hplan:has(.check:checked) .hplan-t { text-decoration: line-through; text-decoration-color: var(--cl-ink); text-decoration-thickness: 2px; color: var(--muted); font-weight: 400 }
+  /* Profile: field error line, top summary, city list group + state, disabled button, toast (Kit-Forms, Kit-Pickers, Kit-Feedback) */
+  .pf-err { display: flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 600; color: #C40000 }
+  .pf-sum { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; background: #FFF5F5; border: 1px solid #F2B1B1; color: #7A1010 }
+  .pf-sum > span:first-child { flex: none; margin-top: 2px }
+  .pf-sum a { color: #7A1010; text-decoration: underline }
+  @media (width < 48rem) { .pf-sum { padding: 12px } .pf-sum a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px } }
+  .pf-grp { padding: 8px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); list-style: none }
+  .pf-end { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap }
+  .au-li .pf-end + .tick { margin-left: 0 }
+  .pf-pop { top: calc(100% + 6px) }
+  .btn.pf-off, .btn.pf-off:disabled { background: #E1E3F8; color: var(--muted); border-color: transparent; cursor: not-allowed; opacity: 1 }
+  .pf-tst {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 70; min-width: 260px; max-width: calc(100vw - 32px);
+    display: flex; align-items: center; gap: 12px; box-sizing: border-box; padding: 12px 12px 12px 14px;
+    background: #0D0F2B; color: #fff; border-radius: 12px; font-size: 13px
+  }
+  .pf-tst > svg { flex: none }
+  .pf-tst .msg { flex: 1; min-width: 0 }
+  .pf-tst .msg b { font-weight: 600 }
+  .pf-tst .act { background: none; border: 0; padding: 0 6px; min-height: 32px; font: 600 13px var(--font-sans, inherit); color: #fff; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, .45); white-space: nowrap; flex: none }
+  .pf-tst .cls { width: 32px; height: 32px; border: 0; padding: 0; background: none; border-radius: 8px; color: #A9ACDF; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex: none }
+  .pf-tst .cls:hover { background: rgba(255, 255, 255, .1); color: #fff }
+  .pf-tst.err { background: #3A0A0A }
+  @media (width < 48rem) {
+    .pf-tst { left: 16px; right: 16px; transform: none; min-width: 0; max-width: none; gap: 8px; padding: 4px 4px 4px 14px; min-height: 52px; bottom: calc(24px + env(safe-area-inset-bottom)) }
+    .pf-tst .act { min-height: 44px; padding: 0 8px }
+    .pf-tst .cls { width: 44px; height: 44px }
   }
 }

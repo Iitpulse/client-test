@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { m4Api, m4Keys, useProfile } from "@/lib/m4-api";
 import type { StudentProfile } from "@/types/m4";
@@ -10,16 +9,22 @@ import { AiMark, Doodle, InkArrow, InkUnderline, Note, Stamp, Sticker, useCountU
 import { qk, StudentApiError, studentApi } from "@/lib/student-api";
 import { countdownParts, dayMonth, dowDayMonth, dowDayMonthTime, minutes, relativeDayTime } from "@/lib/time";
 import { useServerClock } from "@/lib/server-clock";
-import { useAuthStore } from "@/stores/auth.store";
 import type { PublishedResult, SectionResult, StudentResult } from "@/types/m2-student";
 import { ArrowLeftIcon, ArrowRightIcon } from "@/components/shell/icons";
 import { Delta } from "./bits";
-import { ErrorCard, Skel, useStartTest } from "./common";
+import { Skel } from "./common";
 import { ChevronLeftIcon, HourglassRing, LockIcon } from "./icons";
 import { num, sentence, signed, underlineSplit } from "./labels";
 import { LeaksCard, MarksWentCard, useSummaryState, type SummaryState } from "./ai-review";
 import { ReviewPane } from "./review-pane";
 import { Ring } from "./ring";
+import { correctionSummary, DownloadPdf, KeyCorrectedNote, ResultBlank } from "./result-states";
+import { fixtureParam } from "@/lib/fixtures";
+import type { StudentResultExtras } from "@/types/m6-student";
+import { resultFixture, summaryFixture } from "./result-fixtures";
+
+/** The result with the M6 extras (absent on a pre-M6 server) */
+type ResultM6 = StudentResult & Partial<StudentResultExtras>;
 
 /**
  * /results/[testId]: Student-Result and Phone-Result when published, Student-ResultPending (phone: the same,
@@ -32,26 +37,22 @@ import { Ring } from "./ring";
  * and "Continue your study plan".
  */
 export function ResultView({ testId }: { testId: string }) {
-  const router = useRouter();
-  const setTestId = useAuthStore((s) => s.setTestId);
-  const query = useQuery({ queryKey: qk.result(testId), queryFn: ({ signal }) => studentApi.result(testId, signal) });
-  const data = query.data;
+  // ?fixture=key-corrected|rank-pending|summary-*|score-hidden|not-submitted-*|not-found (dev and staging only)
+  const [fixture] = useState(() => (typeof window === "undefined" ? null : fixtureParam()));
+  const query = useQuery({
+    queryKey: fixture ? ["fixture", "result", fixture] : qk.result(testId),
+    queryFn: ({ signal }) => (fixture ? resultFixture(fixture) : studentApi.result(testId, signal)),
+    retry: fixture ? false : undefined,
+  });
+  const data = query.data as ResultM6 | undefined;
   const now = useServerClock(data?.now, query.dataUpdatedAt);
 
-  // The submit never landed but the attempt is still running: back into the exam (the server auto-submits on time).
-  const err = query.error instanceof StudentApiError ? query.error : null;
-  const resume = err?.code === "NO_SUBMISSION" && err.details?.state === "in_progress";
-  useEffect(() => {
-    if (!resume) return;
-    setTestId(testId);
-    router.replace("/instructions");
-  }, [resume, router, setTestId, testId]);
-
   if (!data) {
-    if (query.isError && !resume) return <ResultProblem error={query.error} testId={testId} onRetry={() => query.refetch()} />;
+    // Student-ResultStates blanks: score not shared, not submitted (in progress / upcoming / missed), not found
+    if (query.isError) return <ResultBlank error={query.error} testId={testId} onRetry={() => query.refetch()} />;
     return <ResultSkeleton />;
   }
-  if (data.visibility.status === "published" && data.result) return <Published data={data} result={data.result} now={now} />;
+  if (data.visibility.status === "published" && data.result) return <Published data={data} result={data.result} now={now} fixture={fixture} />;
   return <Pending data={data} now={now} />;
 }
 
@@ -64,14 +65,15 @@ function BackToTests({ className }: { className?: string }) {
   );
 }
 
-/** Phone-Result's header: back, the test name, nothing else (Download PDF is not in M2). */
-function PhoneBar({ title }: { title: string }) {
+/** Phone-Result's header: back, the test name, and (M6, Student-ResultStates) Download PDF. */
+function PhoneBar({ title, pdfTestId }: { title: string; pdfTestId?: string }) {
   return (
     <header className="sticky top-0 z-(--z-topbar) row h-14 gap-1.5 border-b border-line bg-white/90 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-md box-content md:hidden">
       <Link href="/tests?tab=completed" className="btn btn-ghost btn-icon size-11" aria-label="Back to tests">
         <ChevronLeftIcon />
       </Link>
       <h1 className="h3 grow truncate">{title}</h1>
+      {pdfTestId && <DownloadPdf testId={pdfTestId} icon />}
     </header>
   );
 }
@@ -230,8 +232,9 @@ function ordinal(n: number) {
   return n % 10 === 1 ? "st" : n % 10 === 2 ? "nd" : n % 10 === 3 ? "rd" : "th";
 }
 
-function Published({ data, result, now }: { data: StudentResult; result: PublishedResult; now: number }) {
-  const ai = useSummaryState(data);
+function Published({ data, result, now, fixture }: { data: ResultM6; result: PublishedResult; now: number; fixture?: string | null }) {
+  const live = useSummaryState(fixture ? { ...data, review: { ...data.review, available: false, availableAt: null } } : data);
+  const ai = (fixture && summaryFixture(fixture, () => {})) || live;
   return (
     <>
       <PublishedDesktop data={data} r={result} now={now} ai={ai} />
@@ -240,7 +243,8 @@ function Published({ data, result, now }: { data: StudentResult; result: Publish
   );
 }
 
-function PublishedDesktop({ data, r, now, ai }: { data: StudentResult; r: PublishedResult; now: number; ai: SummaryState }) {
+function PublishedDesktop({ data, r, now, ai }: { data: ResultM6; r: PublishedResult; now: number; ai: SummaryState }) {
+  const kc = correctionSummary(data.keyCorrections ?? []);
   const score = useCountUp(r.score, { delay: 200, decimals: Number.isInteger(r.score) ? 0 : 2 });
   const published = data.visibility.publishedAt;
   // The pane's selected question (paper n), so a leak's "Review Q…" can open it.
@@ -258,14 +262,21 @@ function PublishedDesktop({ data, r, now, ai }: { data: StudentResult; r: Publis
       <Doodle name="incline" slot="gr" style={{ top: 1040 }} />
       <header className="col gap-1.5">
         <BackToTests />
-        <h1 className="h1 mb-1">
-          <Title name={data.test.name} />
-        </h1>
-        <span className="sm muted">
-          Taken {dowDayMonth(data.submission.submittedAt)}
-          {published ? ` · Result published ${dowDayMonth(published)}` : ""}
-        </span>
+        <div className="row between wrap gap-4">
+          <div className="col gap-1.5">
+            <h1 className="h1 mb-1">
+              <Title name={data.test.name} />
+            </h1>
+            <span className="sm muted">
+              Taken {dowDayMonth(data.submission.submittedAt)}
+              {published ? ` · Result published ${dowDayMonth(published)}` : ""}
+              {kc && data.updatedAt ? ` · updated ${dowDayMonth(data.updatedAt)}` : ""}
+            </span>
+          </div>
+          <DownloadPdf testId={data.test.id} />
+        </div>
       </header>
+      {kc && <KeyCorrectedNote notes={data.keyCorrections ?? []} testId={data.test.id} />}
 
       <section className="grid grid-cols-4 gap-5 max-lg:grid-cols-2">
         <article className="card pad-lg row rise relative col-span-2 gap-6">
@@ -284,6 +295,11 @@ function PublishedDesktop({ data, r, now, ai }: { data: StudentResult; r: Publis
             <span className="num" style={{ fontSize: 56, fontWeight: 650, letterSpacing: "-.035em", lineHeight: 1 }}>
               {num(score)}
               <span className="text-[22px] text-muted">/{num(r.maxScore)}</span>
+              {kc && kc.score.before !== r.score && (
+                <span className="was num ml-2.5" aria-label={`was ${kc.score.before}`}>
+                  {num(kc.score.before)}
+                </span>
+              )}
             </span>
             <div className="row wrap gap-2">
               {r.delta && <Delta delta={r.delta} against={data.test.name} />}
@@ -300,6 +316,14 @@ function PublishedDesktop({ data, r, now, ai }: { data: StudentResult; r: Publis
                 <span className="text-base text-muted"> of {r.rank.of}</span>
               </span>
               <span className="xs muted">{rankLine(r)}</span>
+            </>
+          ) : data.rankPending ? (
+            <>
+              <span className="h3 mt-1">After the test closes</span>
+              <span className="xs muted">
+                {sentence(relativeDayTime(now, data.rankPending.availableAt).replace(/^(today|tomorrow), /, "$1 at "))}, when everyone has finished.{" "}
+                {data.rankPending.assigned ? `${data.rankPending.submittedSoFar} of ${data.rankPending.assigned}` : data.rankPending.submittedSoFar} have submitted so far.
+              </span>
             </>
           ) : (
             <>
@@ -373,7 +397,8 @@ function SectionCards({ sections }: { sections: SectionResult[] }) {
   );
 }
 
-function PublishedPhone({ data, r, now, ai }: { data: StudentResult; r: PublishedResult; now: number; ai: SummaryState }) {
+function PublishedPhone({ data, r, now, ai }: { data: ResultM6; r: PublishedResult; now: number; ai: SummaryState }) {
+  const kc = correctionSummary(data.keyCorrections ?? []);
   const score = useCountUp(r.score, { delay: 150, decimals: Number.isInteger(r.score) ? 0 : 2 });
   const published = data.visibility.publishedAt;
   const toReview = r.questions.filter((q) => q.outcome !== "correct");
@@ -385,8 +410,9 @@ function PublishedPhone({ data, r, now, ai }: { data: StudentResult; r: Publishe
 
   return (
     <div className="col md:hidden">
-      <PhoneBar title={data.test.name} />
+      <PhoneBar title={data.test.name} pdfTestId={data.test.id} />
       <div className="col gap-3.5 p-4 pb-[calc(24px+env(safe-area-inset-bottom))]">
+        {kc && <KeyCorrectedNote notes={data.keyCorrections ?? []} testId={data.test.id} compact />}
         <section className="hero cl-board col pop items-center gap-3.5 rounded-[20px] p-[22px] text-center">
           <span className="cl-smudge" aria-hidden="true" style={{ left: -110, top: 120, width: 300, height: 100 }} />
           {published && (
@@ -404,7 +430,13 @@ function PublishedPhone({ data, r, now, ai }: { data: StudentResult; r: Publishe
           </Ring>
           <div className="row wrap justify-center gap-2">
             <span className="badge" style={{ background: "rgba(255,255,255,.14)", color: "#fff" }}>
-              {r.rank ? `Rank ${r.rank.position} of ${r.rank.of}` : r.rankAvailableAt ? `Rank ${relativeDayTime(now, r.rankAvailableAt)}` : "Rank soon"}
+              {r.rank
+                ? `Rank ${r.rank.position} of ${r.rank.of}`
+                : data.rankPending
+                  ? `Rank after ${relativeDayTime(now, data.rankPending.availableAt).replace(/^today, /, "")}`
+                  : r.rankAvailableAt
+                    ? `Rank ${relativeDayTime(now, r.rankAvailableAt)}`
+                    : "Rank soon"}
             </span>
             {r.delta && (
               <span className="badge" style={r.delta.marks >= 0 ? { background: "rgba(110,231,160,.18)", color: "#BDF5D3" } : { background: "rgba(253,0,1,.18)", color: "#FFD1D1" }}>
@@ -576,49 +608,6 @@ function Pending({ data, now }: { data: StudentResult; now: number }) {
 // ---------------------------------------------------------------------------------------------
 // Errors and loading
 // ---------------------------------------------------------------------------------------------
-
-function ResultProblem({ error, testId, onRetry }: { error: unknown; testId: string; onRetry: () => void }) {
-  const start = useStartTest();
-  const e = error instanceof StudentApiError ? error : null;
-  let title = "";
-  let body: React.ReactNode = null;
-  if (e?.code === "TEST_NOT_FOUND") {
-    title = "We couldn't find this test";
-    body = "It may have been removed, or it isn't assigned to your batch.";
-  } else if (e?.code === "NO_SUBMISSION") {
-    const state = e.details?.state;
-    if (state === "live") {
-      title = "You haven't taken this test yet";
-      body = (
-        <button type="button" className="btn btn-primary self-start" onClick={() => start(testId)}>
-          Start test
-          <ArrowRightIcon className="arrow" />
-        </button>
-      );
-    } else if (state === "upcoming") {
-      title = "This test hasn't opened yet";
-      body = "Its result shows here after you take it.";
-    } else if (state === "in_progress") {
-      title = "Opening your test…";
-    } else {
-      title = "You didn't take this test";
-      body = "It closed before a submission was made, so there is no result.";
-    }
-  }
-  return (
-    <div className="col gap-6 max-md:p-4">
-      <BackToTests />
-      {title ? (
-        <div className="card col items-start gap-3 p-6">
-          <span className="h3">{title}</span>
-          {typeof body === "string" ? <span className="sm muted">{body}</span> : body}
-        </div>
-      ) : (
-        <ErrorCard error={error} onRetry={onRetry} />
-      )}
-    </div>
-  );
-}
 
 function ResultSkeleton() {
   return (

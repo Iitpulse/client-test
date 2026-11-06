@@ -25,7 +25,17 @@ export type StudentErrorCode =
   | M4ErrorCode
   // listed under "Changes" in api-ai docs/m4-api.md, not yet in the copied types
   | "ITEM_NOT_FOUND"
-  | "TOO_MANY_ATTEMPTS";
+  | "TOO_MANY_ATTEMPTS"
+  // M6 batches 4/5 (api-ai docs/m6-api.md M6B45ErrorCode)
+  | "RESULT_HIDDEN"
+  | "NO_SUBMISSION"
+  | "TEST_NOT_FOUND"
+  | "NOT_ASSIGNED"
+  | "TEST_NOT_OPEN"
+  | "TEST_CLOSED"
+  | "ALREADY_SUBMITTED"
+  | "SUBMIT_TOO_LATE"
+  | "INTERNAL";
 
 export const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
 

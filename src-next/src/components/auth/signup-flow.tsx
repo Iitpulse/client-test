@@ -626,7 +626,17 @@ export function SignupFlow() {
                     aria-invalid={!!errors.terms || undefined}
                     aria-describedby={errors.terms ? "su-terms-e" : undefined}
                   />
-                  <span>I agree to the terms and privacy policy.</span>
+                  <span>
+                    I have read and agree to the{" "}
+                    <a href="/terms" target="_blank" rel="noopener">
+                      Terms of Use
+                    </a>{" "}
+                    and the{" "}
+                    <a href="/privacy" target="_blank" rel="noopener">
+                      Privacy Policy
+                    </a>
+                    .
+                  </span>
                 </label>
                 {errors.terms && <ErrText id="su-terms-e">{errors.terms}</ErrText>}
               </div>

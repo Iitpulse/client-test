@@ -13,6 +13,8 @@ import { StudentApiError } from "@/lib/student-api";
 import { useProfile } from "@/lib/m4-api";
 import { cn } from "@/lib/utils";
 import type { OnboardingFields, OnboardingResponse, OnboardingSaveRequest } from "@/types/m6-auth";
+import { GuardianEmailField, guardianEmailOk } from "@/components/student/guardian-consent";
+import { batch7Api, b7Keys } from "@/lib/batch7-api";
 import { onboardingApi } from "./onboarding-api";
 import { Picker } from "./picker";
 
@@ -63,6 +65,9 @@ export function OnboardingWizard({ studentId, data, onClose }: { studentId: stri
     state: data.values.state ?? onlyOne(options.states),
   }));
   const [errors, setErrors] = useState<Errors>({});
+  // Batch 7: under 18, the Parent step also asks for a parent or guardian's email (optional, never blocks)
+  const [gEmail, setGEmail] = useState("");
+  const [gErr, setGErr] = useState<string | undefined>();
   const [busy, setBusy] = useState<"next" | "skip" | null>(null);
   const set = <K extends keyof OnboardingFields>(k: K, val: OnboardingFields[K]) => {
     setV((s) => ({ ...s, [k]: val }));
@@ -85,10 +90,25 @@ export function OnboardingWizard({ studentId, data, onClose }: { studentId: stri
       setErrors(local);
       return;
     }
+    if (step === 3 && !guardianEmailOk(gEmail)) {
+      setGErr("Enter an email address like name@example.com.");
+      return;
+    }
     setBusy("next");
     setErrors({});
+    setGErr(undefined);
     try {
       await onboardingApi.save(studentId, bodyFor(step));
+      if (step === 3 && gEmail.trim()) {
+        try {
+          const st = await batch7Api.consentRequest({ guardianEmail: gEmail.trim(), guardianName: v.parentName?.trim() || null });
+          qc.setQueryData(b7Keys.consent, st);
+        } catch (e) {
+          const f = (e instanceof StudentApiError ? (e.details?.fields ?? {}) : {}) as Record<string, { code?: string }>;
+          setGErr(f.guardianEmail?.code === "SAME_AS_STUDENT" ? "Use your parent's or guardian's own email, not yours." : "Couldn't email them. Check the address, or skip and do it later from Profile.");
+          return;
+        }
+      }
       if (step < 3) setStep((step + 1) as 2 | 3);
       else {
         qc.invalidateQueries({ queryKey: ["student"] });
@@ -230,6 +250,7 @@ export function OnboardingWizard({ studentId, data, onClose }: { studentId: stri
                   Used only by your institute, for results and fee reminders.
                 </span>
               </div>
+              <GuardianEmailField value={gEmail} onChange={(x) => { setGEmail(x); setGErr(undefined); }} error={gErr} />
             </div>
           )}
 

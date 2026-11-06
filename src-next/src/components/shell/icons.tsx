@@ -26,6 +26,14 @@ export function ProgressIcon() {
   );
 }
 
+export function RevisionIcon() {
+  return (
+    <svg {...base} strokeLinejoin="round">
+      <path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" />
+    </svg>
+  );
+}
+
 export function DoubtsIcon() {
   return (
     <svg {...base} strokeLinejoin="round">

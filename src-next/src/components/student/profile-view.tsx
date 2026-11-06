@@ -17,6 +17,7 @@ import { fxKey, loadFixture, OfflineStrip, Skel, useFixture } from "./common";
 import { ChevronLeftIcon } from "./icons";
 import { sentence } from "./labels";
 import { Sheet } from "./sheet";
+import { GuardianConsentCard } from "./guardian-consent";
 import { istTime, PageError } from "./states";
 
 /**
@@ -153,6 +154,7 @@ export function ProfileView() {
                 ))}
               </div>
               <Details key={p.id} p={p} fx={fx} offline={offline} onSaved={() => setToast({ kind: "ok", msg: "Profile saved" })} className={phoneOnly("details")} />
+              {!fx && <GuardianConsentCard className={phoneOnly("details")} />}
               <Preferences p={p} fx={fx} onToast={setToast} className={phoneOnly("prefs")} />
               <Password fx={fx} offline={offline} className={phoneOnly("password")} />
               <button type="button" className="btn btn-ghost btn-lg mt-1 self-start md:hidden" style={{ color: "var(--red-600)" }} onClick={signOut}>

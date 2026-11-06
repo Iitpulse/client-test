@@ -16,6 +16,8 @@ import { canExplain, ExplainButton, useWhyState, WhyView } from "./review-ai";
 import { KeyCorrectedNote, PassageBlock, reviewStatus, SetKids, setCells, statusBadge, typeLabel } from "./review-parts";
 import type { ReviewFixture } from "./review-fixtures";
 import { InlineDoubtCard } from "./doubt-chat";
+import { useRevisionLookup } from "@/lib/batch7-api";
+import { AddAllWrong, B7ToastBar, RevisionToggle, useB7Toast, type B7Toast } from "./revision-bits";
 
 type GridFilter = "all" | QuestionOutcome;
 
@@ -81,6 +83,11 @@ export function ReviewPane({
     return { grp, kc };
   }, [items, data]);
 
+  // Batch 7: which questions are in the Revision list (the grid's navy mark, the question's bookmark)
+  const b7 = available && !fixture;
+  const lookup = useRevisionLookup(b7 ? testId : null);
+  const [toast, setToast] = useB7Toast();
+
   const c = r.counts;
   const filters: Array<[GridFilter, string, number]> = [
     ["all", "All", c.total],
@@ -111,12 +118,15 @@ export function ReviewPane({
         <h2 id="review-h" className="h2">
           Question review
         </h2>
-        <div className="seg" role="group" aria-label="Filter questions">
-          {filters.map(([k, label, n]) => (
-            <button key={k} type="button" className={filter === k ? "tab on" : "tab"} aria-pressed={filter === k} onClick={() => pick(k)}>
-              {label} <span className="count">{n}</span>
-            </button>
-          ))}
+        <div className="row wrap gap-2.5">
+          <div className="seg" role="group" aria-label="Filter questions">
+            {filters.map(([k, label, n]) => (
+              <button key={k} type="button" className={filter === k ? "tab on" : "tab"} aria-pressed={filter === k} onClick={() => pick(k)}>
+                {label} <span className="count">{n}</span>
+              </button>
+            ))}
+          </div>
+          {b7 && <AddAllWrong testId={testId} cells={cells} onToast={setToast} />}
         </div>
       </div>
 
@@ -129,16 +139,18 @@ export function ReviewPane({
               const dim = filter !== "all" && cell.outcome !== filter;
               const on = cell.n === selected.n;
               const extra = `${marks.grp.has(cell.n) ? " rv-grp" : ""}${marks.kc.has(cell.n) ? " rv-kc" : ""}`;
+              const saved = !!lookup.data?.has(cell.questionId);
               return (
                 <button
                   key={cell.n}
                   type="button"
                   className={`q-cell ${cell.outcome}${extra}${dim ? " dim" : ""}${on ? " sel" : ""}`}
-                  aria-label={`Question ${label}, ${cell.outcome}${marks.kc.has(cell.n) ? ", answer key corrected" : ""}`}
+                  aria-label={`Question ${label}, ${cell.outcome}${marks.kc.has(cell.n) ? ", answer key corrected" : ""}${saved ? ", in revision list" : ""}`}
                   aria-current={on ? "true" : undefined}
                   onClick={() => setSel(cell.n)}
                 >
                   {label}
+                  {saved && <span className="rv-in" aria-hidden="true" />}
                 </button>
               );
             })}
@@ -176,6 +188,12 @@ export function ReviewPane({
                 Answer key corrected
               </span>
             )}
+            {!!lookup.data?.size && (
+              <span className="row gap-1.5">
+                <span className="swatch rv" aria-hidden="true" />
+                In revision list
+              </span>
+            )}
           </div>
         </aside>
 
@@ -195,6 +213,7 @@ export function ReviewPane({
             nextN={nextN}
             doubtHref={doubtInline ? `#doubt-q${selected.n}` : `/results/${encodeURIComponent(testId)}/q/${selected.n}/doubt`}
             fixture={fixture ?? null}
+            onToast={b7 ? setToast : null}
           />
           {/* M4: the doubt chat about the selected question, once answers are open (the AI gate is checked again on send) */}
           {doubtInline && (
@@ -204,6 +223,7 @@ export function ReviewPane({
           )}
         </div>
       </div>
+      <B7ToastBar toast={toast} onClose={() => setToast(null)} />
     </section>
   );
 }
@@ -222,6 +242,7 @@ function QuestionCard({
   nextN,
   doubtHref,
   fixture,
+  onToast,
 }: {
   cell: QuestionCell;
   cells: QuestionCell[];
@@ -236,6 +257,7 @@ function QuestionCard({
   nextN: number | null;
   doubtHref: string;
   fixture: ReviewFixture | null;
+  onToast: ((t: B7Toast) => void) | null;
 }) {
   const label = cell.shownAs;
   const [lang, setLang] = useState<Lang>("en");
@@ -266,6 +288,7 @@ function QuestionCard({
             {avg != null ? ` · batch ${mmss(avg)}` : ""}
           </span>
           {q && <LangSeg q={q} lang={lang} onChange={setLang} />}
+          {onToast && <RevisionToggle testId={data.test.id} cell={cell} onToast={onToast} />}
         </div>
       </div>
 

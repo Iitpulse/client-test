@@ -18,6 +18,7 @@ import { LangToggle, QuestionBody, Solution, type Lang } from "./question-body";
 import { canExplain, explainLabel, useWhyState, WhyView } from "./review-ai";
 import { KeyCorrectedNote, PassageBlock, reviewStatus, SetKids, setCells, typeLabel } from "./review-parts";
 import { fixtureItem, reviewFixtureFromUrl, type ReviewFixture } from "./review-fixtures";
+import { B7ToastBar, RevisionToggle, useB7Toast } from "./revision-bits";
 import { ReviewPane } from "./review-pane";
 
 const FILTERS: ReviewFilter[] = ["all", "correct", "wrong", "skipped", "review"];
@@ -245,6 +246,7 @@ function PhoneQuestion({
   footer: (explain: React.ReactNode | null) => React.ReactNode;
 }) {
   const [lang, setLang] = useState<Lang>("en");
+  const [toast, setToast] = useB7Toast();
   // Phone-Review shows the explanation without a button; the board's not-asked state is the fixture's.
   const [asked, setAsked] = useState(fixture?.ai !== "not-asked");
   const hasSolution = !!(q.solution.en || q.solution.hi);
@@ -272,10 +274,13 @@ function PhoneQuestion({
             <LangToggle q={q} lang={lang} onChange={setLang} />
           </span>
         </div>
-        <span className="xs muted -mt-1">
-          Your time <b className="num text-ink">{mmss(q.timeSeconds)}</b>
-          {q.averageTimeSeconds != null ? ` · batch ${mmss(q.averageTimeSeconds)}` : ""}
-        </span>
+        <div className="row between -mt-1 gap-2">
+          <span className="xs muted">
+            Your time <b className="num text-ink">{mmss(q.timeSeconds)}</b>
+            {q.averageTimeSeconds != null ? ` · batch ${mmss(q.averageTimeSeconds)}` : ""}
+          </span>
+          {!fixture && data.review.available && <RevisionToggle testId={data.test.id} cell={q} onToast={setToast} phone />}
+        </div>
         {x.keyCorrection && <KeyCorrectedNote note={x.keyCorrection} q={q} compact />}
         {x.set && (
           <>
@@ -288,6 +293,7 @@ function PhoneQuestion({
         {showSolution && <Solution q={q} lang={lang} className="rise" />}
       </div>
       {footer(explain)}
+      <B7ToastBar toast={toast} onClose={() => setToast(null)} />
     </>
   );
 }

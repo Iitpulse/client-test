@@ -40,3 +40,32 @@ export interface PracticeSetM6 extends PracticeSet {
 
 /** The answer being written, before Check. */
 export type PracticeAnswer = { optionIds: string[]; value: string; matrix: MatrixAnswer };
+
+/**
+ * Batch 7: redo and revision sets (api-tests) send a paragraph child's passage as `passage {en, hi}` and a matrix key
+ * as `correctAnswer.matches`; the screens read `set` (passage with its place) and `correctAnswer.matrix`. This maps
+ * one onto the other (consecutive questions with the same passage form one set). Bank sets pass through unchanged.
+ */
+export function normalizePracticeSet<S extends PracticeSet>(set: S): S {
+  const qs = set.questions as Array<PracticeQuestionM6 & { passage?: { en: RichText; hi: RichText | null } | null }>;
+  const out = qs.map((q) => ({ ...q, checked: q.checked ? normalizeCheck(q.checked) : q.checked }));
+  for (let i = 0; i < out.length; ) {
+    const p = out[i]!.passage;
+    if (!p || out[i]!.set) {
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j + 1 < out.length && out[j + 1]!.passage && out[j + 1]!.passage!.en === p.en) j++;
+    const setId = `p${out[i]!.n}`;
+    for (let k = i; k <= j; k++) out[k] = { ...out[k]!, set: { setId, index: k - i, count: j - i + 1, nFrom: out[i]!.n, nTo: out[j]!.n, passage: p } };
+    i = j + 1;
+  }
+  return { ...set, questions: out };
+}
+
+export function normalizeCheck<C extends PracticeCheck>(c: C): C {
+  const ca = c.correctAnswer as PracticeCheckM6["correctAnswer"] & { matches?: MatrixAnswer };
+  if (ca && ca.matches && !ca.matrix) return { ...c, correctAnswer: { ...ca, matrix: ca.matches } };
+  return c;
+}

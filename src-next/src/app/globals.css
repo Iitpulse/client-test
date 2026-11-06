@@ -450,3 +450,34 @@
     .pf-tst .cls { width: 44px; height: 44px }
   }
 }
+
+/* Batch 7 (canvas v180 Student-RedoRevision / Student-Revision / Phone-Revision): the redo card, "In revision list"
+   marks, the Revision list table and the legal pages. */
+@layer components {
+  .q-cell .rv-in { position: absolute; top: -4px; left: -4px; width: 11px; height: 11px; border-radius: 3px; background: var(--navy); border: 2px solid #fff; pointer-events: none }
+  .swatch.rv { background: var(--navy); width: 10px; height: 10px; border-radius: 3px }
+  .b7-redo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 18px 20px; border-radius: 16px; background: #fff; border: 1px solid #E1E3F8 }
+  .b7-redo .ico { width: 44px; height: 44px; border-radius: 12px; background: var(--navy-50, #F1F2FC); color: var(--navy); display: flex; align-items: center; justify-content: center; flex: none }
+  .b7-redo .ico.ok { background: var(--green-50); color: var(--green) }
+  .btn.b7-mark { display: inline-flex; align-items: center; gap: 8px }
+  .btn.b7-mark.on { background: #F1F2FC; color: var(--navy); border-color: #C9CBF5 }
+  .b7-choice { display: flex; gap: 8px }
+  .b7-choice > button { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: #fff; cursor: pointer; font: inherit; min-height: 52px }
+  .b7-choice > button[aria-checked="true"] { border-color: var(--navy); box-shadow: inset 0 0 0 1px var(--navy); background: #F7F7FD }
+  .b7-choice > button small { font-size: 12px; color: var(--muted) }
+  /* Revision list: fills the screen below its header; only the rows scroll (owner's table rule, 6 Nov). */
+  .rv-table { display: flex; flex-direction: column; min-height: 320px; border: 1px solid var(--line); border-radius: 16px; background: #fff; overflow: hidden }
+  .rv-table .rv-scroll { flex: 1; min-height: 0; overflow: auto }
+  .rv-table table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px }
+  .rv-table thead th { position: sticky; top: 0; z-index: 1; background: #FAFAFD; text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap }
+  .rv-table tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line-2, #EEF0F6); vertical-align: top }
+  .rv-table tbody tr.on td { background: #F7F7FD }
+  .rv-table .rv-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); flex: none }
+  .rv-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; margin-top: 5px }
+  .rv-card { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line-2, #EEF0F6) }
+  .legal h2 { font-size: 20px; font-weight: 650; margin: 28px 0 8px; scroll-margin-top: 88px }
+  .legal p, .legal li { line-height: 1.65; font-size: 15px }
+  .legal ul, .legal ol { padding-left: 22px; display: flex; flex-direction: column; gap: 6px; margin: 6px 0 }
+  .legal .fill { background: #FFF1DE; color: #7A4300; border-radius: 4px; padding: 0 3px; font-weight: 600 }
+  .legal .draft { padding: 12px 14px; border-radius: 12px; background: #FFF6E8; border: 1px solid #F3D7A8; color: #6B3D00; font-size: 14px }
+}

@@ -5,6 +5,7 @@
 // Entries are dropped only after a 2xx acknowledged them (the server dedupes: answer log by questionId + at + kind,
 // events by `at`). Every storage access is guarded: blocked storage only loses the history, never the exam.
 import type { AnswerLogEntry, AnswerLogValue, FullscreenEvent } from "@/types";
+import { previewActive } from "./exam-preview";
 
 const LOG_CAP = 2000;
 const EVENTS_CAP = 200;
@@ -35,6 +36,7 @@ function write<T>(key: string, items: T[]) {
 
 /** Appends one entry; an "answer" right after an "answer" of the same question (within 3 s) replaces it. */
 export function logAnswerEntry(testId: string | null | undefined, entry: Omit<AnswerLogEntry, "at"> & { at?: string }) {
+  if (previewActive()) return; // "Preview as student": no exam log
   if (!testId || typeof window === "undefined") return;
   const at = entry.at ?? new Date().toISOString();
   const items = read<AnswerLogEntry>(answerLogKey(testId));
@@ -64,6 +66,7 @@ export const acknowledgeFullscreenEvents = (testId: string, sent: FullscreenEven
 
 /** The student left fullscreen: an event without a duration yet. */
 export function recordFullscreenExit(testId: string | null | undefined, at = new Date().toISOString()) {
+  if (previewActive()) return; // "Preview as student": no exam log
   if (!testId || typeof window === "undefined") return;
   const items = read<FullscreenEvent>(fullscreenEventsKey(testId));
   items.push({ kind: "fullscreenExit", at, durationSeconds: null });
@@ -75,6 +78,7 @@ export function recordFullscreenExit(testId: string | null | undefined, at = new
  * is queued again with the duration (the server keeps one row per `at`, a known duration wins).
  */
 export function recordFullscreenReturn(testId: string | null | undefined, exitAt: string | null, now = Date.now()) {
+  if (previewActive()) return; // "Preview as student": no exam log
   if (!testId || !exitAt || typeof window === "undefined") return;
   const durationSeconds = Math.max(0, Math.round((now - Date.parse(exitAt)) / 1000));
   const items = read<FullscreenEvent>(fullscreenEventsKey(testId));

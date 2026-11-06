@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { aiRetry, usePollWindow } from "./ai-api";
 import { request, StudentApiError } from "./student-api";
+import { normalizeCheck, normalizePracticeSet } from "@/types/practice-m6";
 import type {
   DoubtQuota,
   DoubtThread,
@@ -37,10 +38,12 @@ export interface DoubtsPage extends Now {
 
 export const m4Api = {
   progress: (range: ProgressRange, signal?: AbortSignal) => request<ProgressResponse>("tests", "/student/progress", { range }, signal),
-  practiceCreate: (body: PracticeRequest) => request<Now & { set: PracticeSet }>("tests", "/student/practice", undefined, undefined, body),
-  practice: (setId: string, signal?: AbortSignal) => request<Now & { set: PracticeSet }>("tests", `/student/practice/${enc(setId)}`, undefined, signal),
+  practiceCreate: (body: PracticeRequest) =>
+    request<Now & { set: PracticeSet }>("tests", "/student/practice", undefined, undefined, body).then((r) => ({ ...r, set: normalizePracticeSet(r.set) })),
+  practice: (setId: string, signal?: AbortSignal) =>
+    request<Now & { set: PracticeSet }>("tests", `/student/practice/${enc(setId)}`, undefined, signal).then((r) => ({ ...r, set: normalizePracticeSet(r.set) })),
   practiceCheck: (setId: string, n: number, body: { optionIds?: string[]; value?: number }) =>
-    request<Now & { check: PracticeCheck }>("tests", `/student/practice/${enc(setId)}/questions/${n}/check`, undefined, undefined, body),
+    request<Now & { check: PracticeCheck }>("tests", `/student/practice/${enc(setId)}/questions/${n}/check`, undefined, undefined, body).then((r) => ({ ...r, check: normalizeCheck(r.check) })),
 
   me: (signal?: AbortSignal) => request<Now & { profile: StudentProfile }>("users", "/student/me", undefined, signal),
   patchMe: (patch: StudentProfilePatch) => request<Now & { profile: StudentProfile }>("users", "/student/me", undefined, undefined, patch, "PATCH"),

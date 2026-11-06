@@ -138,7 +138,13 @@ function SetView({ setId, fxName }: { setId: string; fxName: PracticeFxName | nu
   const [chapter, ...rest] = set.title.split(" · ");
   const topic = chapter ?? set.title;
   const timed = set.minutes != null;
-  const subDesktop = `${timed ? "Timed drill from your progress" : "From your progress"} · Question ${idx + 1} of ${count}${timed && !nChecked ? "" : ` · ${nChecked} checked`}`;
+  // Batch 7: redo and revision sets say where they come from and score with the source test's marking
+  // (the set does not carry its `source` yet: read it from the title api-tests gives these sets)
+  const srcKind =
+    (set as { source?: { kind?: string } }).source?.kind ?? (/^Redo wrong\b/.test(set.title) ? "redo" : / · revision · /.test(set.title) ? "revision" : undefined);
+  const from = srcKind === "redo" ? "from your test" : srcKind === "revision" ? "from your revision list" : "from your progress";
+  const setScore = (set as { score?: { marks: number; maxMarks: number; checked: number } | null }).score;
+  const subDesktop = `${timed ? `Timed drill ${from}` : from[0]!.toUpperCase() + from.slice(1)} · Question ${idx + 1} of ${count}${timed && !nChecked ? "" : ` · ${nChecked} checked`}${setScore && setScore.checked ? ` · ${setScore.marks} of ${setScore.maxMarks} marks` : ""}`;
   const subPhone = `Question ${idx + 1} of ${count}${timed && !nChecked ? "" : ` · ${nChecked} checked`}`;
   const titlePhone = timed ? `${set.title.replace(/ questions$/, " Qs")} · ${set.minutes} min` : set.title;
   const finished = nChecked === count;
@@ -411,7 +417,10 @@ function SetView({ setId, fxName }: { setId: string; fxName: PracticeFxName | nu
                 )}
                 {checked && out && (
                   <div className="col fade gap-3 max-md:gap-2.5">
-                    <span className={`badge self-start ${out.badge}`}>{out.text}</span>
+                    <span className={`badge self-start ${out.badge}`}>
+                      {out.text}
+                      {typeof (checked as { marks?: number | null }).marks === "number" ? ` · ${marksLabel((checked as { marks?: number | null }).marks as number)}` : ""}
+                    </span>
                     {checked.solution ? (
                       <section className="pr-sol col gap-2 max-md:gap-1.5" aria-label="Solution">
                         <span className="eyebrow">Solution</span>
@@ -619,4 +628,10 @@ function Countdown({ set, serverNow, receivedAt, phone }: { set: PracticeSetM6; 
       <span className="mono num text-[18px]">{text}</span>
     </span>
   );
+}
+
+/** "+4 marks", "−1 mark", "0 marks" (batch 7: the source test's marking) */
+function marksLabel(m: number): string {
+  const n = Math.abs(m);
+  return `${m > 0 ? "+" : m < 0 ? "−" : ""}${n} ${n === 1 ? "mark" : "marks"}`;
 }

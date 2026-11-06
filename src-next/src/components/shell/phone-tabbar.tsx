@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS, activeNav, type NavKey } from "./nav-items";
-import { DoubtsIcon, HomeIcon, ProgressIcon, TestsIcon } from "./icons";
+import { DoubtsIcon, HomeIcon, ProgressIcon, RevisionIcon, TestsIcon } from "./icons";
 
-const ICONS: Record<NavKey, () => React.ReactElement> = { home: HomeIcon, tests: TestsIcon, progress: ProgressIcon, doubts: DoubtsIcon };
+const ICONS: Record<NavKey, () => React.ReactElement> = { home: HomeIcon, tests: TestsIcon, progress: ProgressIcon, revision: RevisionIcon, doubts: DoubtsIcon };
 
 /**
- * PhoneTabBar (drawn in the Phone-* boards): fixed to the bottom below 768px, safe-area padded, four 48px+
+ * PhoneTabBar (drawn in the Phone-* boards): fixed to the bottom below 768px, safe-area padded, five 48px+
  * targets. The active tab is navy with the 3px bar on top (.tb.on from @iitpulse/ui).
  */
 export function PhoneTabBar() {

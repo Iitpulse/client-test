@@ -35,6 +35,20 @@ export type StudentErrorCode =
   | "TEST_CLOSED"
   | "ALREADY_SUBMITTED"
   | "SUBMIT_TOO_LATE"
+  // M6 review additions + batch 7 (api-ai docs/m6-api.md)
+  | "NOTHING_TO_REDO"
+  | "NOTHING_TO_PRACTISE"
+  | "REVISION_FULL"
+  | "REVISION_ITEM_NOT_FOUND"
+  | "QUESTION_NOT_FOUND"
+  | "REVIEW_NOT_AVAILABLE_YET"
+  | "PRACTICE_LIMIT"
+  | "CONSENT_NOT_REQUIRED"
+  | "DOB_REQUIRED"
+  | "NOTHING_TO_RESEND"
+  | "CONSENT_LINK_INVALID"
+  | "CONSENT_LINK_EXPIRED"
+  | "CONSENT_ALREADY_CONFIRMED"
   | "INTERNAL";
 
 export const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
@@ -70,7 +84,7 @@ export async function request<T>(
   params?: Record<string, string | number | undefined | null>,
   signal?: AbortSignal,
   body?: unknown,
-  method?: "POST" | "PATCH"
+  method?: "POST" | "PATCH" | "DELETE"
 ): Promise<T> {
   const url = new URL(`${API_GATEWAY}/${service}${path}`);
   for (const [k, v] of Object.entries(params || {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));

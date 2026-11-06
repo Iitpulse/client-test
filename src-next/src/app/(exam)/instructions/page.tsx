@@ -6,6 +6,7 @@ import { useAuthStore, useTestStore, useAuthHydrated } from "@/stores";
 import { INSTRUCTIONS_WARNING } from "@/components/nta/instructions";
 import { pageInstructions, toolsOf } from "@/lib/exam-template";
 import "@/components/nta/exam-tools.css";
+import { usePreview } from "@/lib/exam-preview";
 
 // M6 (owner-approved, board Exam-Additions D1/P1): heading, blocks and declaration come from the test's exam template
 // (frozen NTA text without one); pressing PROCEED before ticking shows the old alert text inline, under the declaration.
@@ -16,7 +17,11 @@ const CONFIRM_MESSAGE = {
 
 export default function InstructionsPage() {
   const router = useRouter();
-  const { checkAuth, isAuthenticated, testId, currentUser } = useAuthStore();
+  // "Preview as student" (batch 7): staff see this page read-only and PROCEED goes back to the previewed paper
+  const preview = usePreview();
+  const authState = useAuthStore();
+  const { checkAuth, isAuthenticated } = authState;
+  const testId = preview ? null : authState.testId;
   const { test, fetchTest, isLoading, error: testError, template } = useTestStore();
 
   const [confirmed, setConfirmed] = useState(false);
@@ -25,7 +30,12 @@ export default function InstructionsPage() {
   // Wait for the persisted test id / session to be restored (SSR-safe)
   const hydrated = useAuthHydrated();
 
+  const previewTestId = preview?.testId ?? null;
   useEffect(() => {
+    if (previewTestId) {
+      if (!test) fetchTest(previewTestId);
+      return;
+    }
     if (!hydrated) return;
     // Check authentication
     if (!checkAuth() || !isAuthenticated) {
@@ -42,11 +52,16 @@ export default function InstructionsPage() {
     if (!test) {
       fetchTest(testId);
     }
-  }, [hydrated, checkAuth, isAuthenticated, testId, test, fetchTest, router]);
+  }, [hydrated, checkAuth, isAuthenticated, testId, test, fetchTest, router, previewTestId]);
 
   const handleProceed = () => {
     if (!confirmed) {
       setShowConfirmMessage(true);
+      return;
+    }
+
+    if (previewTestId) {
+      router.push(`/preview/${encodeURIComponent(previewTestId)}`);
       return;
     }
 

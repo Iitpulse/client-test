@@ -23,10 +23,18 @@ import { RenderLatex } from "@/components/nta/render-latex";
 import { useUITemplate, useTemplateStyles } from "@/components/nta/ui-template.context";
 import { openFullscreenExit, recordFullscreenExit, recordFullscreenReturn } from "@/lib/exam-log";
 import { dialogInstructions, toolsOf, wordingOf } from "@/lib/exam-template";
+import { usePreview } from "@/lib/exam-preview";
 
 export default function TestPage() {
   const router = useRouter();
-  const { checkAuth, isAuthenticated, currentUser, testId } = useAuthStore();
+  // "Preview as student" (batch 7, lib/exam-preview): staff see this screen read-only; for students `preview` is null
+  // and everything below behaves as before.
+  const preview = usePreview();
+  const isPreview = !!preview;
+  const authState = useAuthStore();
+  const { checkAuth, isAuthenticated } = authState;
+  const currentUser = isPreview ? null : authState.currentUser;
+  const testId = isPreview ? null : authState.testId;
   const {
     test,
     questions,
@@ -171,14 +179,20 @@ export default function TestPage() {
 
   // Check if test was already submitted
   useEffect(() => {
+    if (isPreview) return;
     const isSubmitted = localStorage.getItem("IITP_TEST_SUBMITTED_KEY") === "true";
     if (isSubmitted) {
       router.push("/result");
     }
-  }, [router]);
+  }, [router, isPreview]);
   // Wait for the persisted test id / session to be restored (SSR-safe)
   const hydrated = useAuthHydrated();
+  const previewTestId = preview?.testId ?? null;
   useEffect(() => {
+    if (previewTestId) {
+      if (!test) fetchTest(previewTestId);
+      return;
+    }
     if (!hydrated) return;
     if (!checkAuth() || !isAuthenticated) {
       router.push("/login");
@@ -191,7 +205,14 @@ export default function TestPage() {
     if (!test) {
       fetchTest(testId);
     }
-  }, [hydrated, checkAuth, isAuthenticated, testId, test, fetchTest, router]);
+  }, [hydrated, checkAuth, isAuthenticated, testId, test, fetchTest, router, previewTestId]);
+
+  // Preview: the language follows the preview bar's English / हिन्दी switch
+  const previewLang = preview?.lang;
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the preview bar drives the language
+    if (previewLang) setLanguage(previewLang);
+  }, [previewLang]);
 
   // Load UI template when test is loaded
   useEffect(() => {
@@ -223,6 +244,14 @@ export default function TestPage() {
     // Use server-provided attempt info if available (preferred)
     // Falls back to localStorage for backwards compatibility
     let endTime: number;
+
+    // Preview: the clock shows the full duration and does not run
+    if (isPreview) {
+      const mins = Number(test?.durationInMinutes || test?.duration) || 0;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- preview: a fixed clock from the loaded test
+      setTimer({ hours: String(Math.floor(mins / 60)).padStart(2, "0"), minutes: String(mins % 60).padStart(2, "0"), seconds: "00" });
+      return;
+    }
 
     // Debug: Log attempt info
     console.log("[Timer] Attempt data:", attempt);
@@ -291,7 +320,7 @@ export default function TestPage() {
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [attempt?.expiresAt, test?.durationInMinutes, test?.duration, testId]);
+  }, [attempt?.expiresAt, test?.durationInMinutes, test?.duration, testId, isPreview]);
 
   // Save progress shortly after every change (answer, clear, review mark), plus a 15s safety net.
   // Previously only every 30s, so a refresh or crash lost recent answers.
@@ -346,6 +375,7 @@ export default function TestPage() {
       webkitFullscreenElement?: Element | null;
     };
 
+    if (isPreview) return; // preview: no fullscreen, no exit counting
     // M6: each exit with its duration (lib/exam-log, sent with the next autosave). An exit open across a refresh is
     // picked up from storage.
     let exitAt: string | null = openFullscreenExit(testId);
@@ -394,7 +424,7 @@ export default function TestPage() {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
     };
-  }, [testId]);
+  }, [testId, isPreview]);
 
   // Prevent back button and context menu
   useEffect(() => {
@@ -570,6 +600,10 @@ export default function TestPage() {
   };
 
   const handleSubmit = async () => {
+    if (isPreview) {
+      setAlertModal({ open: true, title: "Preview", message: "Submitting is turned off in preview. Nothing you choose here is saved." });
+      return;
+    }
     if (!currentUser) {
       setAlertModal({
         open: true,

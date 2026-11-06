@@ -15,6 +15,7 @@ import {
 import { parseExamTemplate } from "@/lib/exam-template";
 import { clearRoughSheets } from "@/lib/rough-sheet";
 import { PENDING_SUBMIT_KEY, type PendingSubmit } from "@/lib/submit-handoff";
+import { fetchPreviewStart, previewActive } from "@/lib/exam-preview";
 import type { StudentExamTemplate } from "@/types/m6";
 
 // Attempt info from backend
@@ -190,9 +191,9 @@ export const useTestStore = create<TestState>((set, get) => ({
   fetchTest: async (testId: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.tests.getForStudent(testId);
-      // Backend returns { success: true, data: test, attempt: {...} }, axios wraps in { data: ... }
-      const responseData = response.data;
+      // Backend returns { success: true, data: test, attempt: {...} }, axios wraps in { data: ... }.
+      // "Preview as student" (batch 7) reads the staff preview route instead, mapped to the same shape.
+      const responseData = previewActive() ? await fetchPreviewStart(testId) : (await api.tests.getForStudent(testId)).data;
       const test = responseData?.data || responseData;
       const attempt = responseData?.attempt || null;
       const progress = (responseData?.progress || null) as Array<{
@@ -518,6 +519,7 @@ export const useTestStore = create<TestState>((set, get) => ({
 
   saveProgress: async (options?: { keepalive?: boolean }) => {
     const { test, questions, isSubmitted } = get();
+    if (previewActive()) return; // "Preview as student": nothing is saved
     // Nothing to save once submitted. /result is in the other root layout, so leaving /test after a
     // submit is a full page load: pending autosave timers and beforeunload can still fire meanwhile.
     if (!test || isSubmitted) return;
@@ -574,6 +576,7 @@ export const useTestStore = create<TestState>((set, get) => ({
   submitTest: async (_userId: string, _userType: string, _instituteId?: string, options?: SubmitOptions) => {
     // M6 submit rules: the device's clock when Submit was pressed (or the timer hit 0); the server records it when it is
     // not after the deadline
+    if (previewActive()) throw new Error("Submitting is turned off in preview.");
     const submittedAtDevice = new Date().toISOString();
     const { test, questions } = get();
     if (!test) throw new Error("No test loaded");

@@ -16,6 +16,7 @@ import { Skel } from "./common";
 import { ChevronLeftIcon, HourglassRing, LockIcon } from "./icons";
 import { num, sentence, signed, underlineSplit } from "./labels";
 import { LeaksCard, MarksWentCard, useSummaryState, type SummaryState } from "./ai-review";
+import { RedoCard } from "./revision-bits";
 import { ReviewPane } from "./review-pane";
 import { Ring } from "./ring";
 import { correctionSummary, DownloadPdf, KeyCorrectedNote, ResultBlank } from "./result-states";
@@ -273,10 +274,16 @@ function PublishedDesktop({ data, r, now, ai }: { data: ResultM6; r: PublishedRe
               {kc && data.updatedAt ? ` · updated ${dowDayMonth(data.updatedAt)}` : ""}
             </span>
           </div>
-          <DownloadPdf testId={data.test.id} />
+          <div className="row gap-2">
+            <Link href="/revision" className="btn btn-ghost">
+              Revision list
+            </Link>
+            <DownloadPdf testId={data.test.id} />
+          </div>
         </div>
       </header>
       {kc && <KeyCorrectedNote notes={data.keyCorrections ?? []} testId={data.test.id} />}
+      <RedoCard data={data} r={r} />
 
       <section className="grid grid-cols-4 gap-5 max-lg:grid-cols-2">
         <article className="card pad-lg row rise relative col-span-2 gap-6">
@@ -473,6 +480,8 @@ function PublishedPhone({ data, r, now, ai }: { data: ResultM6; r: PublishedResu
         <MarksWentCard st={ai} now={now} />
 
         <AnswersCard r={r} i={2} className="p-4" />
+
+        <RedoCard data={data} r={r} compact />
 
         {data.review.available && firstN ? (
           <Link href={`/results/${encodeURIComponent(data.test.id)}/q/${firstN}?filter=${filter}`} className="btn btn-primary btn-lg rise" style={{ "--i": 3 } as React.CSSProperties}>

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Blueboard, LogoMark, Tape } from "@iitpulse/ui";
+import { LegalFooter } from "@/components/auth/legal-footer";
 
 /**
  * Student-Login board (sign in, forgot password, reset password). The blueboard welcome panel and the taped card
@@ -106,9 +107,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       <section className="relative flex flex-[1_1_480px] items-center justify-center px-6 py-12 max-lg:-mt-9 max-lg:flex-1 max-lg:items-start max-lg:pt-0 max-md:px-4 max-md:pb-6">
         <span className="cl-margin auth-desktop-only" aria-hidden="true" style={{ left: 56 }} />
-        <div className="card pad-lg col pop relative w-full max-w-[420px] gap-[22px] p-9 max-md:gap-5 max-md:px-5 max-md:py-6">
-          <Tape rotate={-2} delay={700} />
-          {children}
+        <div className="col w-full max-w-[420px] items-stretch gap-4">
+          <div className="card pad-lg col pop relative w-full gap-[22px] p-9 max-md:gap-5 max-md:px-5 max-md:py-6">
+            <Tape rotate={-2} delay={700} />
+            {children}
+          </div>
+          <LegalFooter />
         </div>
       </section>
     </div>

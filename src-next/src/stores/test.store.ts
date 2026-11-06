@@ -517,6 +517,8 @@ export const useTestStore = create<TestState>((set, get) => ({
 
     const testId = testIdOf(test);
     if (!testId) return;
+    // A submit is on its way (or done): the server would refuse the save (409), and the submit carries the answers
+    if (submitInFlight?.testId === testId || submittedTestId === testId) return;
 
     const sections = answerSections(test, questions);
 

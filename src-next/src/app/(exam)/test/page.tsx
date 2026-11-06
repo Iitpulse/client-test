@@ -156,7 +156,7 @@ export default function TestPage() {
       setIsSubmitting(true);
       (async () => {
         try {
-          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId, { isAutoSubmitted: true });
+          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId, { isAutoSubmitted: true, autoSubmitReason: "exitLimit" });
           localStorage.removeItem(`IITP_TEST_END_TIME_${testId}`);
           localStorage.removeItem(`IITP_FULLSCREEN_EXITS_${testId}`);
           localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
@@ -318,7 +318,7 @@ export default function TestPage() {
       // Trigger submission
       (async () => {
         try {
-          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId, { isAutoSubmitted: true });
+          await submitTest(currentUser.id, currentUser.userType, currentUser.instituteId, { isAutoSubmitted: true, autoSubmitReason: "timeUp" });
           localStorage.removeItem(`IITP_TEST_END_TIME_${testId}`);
           // Exit fullscreen (with Safari webkit support)
           const doc = document as Document & {

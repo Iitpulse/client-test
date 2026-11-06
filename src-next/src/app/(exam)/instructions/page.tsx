@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore, useTestStore, useAuthHydrated } from "@/stores";
 import { INSTRUCTIONS_WARNING } from "@/components/nta/instructions";
-import { pageInstructions } from "@/lib/exam-template";
+import { pageInstructions, toolsOf } from "@/lib/exam-template";
 import "@/components/nta/exam-tools.css";
 
 // M6 (owner-approved, board Exam-Additions D1/P1): heading, blocks and declaration come from the test's exam template
@@ -88,6 +88,7 @@ export default function InstructionsPage() {
   }
 
   const instructions = pageInstructions(template, test, language);
+  const languageSwitch = toolsOf(template).languageSwitch;
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -104,6 +105,8 @@ export default function InstructionsPage() {
       {/* Test Info Bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b test-info-bar">
         <h3 className="font-medium">GENERAL INSTRUCTIONS</h3>
+        {/* M6 (owner, 6 Nov): no language select when the template turns the language switch off, as on /test */}
+        {languageSwitch && (
         <select
           title="Select Language"
           value={language}
@@ -113,6 +116,7 @@ export default function InstructionsPage() {
           <option value="en">English</option>
           <option value="hi">Hindi</option>
         </select>
+        )}
       </div>
 
       {/* Main Content */}

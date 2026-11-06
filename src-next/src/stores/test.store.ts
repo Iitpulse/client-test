@@ -14,6 +14,7 @@ import {
 } from "@/lib/exam-log";
 import { parseExamTemplate } from "@/lib/exam-template";
 import { clearRoughSheets } from "@/lib/rough-sheet";
+import { PENDING_SUBMIT_KEY, type PendingSubmit } from "@/lib/submit-handoff";
 import type { StudentExamTemplate } from "@/types/m6";
 
 // Attempt info from backend
@@ -55,9 +56,15 @@ interface TestState {
   markForReview: (timeTaken?: number) => void;
   saveAndMarkForReview: (timeTaken?: number) => void;
   saveProgress: (options?: { keepalive?: boolean }) => Promise<void>;
-  submitTest: (userId: string, userType: string, instituteId?: string, options?: { isAutoSubmitted?: boolean }) => Promise<void>;
+  submitTest: (userId: string, userType: string, instituteId?: string, options?: SubmitOptions) => Promise<void>;
   updateTimeTaken: (questionId: string, time: number) => void;
   reset: () => void;
+}
+
+/** isAutoSubmitted + why (M6 autoSubmitReason: the timer reached 0, or the fullscreen exit limit) */
+export interface SubmitOptions {
+  isAutoSubmitted?: boolean;
+  autoSubmitReason?: "timeUp" | "exitLimit";
 }
 
 // Helper to flatten questions from test structure
@@ -564,7 +571,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     }
   },
 
-  submitTest: async (_userId: string, _userType: string, _instituteId?: string, options?: { isAutoSubmitted?: boolean }) => {
+  submitTest: async (_userId: string, _userType: string, _instituteId?: string, options?: SubmitOptions) => {
     // M6 submit rules: the device's clock when Submit was pressed (or the timer hit 0); the server records it when it is
     // not after the deadline
     const submittedAtDevice = new Date().toISOString();
@@ -594,7 +601,9 @@ export const useTestStore = create<TestState>((set, get) => ({
       // the fullscreen events not yet sent
       const answerLog = pendingAnswerLog(testId);
       const events = pendingFullscreenEvents(testId);
-      const submitBody = { testId, sections, isAutoSubmitted: options?.isAutoSubmitted === true, fullscreenExits, submittedAtDevice, answerLog, events };
+      const isAutoSubmitted = options?.isAutoSubmitted === true;
+      const autoSubmitReason = isAutoSubmitted ? (options?.autoSubmitReason ?? "timeUp") : undefined;
+      const submitBody = { testId, sections, isAutoSubmitted, ...(autoSubmitReason ? { autoSubmitReason } : {}), fullscreenExits, submittedAtDevice, answerLog, events };
 
       try {
         const response = await api.tests.submit(submitBody);
@@ -615,6 +624,8 @@ export const useTestStore = create<TestState>((set, get) => ({
               resultVisible: outcome.resultVisible !== false,
               resultReason: outcome.resultReason,
               resultAvailableAt: outcome.resultAvailableAt,
+              // why the exam submitted by itself (the server's answer; this device's trigger as a fallback)
+              autoSubmitted: outcome.autoSubmitted ?? (autoSubmitReason ? { reason: autoSubmitReason } : null),
             })
           );
         } catch {
@@ -624,7 +635,39 @@ export const useTestStore = create<TestState>((set, get) => ({
         set({ isSubmitted: true, totalMarks });
         submittedTestId = testId;
       } catch (error: unknown) {
-        const axiosError = error as { response?: { data?: { message?: string } } };
+        const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+        const status = axiosError?.response?.status;
+        // Offline or a server failure: hand the exact submit to /result (lib/submit-handoff.ts), which sends it, retries
+        // and shows "Your answers are safe on this device" / "We couldn't submit yet". The server's submit rules keep a
+        // late arrival fair (submittedAtDevice). A refusal (4xx) is not retried: the page shows its message.
+        if (status === undefined || status >= 500) {
+          const answered = questions.filter((q) => q.status.status === "answered" || q.status.status === "answeredAndMarkedForReview").length;
+          const pending: PendingSubmit & { autoSubmitReason?: "timeUp" | "exitLimit" } = {
+            testId,
+            testName: test.name ?? "",
+            answered,
+            total: questions.length,
+            submittedAtDevice,
+            body: submitBody,
+            ...(autoSubmitReason ? { autoSubmitReason } : {}),
+          };
+          let handedOff = false;
+          try {
+            localStorage.setItem(PENDING_SUBMIT_KEY, JSON.stringify(pending));
+            // a reload of /test goes on to /result, which sends the hand-off
+            localStorage.setItem("IITP_TEST_SUBMITTED_KEY", "true");
+            handedOff = true;
+          } catch {
+            // storage blocked: nothing can wait on this device, so the page shows the error and Submit stays available
+          }
+          if (handedOff) {
+            clearExamLog(testId);
+            clearRoughSheets(testId);
+            set({ isSubmitted: true });
+            submittedTestId = testId;
+            return; // the page opens /result as after a submit
+          }
+        }
         const message = axiosError?.response?.data?.message ||
           (error instanceof Error ? error.message : "Failed to submit test");
         throw new Error(message);

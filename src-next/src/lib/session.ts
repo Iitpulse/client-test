@@ -20,7 +20,7 @@ const MIN_VALIDITY_MS = 90_000;
 
 const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
 
-type Access = { token: string; exp: number };
+type Access = { token: string; exp: number; margin?: number };
 type BootRefresh = { at: number; p: Promise<{ status: number; body: unknown }> };
 
 let access: Access | null = null;
@@ -81,7 +81,7 @@ function bc(): BroadcastChannel | null {
     channel.onmessage = (e: MessageEvent) => {
       const m = e.data as { type?: string; token?: string; exp?: number } | null;
       if (m?.type === "token" && m.token && m.exp && (!access || m.exp > access.exp)) {
-        access = { token: m.token, exp: m.exp };
+        access = { token: m.token, exp: m.exp, margin: Math.min(MIN_VALIDITY_MS, Math.max(5_000, (m.exp - Date.now()) / 4)) };
         schedule();
       } else if (m?.type === "signed_out") {
         clearLocal();
@@ -92,10 +92,13 @@ function bc(): BroadcastChannel | null {
   return channel;
 }
 
+/** Refresh this long before expiry: 90 s, or a quarter of a short token's life (test stacks with 60-second tokens) */
+const marginOf = (a: Access) => a.margin ?? MIN_VALIDITY_MS;
+
 function schedule() {
   if (!isBrowser() || !access) return;
   if (timer) clearTimeout(timer);
-  const wait = Math.max(5_000, access.exp - Date.now() - MIN_VALIDITY_MS);
+  const wait = Math.max(5_000, access.exp - Date.now() - marginOf(access));
   timer = setTimeout(() => {
     void auth.ensureToken().catch(() => undefined);
   }, wait);
@@ -111,7 +114,7 @@ function clearLocal() {
 
 function remember(token: string, expiresAt?: string | null, broadcast = true) {
   const exp = (expiresAt ? Date.parse(expiresAt) : 0) || expOf(token) || Date.now() + 15 * 60_000;
-  access = { token, exp };
+  access = { token, exp, margin: Math.min(MIN_VALIDITY_MS, Math.max(5_000, (exp - Date.now()) / 4)) };
   store()?.setItem(HINT_KEY, "1");
   schedule();
   if (broadcast) bc()?.postMessage({ type: "token", token, exp });
@@ -199,7 +202,7 @@ async function refreshShared(): Promise<string | null> {
   if (!locks?.request) return refreshNow();
   return locks.request(LOCK, async () => {
     // another tab may have refreshed while this one waited for the lock (its token came over the channel)
-    if (access && access.exp - Date.now() > MIN_VALIDITY_MS) return access.token;
+    if (access && access.exp - Date.now() > marginOf(access)) return access.token;
     return refreshNow();
   });
 }
@@ -216,7 +219,7 @@ export const auth = {
   ensureToken: async (opts?: { force?: boolean }): Promise<string | null> => {
     if (!isBrowser()) return null;
     bc();
-    if (!opts?.force && access && access.exp - Date.now() > MIN_VALIDITY_MS) return access.token;
+    if (!opts?.force && access && access.exp - Date.now() > marginOf(access)) return access.token;
     if (!inflight) {
       inflight = refreshShared().finally(() => {
         inflight = null;

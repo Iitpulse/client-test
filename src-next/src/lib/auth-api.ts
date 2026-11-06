@@ -10,6 +10,7 @@ import type {
   SignupRequest,
   SignupResponse,
 } from "@/types/m6-auth";
+import { auth } from "./session";
 
 const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
 
@@ -61,6 +62,14 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown, wit
 const post = <T>(path: string, body: unknown) => call<T>("POST", path, body);
 /** A sign-in call: auth v2 cookie session (api-users docs/m7b-auth.md) */
 const signIn = <T>(path: string, body: Record<string, unknown>) => call<T>("POST", path, { ...body, session: "cookie" }, true);
+/**
+ * Test-key sign-in and sign-up run outside /users/auth, where the refresh cookie is not sent, so api-users cannot end
+ * the earlier account's session itself (docs/m7b-auth.md §3 "Account switch"): end it first, then sign in.
+ */
+const signInElsewhere = async <T>(path: string, body: Record<string, unknown>) => {
+  if (auth.isAuthenticated()) await auth.signOut();
+  return signIn<T>(path, body);
+};
 const get = <T>(path: string) => call<T>("GET", path);
 
 type Ok<T> = { success: true; data: T };
@@ -92,7 +101,7 @@ export const authApi = {
    * Exchange a test key (from a /auth/<key>/<testId> link or typed in) for a session. 404 LINK_INVALID,
    * 410 LINK_EXPIRED / LINK_REVOKED, 409 LINK_USED (a 6-character link signs in once), 429 TOO_MANY_ATTEMPTS.
    */
-  loginWithKey: (key: string) => signIn<Ok<LoginWithKeyResponse>>("/student/auth/login-with-key", { key }),
+  loginWithKey: (key: string) => signInElsewhere<Ok<LoginWithKeyResponse>>("/student/auth/login-with-key", { key }),
   /** Password reset by email link. The link opens /reset-password?token=... in the student app. */
   passwordReset: {
     /** Always 200 with the same generic message (no account enumeration); 429 TOO_MANY_ATTEMPTS when throttled. */
@@ -110,6 +119,6 @@ export const authApi = {
     /** GET /users/public/promo/:code: 400 PROMO_LENGTH; 404 PROMO_INVALID */
     promo: (code: string) => get<Ok<PromoCheckResponse>>(`/public/promo/${encodeURIComponent(code)}`),
     /** POST /users/student/create-student: answers a session token. 400 VALIDATION_ERROR { fields }, 409 EMAIL_TAKEN / PHONE_TAKEN, 404 PROMO_INVALID */
-    create: (body: SignupRequest) => signIn<Ok<SignupResponse>>("/student/create-student", body as unknown as Record<string, unknown>),
+    create: (body: SignupRequest) => signInElsewhere<Ok<SignupResponse>>("/student/create-student", body as unknown as Record<string, unknown>),
   },
 };

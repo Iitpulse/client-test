@@ -8,15 +8,25 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PasswordField } from "@/components/auth/password-field";
 import { Notice } from "@/components/auth/notice";
-import { ClockIcon, Spinner } from "@/components/shell/icons";
+import { Spinner } from "@/components/shell/icons";
 import { RESET_EMAIL_KEY, passwordStrength } from "@/components/auth/reset-email";
 import { authApi, apiError } from "@/lib/auth-api";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/types/m6-auth";
 
 // Student-Login board, reset state: /reset-password?token=... from the email (new in the student app).
 // verify checks the link without using it up; reset sets the password and uses the link up (it works once).
-const MIN_LENGTH = 8; // the board's rule; the API accepts 6-128
-const MAX_LENGTH = 128;
+const MIN_LENGTH = MIN_PASSWORD_LENGTH; // owner: 8 everywhere; the API answers 400 WEAK_PASSWORD below it
+const MAX_LENGTH = MAX_PASSWORD_LENGTH;
 const SEGMENT_COLOR = ["", "var(--red-600)", "var(--amber)", "var(--green)", "var(--green)"];
+
+/** Student-Login reset-link-invalid / -expired / -used (400 RESET_TOKEN_INVALID { reason }) */
+const LINK_COPY = {
+  invalid: { title: "This reset link doesn't work", text: "Part of the link may be missing. Ask for a new one." },
+  expired: { title: "This reset link has expired", text: "Reset links last 30 minutes. Ask for a new one." },
+  used: { title: "This reset link was already used", text: "Each link works once. If you changed your password, sign in with it. If not, ask for a new link." },
+} as const;
+const reasonOf = (details?: Record<string, unknown>): keyof typeof LINK_COPY =>
+  details?.reason === "expired" ? "expired" : details?.reason === "used" ? "used" : "invalid";
 
 export default function ResetPasswordPage() {
   return (
@@ -38,7 +48,7 @@ function Checking() {
 function ResetPasswordForm() {
   const router = useRouter();
   const token = useSearchParams().get("token") ?? "";
-  const [state, setState] = useState<"checking" | "ready" | "invalid" | "offline">(token ? "checking" : "invalid");
+  const [state, setState] = useState<"checking" | "ready" | "invalid" | "expired" | "used" | "offline">(token ? "checking" : "invalid");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -58,8 +68,8 @@ function ResetPasswordForm() {
       })
       .catch((err: unknown) => {
         if (!live) return;
-        const { status } = apiError(err);
-        setState(status === 0 || status >= 500 ? "offline" : "invalid");
+        const { status, details } = apiError(err);
+        setState(status === 0 || status >= 500 ? "offline" : reasonOf(details));
       });
     return () => {
       live = false;
@@ -81,49 +91,57 @@ function ResetPasswordForm() {
       await authApi.passwordReset.reset(token, password);
       router.replace("/login?reset=done");
     } catch (err: unknown) {
-      const { status, code } = apiError(err);
+      const { status, code, details } = apiError(err);
       setSaving(false);
-      if (code === "RESET_TOKEN_INVALID") return setState("invalid");
+      if (code === "RESET_TOKEN_INVALID") return setState(reasonOf(details));
+      if (code === "WEAK_PASSWORD") return setError(`Use at least ${MIN_LENGTH} characters.`);
       setError(status === 0 ? "Can't reach IIT-PULSE. Check your connection and try again." : "Couldn't save your password right now. Please try again.");
     }
   };
 
   if (state === "checking") return <Checking />;
 
-  if (state === "invalid" || state === "offline") {
-    const offline = state === "offline";
+  if (state === "offline") {
     return (
-      <div className="col fade gap-[18px]">
-        <span className="inline-flex size-[52px] items-center justify-center rounded-[16px] bg-warning-50 text-warning">
-          <ClockIcon />
-        </span>
-        <div className="col gap-2.5">
-          <h1 className="h1">
-            {offline ? (
-              <>
-                Can&apos;t check this <InkUnderline delay={300}>link</InkUnderline>
-              </>
-            ) : (
-              <>
-                This link has <InkUnderline delay={300}>expired</InkUnderline>
-              </>
-            )}
+      <div className="col fade gap-5 max-md:gap-[18px]">
+        <div className="col gap-2.5 max-md:gap-2" role="alert">
+          <h1 className="h2">
+            Can&apos;t check this <InkUnderline delay={300}>link</InkUnderline>
           </h1>
-          <p className="body muted m-0">
-            {offline
-              ? "IIT-PULSE didn't answer. Check your connection and open the link again."
-              : "Reset links work once and only for 30 minutes. Ask for a new one and use the newest email."}
-          </p>
+          <p className="sm muted m-0">IIT-PULSE didn&apos;t answer. Check your connection and open the link again.</p>
         </div>
-        <div className="row wrap gap-2.5">
-          {offline ? (
-            <Button onClick={() => window.location.reload()}>Try again</Button>
-          ) : (
-            <Button asChild>
-              <Link href="/forgot-password">Send a new link</Link>
-            </Button>
-          )}
-          <Button asChild variant="ghost">
+        <div className="col gap-2">
+          <Button size="lg" className="w-full" onClick={() => window.location.reload()}>
+            Try again
+          </Button>
+          <Button asChild size="lg" variant="ghost" className="w-full">
+            <Link href="/login">Back to sign in</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state !== "ready") {
+    const c = LINK_COPY[state];
+    return (
+      <div className="col fade gap-5 max-md:gap-[18px]">
+        <span className="inline-flex size-14 items-center justify-center rounded-[16px] bg-[#FFF4E2] text-[#9A5800] max-md:size-[52px]">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+            <path d="M9 15l6-6" />
+            <path d="M11 6l.5-.5a4.6 4.6 0 0 1 6.5 6.5l-.5.5M13 18l-.5.5a4.6 4.6 0 0 1-6.5-6.5l.5-.5" />
+            <path d="M3 3l18 18" />
+          </svg>
+        </span>
+        <div className="col gap-2.5 max-md:gap-2" role="alert">
+          <h1 className="h2">{c.title}</h1>
+          <p className="sm muted m-0">{c.text}</p>
+        </div>
+        <div className="col gap-2">
+          <Button asChild size="lg" className="w-full">
+            <Link href="/forgot-password">Send a new link</Link>
+          </Button>
+          <Button asChild size="lg" variant="ghost" className="w-full">
             <Link href="/login">Back to sign in</Link>
           </Button>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { InkUnderline } from "@iitpulse/ui";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,14 @@ export default function ForgotPasswordPage() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // "Didn't get it? Resend in 0:45": a new link can be asked for 45 seconds after the last one (board).
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
 
   const send = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -26,6 +34,7 @@ export default function ForgotPasswordPage() {
     try {
       await authApi.passwordReset.request(address);
       setSentTo(address);
+      setCooldown(45);
     } catch (err: unknown) {
       const { status } = apiError(err);
       setError(
@@ -78,19 +87,27 @@ export default function ForgotPasswordPage() {
           </Button>
         </form>
       ) : (
-        <div className="col pop items-center gap-3.5 py-2 text-center" role="status">
-          <span className="inline-flex size-16 items-center justify-center rounded-[20px] bg-success-50 text-success">
+        <div className="col pop items-center gap-3.5 py-2 text-center max-md:gap-3 max-md:py-1">
+          <span className="inline-flex size-16 items-center justify-center rounded-[20px] bg-success-50 text-success max-md:size-[60px] max-md:rounded-[18px]">
             <MailIcon />
           </span>
           <span className="h3">Check your inbox</span>
-          <span className="sm muted">
-            If <strong className="font-semibold text-ink-2">{sentTo}</strong> has an IIT-PULSE account, a reset link is on its way. Check spam if it
-            isn&apos;t there in a few minutes.
+          <span className="sm muted" role="status">
+            We sent a link to {sentTo}.
           </span>
-          <Button variant="secondary" onClick={() => send()} disabled={loading}>
-            {loading && <Spinner />}
-            Send it again
-          </Button>
+          {cooldown > 0 ? (
+            <p className="sm muted m-0 flex min-h-8 items-center max-md:min-h-11">
+              Didn&apos;t get it? Resend in&nbsp;
+              <span className="font-semibold text-ink-2 tabular-nums">0:{String(cooldown).padStart(2, "0")}</span>
+            </p>
+          ) : (
+            <p className="sm muted m-0 flex items-center">
+              Didn&apos;t get it?&nbsp;
+              <button type="button" className="au-inl max-md:min-h-11 max-md:px-1.5" style={{ color: "var(--navy)" }} onClick={() => send()} disabled={loading}>
+                {loading ? "Sending…" : "Resend"}
+              </button>
+            </p>
+          )}
         </div>
       )}
     </div>

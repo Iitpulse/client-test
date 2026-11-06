@@ -5,22 +5,24 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { InkUnderline } from "@iitpulse/ui";
 import { useAuthStore, useTestStore } from "@/stores";
-import { authApi, apiError, type LinkErrorCode } from "@/lib/auth-api";
+import { authApi, apiError } from "@/lib/auth-api";
 import { SignInCard, SignInFrame } from "@/components/auth/signin-frame";
-import { LinkProblem } from "@/components/auth/link-problem";
+import { LinkGateProblem, LinkProblem } from "@/components/auth/link-problem";
+import { StateCard } from "@/components/student/states";
 import { ArrowRightIcon, CheckIcon, Spinner } from "@/components/shell/icons";
 import { buttonVariants } from "@/components/ui/button";
 
 /**
  * Student-SignInLink board. Direct-link entry: /auth/{key-or-token}/{testId} (the URL the admin app hands out).
- * - a short value is a test access key issued by the institute: POST /student/auth/login-with-key exchanges it
- *   for a session. A refusal is 401 with code LINK_INVALID, LINK_EXPIRED or LINK_REVOKED, each with its own card.
+ * - a short value is a test key issued by the institute: POST /student/auth/login-with-key exchanges it for a
+ *   session. Refusals (M6): 404 LINK_INVALID and 410 LINK_REVOKED (SignInLink cards), 410 LINK_EXPIRED and
+ *   409 LINK_USED (Student-TestGate link-expired / link-used, the newer batch 5 board), 429 TOO_MANY_ATTEMPTS.
  * - a long value is a full session token (legacy links from the admin app).
- * Either way the student lands on the NTA instructions for that test (a full page load into the (exam) layout).
+ * Either way the student lands on the test gate /tests/<id>/start, which leads to the NTA instructions.
  * The steps below show real progress; nothing waits on a timer.
  */
-type Problem = LinkErrorCode | "OFFLINE";
-const LINK_CODES: LinkErrorCode[] = ["LINK_INVALID", "LINK_EXPIRED", "LINK_REVOKED"];
+type Problem = "LINK_INVALID" | "LINK_EXPIRED" | "LINK_REVOKED" | "LINK_USED" | "OFFLINE" | { busy: string };
+const LINK_CODES = ["LINK_INVALID", "LINK_EXPIRED", "LINK_REVOKED", "LINK_USED"] as const;
 
 export default function AuthWithURIPage() {
   const router = useRouter();
@@ -32,16 +34,18 @@ export default function AuthWithURIPage() {
   const [studentName, setStudentName] = useState<string | undefined>();
   const [testName, setTestName] = useState<string | undefined>();
   const [problem, setProblem] = useState<Problem | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   const credential = params.user as string;
   const testId = params.testId as string;
+  const gatePath = `/tests/${encodeURIComponent(testId)}/start`;
+  const signInHref = `/login?next=${encodeURIComponent(gatePath)}`;
 
   const run = useCallback(() => {
     if (!testId) {
       router.push("/login");
       return;
     }
-    setProblem(null);
     setStep(0);
     reset();
     setTestId(testId);
@@ -52,12 +56,11 @@ export default function AuthWithURIPage() {
         .then(() => {
           setTestName(useTestStore.getState().test?.name);
           setStep(3);
-          router.push("/instructions");
+          router.push(gatePath);
         })
-        .catch((error) => {
-          console.error("Failed to fetch test:", error);
+        .catch(() => {
           setStep(3);
-          router.push("/instructions"); // the instructions page shows the server's reason
+          router.push(gatePath); // the gate shows why the test can't open (closed, not assigned, …)
         });
     };
 
@@ -67,6 +70,8 @@ export default function AuthWithURIPage() {
         .then((response) => {
           const data = response.data?.data;
           if (!data?.token) throw new Error("No token in key exchange response");
+          setProblem(null);
+          setRetrying(false);
           setStudentName(data.student?.name);
           setStep(1);
           login(data.token, data.student?.name);
@@ -74,9 +79,17 @@ export default function AuthWithURIPage() {
           return openTest();
         })
         .catch((error) => {
-          const { status, code } = apiError(error);
-          console.error("Access key rejected:", status, code);
-          setProblem(code && (LINK_CODES as string[]).includes(code) ? (code as LinkErrorCode) : status === 0 || status >= 500 ? "OFFLINE" : "LINK_INVALID");
+          const { status, code, message } = apiError(error);
+          setRetrying(false);
+          setProblem(
+            code && (LINK_CODES as readonly string[]).includes(code)
+              ? (code as (typeof LINK_CODES)[number])
+              : status === 0 || status >= 500
+                ? "OFFLINE"
+                : status === 429
+                  ? { busy: message || "Too many tries. Wait a minute and try again." }
+                  : "LINK_INVALID"
+          );
         });
     } else if (credential && credential.length > 50) {
       try {
@@ -93,7 +106,7 @@ export default function AuthWithURIPage() {
     } else {
       router.push("/login");
     }
-  }, [credential, testId, setTestId, login, checkAuth, fetchTest, reset, router]);
+  }, [credential, testId, gatePath, setTestId, login, checkAuth, fetchTest, reset, router]);
 
   useEffect(() => {
     if (hasProcessed.current) return; // strict-mode double run
@@ -101,10 +114,24 @@ export default function AuthWithURIPage() {
     run();
   }, [run]);
 
-  if (problem) {
+  if (problem === "LINK_EXPIRED" || problem === "LINK_USED") return <LinkGateProblem problem={problem} signInHref={signInHref} />;
+  if (problem === "LINK_INVALID" || problem === "LINK_REVOKED") return <LinkProblem problem={problem} signInHref={signInHref} />;
+  if (problem === "OFFLINE")
     return (
-      <SignInFrame>
-        <LinkProblem problem={problem} onRetry={run} />
+      <LinkProblem
+        problem="OFFLINE"
+        retrying={retrying}
+        onRetry={() => {
+          setRetrying(true);
+          run();
+        }}
+      />
+    );
+  if (problem) {
+    // 429 TOO_MANY_ATTEMPTS: no board state; Kit-States error card with the API's sentence and Try again
+    return (
+      <SignInFrame footer={false}>
+        <StateCard tone="red" icon="warn" role="alert" headingLevel={1} title="Couldn't open your test" body={problem.busy} primary={{ label: "Try again", onClick: run }} className="w-full max-w-[460px]" />
       </SignInFrame>
     );
   }
@@ -149,7 +176,7 @@ export default function AuthWithURIPage() {
         {finished && (
           <div className="row wrap between fade gap-3">
             <span className="sm font-semibold">Starting your test…</span>
-            <Link href="/instructions" className={buttonVariants({ className: "group" })}>
+            <Link href={gatePath} className={buttonVariants({ className: "group max-md:w-full" })}>
               Continue to instructions <ArrowRightIcon className="transition-transform duration-200 group-hover:translate-x-[3px]" />
             </Link>
           </div>

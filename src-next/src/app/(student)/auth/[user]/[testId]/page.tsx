@@ -74,7 +74,7 @@ export default function AuthWithURIPage() {
           setRetrying(false);
           setStudentName(data.student?.name);
           setStep(1);
-          login(data.token, data.student?.name);
+          login(data.token, data.student?.name, data.expiresAt);
           setTestId(data.testId || testId);
           return openTest();
         })

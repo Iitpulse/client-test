@@ -20,16 +20,22 @@ export function OnboardingPrompt() {
 
   useEffect(() => {
     if (!hydrated || !user || user.userType !== "student") return;
-    const token = auth.getToken();
-    if (!token || askedThisSession(token)) return;
     const ctl = new AbortController();
     // Off the first paint: Home's own data comes first.
     const t = setTimeout(() => {
       // The terms dialog goes first
-      legalSettled()
+      let key = "";
+      auth
+        .ensureToken()
+        .then((token) => {
+          // M7b: tokens rotate every 15 minutes; "once per sign-in" keys on the session id
+          key = token ? auth.sessionKey(token) : "";
+          if (!key || askedThisSession(key)) return Promise.reject(new DOMException("asked", "AbortError"));
+          return legalSettled();
+        })
         .then(() => (ctl.signal.aborted ? Promise.reject(new DOMException("aborted", "AbortError")) : onboardingApi.get(ctl.signal)))
         .then((d) => {
-          markAsked(token);
+          markAsked(key);
           if (d.required) setData(d);
         })
         .catch(() => {});

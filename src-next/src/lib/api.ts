@@ -1,6 +1,6 @@
-import axios, { AxiosInstance, AxiosError } from "axios";
+import axios, { AxiosInstance, AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-import { AUTH_TOKEN_KEY, auth } from "./session";
+import { auth } from "./session";
 import { apiError, type ApiErrorBody, type LinkErrorCode } from "./auth-api";
 
 export { auth, apiError };
@@ -18,11 +18,11 @@ function createApiClient(service: "users" | "tests"): AxiosInstance {
     },
   });
 
-  // Request interceptor to add auth token
+  // Request interceptor: a fresh access token (auth v2 refreshes in the background; lib/session.ts)
   client.interceptors.request.use(
-    (config) => {
+    async (config) => {
       if (typeof window !== "undefined") {
-        const token = localStorage.getItem(AUTH_TOKEN_KEY);
+        const token = await auth.ensureToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -32,18 +32,25 @@ function createApiClient(service: "users" | "tests"): AxiosInstance {
     (error) => Promise.reject(error)
   );
 
-  // Response interceptor for error handling
+  // Response interceptor: a 401 refreshes once and retries; still 401 (or no session) signs out
   client.interceptors.response.use(
     (response) => response,
-    (error: AxiosError) => {
+    async (error: AxiosError) => {
       // A 401 from the sign-in endpoints means bad credentials or a bad link: let the page show it.
       const url = error.config?.url || "";
-      const isAuthCall = /\/auth\/(login|login-with-key)|\/reset-password\//.test(url);
-      if (error.response?.status === 401 && !isAuthCall) {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(AUTH_TOKEN_KEY);
-          window.location.href = "/login";
+      const isAuthCall = /\/auth\/(login|login-with-key|refresh|logout)|\/reset-password\//.test(url);
+      if (error.response?.status === 401 && !isAuthCall && typeof window !== "undefined") {
+        const cfg = error.config as (InternalAxiosRequestConfig & { _iitpRetried?: boolean }) | undefined;
+        if (cfg && !cfg._iitpRetried) {
+          cfg._iitpRetried = true;
+          const fresh = await auth.ensureToken({ force: true });
+          if (fresh) {
+            cfg.headers.Authorization = `Bearer ${fresh}`;
+            return client.request(cfg);
+          }
         }
+        auth.removeToken();
+        window.location.href = "/login";
       }
       return Promise.reject(error);
     }

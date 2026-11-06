@@ -91,7 +91,7 @@ function LoginForm() {
       try {
         sessionStorage.removeItem(RESET_EMAIL_KEY);
       } catch {}
-      login(token);
+      login(token, undefined, response.data?.data?.expiresAt);
       router.push(next);
     } catch (err: unknown) {
       const { status, code, details } = apiError(err);

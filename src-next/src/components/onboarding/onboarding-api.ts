@@ -17,13 +17,13 @@ export const onboardingApi = {
 const ASKED_KEY = "iitp-onboarding-asked";
 export function askedThisSession(token: string): boolean {
   try {
-    return localStorage.getItem(ASKED_KEY) === token.slice(-32);
+    return localStorage.getItem(ASKED_KEY) === token.slice(-64);
   } catch {
     return false;
   }
 }
 export function markAsked(token: string) {
   try {
-    localStorage.setItem(ASKED_KEY, token.slice(-32));
+    localStorage.setItem(ASKED_KEY, token.slice(-64));
   } catch {}
 }

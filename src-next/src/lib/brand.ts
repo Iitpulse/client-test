@@ -85,9 +85,9 @@ export interface InstituteState {
 let stateCache: { at: number; token: string | null; p: Promise<InstituteState | null> } | null = null;
 
 /** GET /platform/tenant/state for the signed-in student (cached 60 s; any failure = no notices). */
-export function fetchInstituteState(): Promise<InstituteState | null> {
-  const token = auth.getToken();
-  if (!token) return Promise.resolve(null);
+export async function fetchInstituteState(): Promise<InstituteState | null> {
+  const token = await auth.ensureToken(); // M7b: in-memory token, refreshed on load
+  if (!token) return null;
   if (stateCache && stateCache.token === token && Date.now() - stateCache.at < 60_000) return stateCache.p;
   const p = fetch(`${API_GATEWAY}/platform/tenant/state`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
     .then(async (r) => {

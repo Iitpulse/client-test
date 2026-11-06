@@ -21,6 +21,8 @@ export interface LoginRequest {
   password: string;
   /** "student": a staff account answers 403 STAFF_ACCOUNT { adminUrl } and gets no token */
   app?: "admin" | "student";
+  /** M7b (api-users docs/m7b-auth.md): a cookie session + 15-minute token */
+  session?: "cookie";
 }
 /** details of 429 LOGIN_LOCKED */
 export interface LoginLockedDetails {
@@ -81,6 +83,8 @@ export interface SignupRequest {
 export interface SignupResponse {
   now: IsoDateTime;
   token: string;
+  /** M7b: with session "cookie" */
+  expiresAt?: IsoDateTime;
   user: { id: string; name: string; batch: Ref };
 }
 
@@ -117,6 +121,8 @@ export interface OnboardingSaveRequest extends Partial<OnboardingFields> {
 /** POST /users/student/auth/login-with-key → 200 */
 export interface LoginWithKeyResponse {
   token: string;
+  /** M7b: with session "cookie" */
+  expiresAt?: IsoDateTime;
   testId: string;
   student: { id: string; name?: string; email?: string };
 }

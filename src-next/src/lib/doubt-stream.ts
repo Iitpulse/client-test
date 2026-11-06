@@ -1,7 +1,7 @@
 // POST /ai/student/doubts/:threadId/messages answers text/event-stream (contract: docs/m4-api.md, DoubtStreamEvent).
 // Read with fetch() and a stream reader so the token stays in the Authorization header: never EventSource, never a
 // token in the URL. A JSON body instead of a stream is an error from before the stream started.
-import { AUTH_TOKEN_KEY } from "./session";
+import { auth } from "./session";
 import { API_GATEWAY, signOutToLogin, StudentApiError, unwrap } from "./student-api";
 import type { DoubtSend, DoubtStreamEvent } from "@/types/m4";
 
@@ -13,7 +13,7 @@ export type StreamEnd = "done" | "dropped";
  * the server refused before streaming (THREAD_FULL, DOUBT_DAILY_LIMIT, AI_NOT_AVAILABLE_YET, ...).
  */
 export async function streamDoubt(threadId: string, body: DoubtSend, onEvent: (e: DoubtStreamEvent) => void, signal?: AbortSignal): Promise<StreamEnd> {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = await auth.ensureToken();
   let res: Response;
   try {
     res = await fetch(`${API_GATEWAY}/ai/student/doubts/${encodeURIComponent(threadId)}/messages`, {

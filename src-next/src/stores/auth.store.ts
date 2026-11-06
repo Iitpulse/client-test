@@ -15,8 +15,9 @@ interface AuthState {
   setCurrentUser: (user: ICurrentUser | null) => void;
   setTestId: (testId: string | null) => void;
   setKeyRequiredForTest: (required: boolean) => void;
-  /** Store a session token; `name` (when the sign-in response has it) fills the avatar without a /auth/me call */
-  login: (token: string, name?: string) => void;
+  /** Store a session token; `name` (when the sign-in response has it) fills the avatar without a /auth/me call.
+   *  `expiresAt`: auth v2 sign-ins answer it (15-minute token, refresh cookie). */
+  login: (token: string, name?: string, expiresAt?: string | null) => void;
   setUserName: (name: string) => void;
   logout: () => void;
   checkAuth: () => boolean;
@@ -24,7 +25,20 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      /** The user from a token's claims (kept if already known). false = not a token. */
+      const fill = (token: string): boolean => {
+        try {
+          const decoded = jwtDecode<{ id: string; email: string; userType: string; instituteId?: string }>(token);
+          if (!get().currentUser) {
+            set({ currentUser: { id: decoded.id, email: decoded.email, userType: decoded.userType, instituteId: decoded.instituteId }, isAuthenticated: true });
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      return {
       currentUser: null,
       isAuthenticated: false,
       testId: null,
@@ -41,7 +55,7 @@ export const useAuthStore = create<AuthState>()(
         if (user && user.name !== name) set({ currentUser: { ...user, name } });
       },
 
-      login: (token: string, name?: string) => {
+      login: (token: string, name?: string, expiresAt?: string | null) => {
         try {
           const decoded = jwtDecode<{
             id: string;
@@ -50,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
             instituteId?: string;
           }>(token);
 
-          auth.setToken(token);
+          auth.setToken(token, expiresAt);
           set({
             currentUser: {
               id: decoded.id,
@@ -67,53 +81,38 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        auth.removeToken();
+        void auth.signOut(); // ends the cookie session on the API and in every tab
         localStorage.removeItem("IITP_TEST_SUBMITTED_KEY");
         set({ currentUser: null, isAuthenticated: false, testId: null });
       },
 
       checkAuth: () => {
-        const token = auth.getToken();
-        if (!token) {
+        // M7b: the access token lives in memory and is refreshed from the cookie session on load (lib/session.ts).
+        // A session hint with no token yet counts as signed in; the first API call refreshes, and signs out if the
+        // session has ended.
+        if (!auth.isAuthenticated()) {
           set({ currentUser: null, isAuthenticated: false });
           return false;
         }
-
-        try {
-          const decoded = jwtDecode<{
-            id: string;
-            email: string;
-            userType: string;
-            instituteId?: string;
-            exp?: number;
-          }>(token);
-
-          // Check if token is expired
-          if (decoded.exp && decoded.exp * 1000 < Date.now()) {
-            auth.removeToken();
-            set({ currentUser: null, isAuthenticated: false });
-            return false;
-          }
-
+        const token = auth.getToken();
+        if (!token) {
           if (!get().currentUser) {
-            set({
-              currentUser: {
-                id: decoded.id,
-                email: decoded.email,
-                userType: decoded.userType,
-                instituteId: decoded.instituteId,
-              },
-              isAuthenticated: true,
+            void auth.ensureToken().then((t) => {
+              if (t) fill(t);
+              else set({ currentUser: null, isAuthenticated: false });
             });
           }
           return true;
-        } catch {
+        }
+        if (!fill(token)) {
           auth.removeToken();
           set({ currentUser: null, isAuthenticated: false });
           return false;
         }
+        return true;
       },
-    }),
+      };
+    },
     {
       name: "iitp-test-auth",
       partialize: (state) => ({

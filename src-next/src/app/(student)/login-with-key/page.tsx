@@ -56,7 +56,7 @@ function LoginWithKeyForm() {
       const data = response.data?.data;
       if (!data?.token) throw new Error("No token returned");
       reset();
-      login(data.token, data.student?.name);
+      login(data.token, data.student?.name, data.expiresAt);
       setTestId(data.testId);
       router.push(`/tests/${encodeURIComponent(data.testId)}/start`);
     } catch (err: unknown) {

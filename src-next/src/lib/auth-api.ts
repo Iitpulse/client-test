@@ -40,7 +40,7 @@ export function apiError(err: unknown): { status: number; code?: string; message
   };
 }
 
-async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<{ status: number; data: T }> {
+async function call<T>(method: "GET" | "POST", path: string, body?: unknown, withCookies = false): Promise<{ status: number; data: T }> {
   let res: Response;
   try {
     res = await fetch(`${API_GATEWAY}/users${path}`, {
@@ -48,6 +48,8 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
       headers: body === undefined ? undefined : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
+      // M7b: the sign-in answers set the refresh cookie (HttpOnly, on the API host)
+      ...(withCookies ? { credentials: "include" as const } : {}),
     });
   } catch {
     throw { response: undefined }; // network failure: apiError() reports status 0
@@ -57,6 +59,8 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
   return { status: res.status, data };
 }
 const post = <T>(path: string, body: unknown) => call<T>("POST", path, body);
+/** A sign-in call: auth v2 cookie session (api-users docs/m7b-auth.md) */
+const signIn = <T>(path: string, body: Record<string, unknown>) => call<T>("POST", path, { ...body, session: "cookie" }, true);
 const get = <T>(path: string) => call<T>("GET", path);
 
 type Ok<T> = { success: true; data: T };
@@ -83,12 +87,12 @@ export const authApi = {
    * 429 LOGIN_LOCKED { retryAfterSeconds }, 403 ACCOUNT_DISABLED, 403 STAFF_ACCOUNT { adminUrl }.
    */
   login: (credentials: { email: string; password: string }) =>
-    post<{ success: boolean; data?: { token?: string }; token?: string; message?: string }>("/auth/login", { ...credentials, app: "student" } satisfies LoginRequest),
+    signIn<{ success: boolean; data?: { token?: string; expiresAt?: string; status?: string }; token?: string; message?: string }>("/auth/login", { ...credentials, app: "student" } satisfies LoginRequest),
   /**
    * Exchange a test key (from a /auth/<key>/<testId> link or typed in) for a session. 404 LINK_INVALID,
    * 410 LINK_EXPIRED / LINK_REVOKED, 409 LINK_USED (a 6-character link signs in once), 429 TOO_MANY_ATTEMPTS.
    */
-  loginWithKey: (key: string) => post<Ok<LoginWithKeyResponse>>("/student/auth/login-with-key", { key }),
+  loginWithKey: (key: string) => signIn<Ok<LoginWithKeyResponse>>("/student/auth/login-with-key", { key }),
   /** Password reset by email link. The link opens /reset-password?token=... in the student app. */
   passwordReset: {
     /** Always 200 with the same generic message (no account enumeration); 429 TOO_MANY_ATTEMPTS when throttled. */
@@ -106,6 +110,6 @@ export const authApi = {
     /** GET /users/public/promo/:code: 400 PROMO_LENGTH; 404 PROMO_INVALID */
     promo: (code: string) => get<Ok<PromoCheckResponse>>(`/public/promo/${encodeURIComponent(code)}`),
     /** POST /users/student/create-student: answers a session token. 400 VALIDATION_ERROR { fields }, 409 EMAIL_TAKEN / PHONE_TAKEN, 404 PROMO_INVALID */
-    create: (body: SignupRequest) => post<Ok<SignupResponse>>("/student/create-student", body),
+    create: (body: SignupRequest) => signIn<Ok<SignupResponse>>("/student/create-student", body as unknown as Record<string, unknown>),
   },
 };

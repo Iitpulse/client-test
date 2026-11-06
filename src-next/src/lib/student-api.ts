@@ -1,7 +1,7 @@
 // The M2 student portal reads (Home, Tests, Results, Review) on plain fetch, like the sign-in calls in
 // lib/auth-api.ts: the signed-in screens are what a student opens on a slow phone, so they do not pull in axios.
 // Contract: Iitpulse/api-tests docs/m2-student-api.md; types in types/m2-student.ts.
-import { AUTH_TOKEN_KEY } from "./session";
+import { auth, sessionBootScript } from "./session";
 import type {
   ApiError as ApiErrorBody,
   ApiOk,
@@ -74,7 +74,7 @@ export function isRetryable(err: unknown): boolean {
 }
 
 export function signOutToLogin() {
-  localStorage.removeItem(AUTH_TOKEN_KEY);
+  auth.removeToken();
   window.location.replace("/login"); // a full load: drop every cached query of the old session
 }
 
@@ -89,15 +89,21 @@ export async function request<T>(
 ): Promise<T> {
   const url = new URL(`${API_GATEWAY}/${service}${path}`);
   for (const [k, v] of Object.entries(params || {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
-  const token = typeof window !== "undefined" ? localStorage.getItem(AUTH_TOKEN_KEY) : null;
-  const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-  if (body !== undefined) headers["Content-Type"] = "application/json";
-  let res: Response;
-  try {
-    res = await fetch(url, { method: method ?? (body !== undefined ? "POST" : "GET"), headers, body: body !== undefined ? JSON.stringify(body) : undefined, cache: "no-store", signal });
-  } catch (e) {
-    if ((e as Error)?.name === "AbortError") throw e;
-    throw new StudentApiError(0, "You seem to be offline. Check your connection and try again.");
+  const send = async (token: string | null): Promise<Response> => {
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    try {
+      return await fetch(url, { method: method ?? (body !== undefined ? "POST" : "GET"), headers, body: body !== undefined ? JSON.stringify(body) : undefined, cache: "no-store", signal });
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") throw e;
+      throw new StudentApiError(0, "You seem to be offline. Check your connection and try again.");
+    }
+  };
+  let res = await send(await auth.ensureToken());
+  if (res.status === 401) {
+    // the token expired between the check and the call (or the tab slept): refresh once and retry
+    const fresh = await auth.ensureToken({ force: true });
+    if (fresh) res = await send(fresh);
   }
   const json = (await res.json().catch(() => null)) as ApiOk<T> | ApiErrorBody | null;
   return unwrap<T>(res.status, json);
@@ -139,9 +145,9 @@ function takeEarlyHome(): Promise<StudentHome> | null {
 
 /** The inline script for the Home page: starts GET /tests/student/home while the app's JavaScript loads. */
 export function homeEarlyFetchScript(): string {
+  // M7b: the token comes from the boot refresh (sessionBootScript, which runs first); no session hint, no early fetch
   const url = JSON.stringify(`${API_GATEWAY}/tests/student/home`);
-  const key = JSON.stringify(AUTH_TOKEN_KEY);
-  return `(function(){try{var t=localStorage.getItem(${key});if(!t||location.pathname!=="/")return;window.__iitpHome={at:Date.now(),p:fetch(${url},{headers:{Authorization:"Bearer "+t},cache:"no-store"}).then(function(r){return r.json().catch(function(){return null}).then(function(b){return{status:r.status,body:b}})})}}catch(e){}})();`;
+  return sessionBootScript() + `(function(){try{var b=window.__iitpBoot;if(!b||location.pathname!=="/")return;window.__iitpHome={at:Date.now(),p:b.p.then(function(r){var t=r&&r.status===200&&r.body&&r.body.data&&r.body.data.token;if(!t)return{status:r?r.status:0,body:r?r.body:null};return fetch(${url},{headers:{Authorization:"Bearer "+t},cache:"no-store"}).then(function(h){return h.json().catch(function(){return null}).then(function(j){return{status:h.status,body:j}})})})}}catch(e){}})();`;
 }
 
 const get = <T,>(path: string, params?: Record<string, string | number | undefined | null>, signal?: AbortSignal) =>

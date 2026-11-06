@@ -244,7 +244,7 @@ export function SignupFlow() {
         ...(legal ? { legal } : {}),
       });
       const data = res.data.data;
-      login(data.token, data.user?.name ?? name.trim());
+      login(data.token, data.user?.name ?? name.trim(), data.expiresAt);
       router.replace(next);
     } catch (ex) {
       setBusy(false);

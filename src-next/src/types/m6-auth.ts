@@ -75,6 +75,8 @@ export interface SignupRequest {
   /** exactly 6 letters or digits */
   promoCode: string;
   acceptedTerms: true;
+  /** the Terms / Privacy versions the checkbox showed (GET /users/public/legal); left out when they couldn't be read */
+  legal?: { terms: string; privacy: string };
 }
 export interface SignupResponse {
   now: IsoDateTime;

@@ -83,6 +83,8 @@ export interface PracticeSet {
   createdAt: IsoDateTime;
   minutes: number | null;
   questions: PracticeQuestion[];
+  /** "bank" | "redo" | "revision" (api-tests, 6 Nov; older servers leave it out) */
+  source?: "bank" | "redo" | "revision";
 }
 
 export interface PracticeQuestion {

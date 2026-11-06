@@ -36,6 +36,7 @@ export type StudentErrorCode =
   | "ALREADY_SUBMITTED"
   | "SUBMIT_TOO_LATE"
   // M6 review additions + batch 7 (api-ai docs/m6-api.md)
+  | "LEGAL_VERSION_CHANGED"
   | "NOTHING_TO_REDO"
   | "NOTHING_TO_PRACTISE"
   | "REVISION_FULL"

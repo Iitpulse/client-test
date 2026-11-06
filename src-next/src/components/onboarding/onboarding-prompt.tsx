@@ -9,6 +9,7 @@ import { useAuthHydrated, useAuthStore } from "@/stores/auth.store";
 import { auth } from "@/lib/session";
 import type { OnboardingResponse } from "@/types/m6-auth";
 import { askedThisSession, markAsked, onboardingApi } from "./onboarding-api";
+import { legalSettled } from "@/lib/legal-api";
 
 const OnboardingWizard = dynamic(() => import("./onboarding-wizard").then((m) => m.OnboardingWizard), { ssr: false });
 
@@ -24,8 +25,9 @@ export function OnboardingPrompt() {
     const ctl = new AbortController();
     // Off the first paint: Home's own data comes first.
     const t = setTimeout(() => {
-      onboardingApi
-        .get(ctl.signal)
+      // The terms dialog goes first
+      legalSettled()
+        .then(() => (ctl.signal.aborted ? Promise.reject(new DOMException("aborted", "AbortError")) : onboardingApi.get(ctl.signal)))
         .then((d) => {
           markAsked(token);
           if (d.required) setData(d);

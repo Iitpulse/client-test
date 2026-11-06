@@ -11,6 +11,7 @@ import { PhoneHeader } from "./phone-header";
 import { PhoneTabBar } from "./phone-tabbar";
 import { StudentNav } from "./student-nav";
 import { OnboardingPrompt } from "@/components/onboarding/onboarding-prompt";
+import { ReacceptPrompt } from "@/components/legal/reaccept-prompt";
 
 /**
  * What a phone (below 768px) shows around a screen, as the Phone-* boards draw it:
@@ -91,6 +92,8 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
       </main>
       {chrome !== "none" && <PhoneTabBar />}
       {/* Student-Signup: "Complete your profile" after sign-in while the profile is incomplete */}
+      {/* Student-Legal: "We've updated our terms" while the accepted versions are not the current ones (first) */}
+      <ReacceptPrompt />
       <OnboardingPrompt />
     </div>
   );

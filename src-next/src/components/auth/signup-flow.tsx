@@ -5,6 +5,7 @@
 // phone: the card alone on the paper. Calls (api-users, M6 "Public sign-up"): POST /users/otp/email/send,
 // POST /users/otp/email/verify, GET /users/public/promo/:code, POST /users/student/create-student (answers a token:
 // the student is signed in and lands on Home, where "Complete your profile" opens).
+import { legalApi, type LegalVersions } from "@/lib/legal-api";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -77,6 +78,13 @@ export function SignupFlow() {
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState<{ d: string; m: string | null; y: string }>({ d: "", m: null, y: "" });
   const [terms, setTerms] = useState(false);
+  // The versions the terms checkbox stands for, sent with the sign-up (owner, 6 Nov): read once, best effort
+  const [legal, setLegal] = useState<LegalVersions | null>(null);
+  useEffect(() => {
+    const ctl = new AbortController();
+    legalApi.current(ctl.signal).then(setLegal).catch(() => {});
+    return () => ctl.abort();
+  }, []);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const resend = useCountdown();
@@ -232,6 +240,7 @@ export function SignupFlow() {
         dob: iso,
         promoCode: promo,
         acceptedTerms: true,
+        ...(legal ? { legal } : {}),
       });
       const data = res.data.data;
       login(data.token, data.user?.name ?? name.trim());

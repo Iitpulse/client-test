@@ -144,3 +144,47 @@
     .phone-hide { display: none !important }
   }
 }
+
+/* ---------- Batch 5 state props: Home, Tests, Profile (Student-Home, -Tests, -Profile and Phone-*) ---------- */
+@layer components {
+  /* Offline strip: edge to edge under the phone header */
+  @media (width < 48rem) { .bnr-ph { border-radius: 0; border-width: 0 0 1px; font-size: 13px; line-height: 1.4; padding: 10px 16px } }
+  /* Home "many live": one row per live test on the blueboard */
+  .lrow { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, .08); position: relative }
+  @media (width < 48rem) { .lrow { gap: 10px; padding: 10px 12px } }
+  /* Home "Today's plan" rows (desktop card; phone AI card: 44px rows, done items struck through in blue ink) */
+  .plan-row { transition: background 160ms }
+  .plan-row:hover { background: rgba(225, 227, 248, .45) }
+  .hplan { gap: 12px; min-height: 44px; cursor: pointer }
+  .hplan .check { width: 22px; height: 22px }
+  .hplan .hplan-t { font-weight: 600; transition: color 160ms }
+  .hplan:has(.check:checked) .hplan-t { text-decoration: line-through; text-decoration-color: var(--cl-ink); text-decoration-thickness: 2px; color: var(--muted); font-weight: 400 }
+  /* Profile: field error line, top summary, city list group + state, disabled button, toast (Kit-Forms, Kit-Pickers, Kit-Feedback) */
+  .pf-err { display: flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 600; color: #C40000 }
+  .pf-sum { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 10px; background: #FFF5F5; border: 1px solid #F2B1B1; color: #7A1010 }
+  .pf-sum > span:first-child { flex: none; margin-top: 2px }
+  .pf-sum a { color: #7A1010; text-decoration: underline }
+  @media (width < 48rem) { .pf-sum { padding: 12px } .pf-sum a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px } }
+  .pf-grp { padding: 8px 10px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); list-style: none }
+  .pf-end { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap }
+  .au-li .pf-end + .tick { margin-left: 0 }
+  .pf-pop { top: calc(100% + 6px) }
+  .btn.pf-off, .btn.pf-off:disabled { background: #E1E3F8; color: var(--muted); border-color: transparent; cursor: not-allowed; opacity: 1 }
+  .pf-tst {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 70; min-width: 260px; max-width: calc(100vw - 32px);
+    display: flex; align-items: center; gap: 12px; box-sizing: border-box; padding: 12px 12px 12px 14px;
+    background: #0D0F2B; color: #fff; border-radius: 12px; font-size: 13px
+  }
+  .pf-tst > svg { flex: none }
+  .pf-tst .msg { flex: 1; min-width: 0 }
+  .pf-tst .msg b { font-weight: 600 }
+  .pf-tst .act { background: none; border: 0; padding: 0 6px; min-height: 32px; font: 600 13px var(--font-sans, inherit); color: #fff; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, .45); white-space: nowrap; flex: none }
+  .pf-tst .cls { width: 32px; height: 32px; border: 0; padding: 0; background: none; border-radius: 8px; color: #A9ACDF; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex: none }
+  .pf-tst .cls:hover { background: rgba(255, 255, 255, .1); color: #fff }
+  .pf-tst.err { background: #3A0A0A }
+  @media (width < 48rem) {
+    .pf-tst { left: 16px; right: 16px; transform: none; min-width: 0; max-width: none; gap: 8px; padding: 4px 4px 4px 14px; min-height: 52px; bottom: calc(24px + env(safe-area-inset-bottom)) }
+    .pf-tst .act { min-height: 44px; padding: 0 8px }
+    .pf-tst .cls { width: 44px; height: 44px }
+  }
+}

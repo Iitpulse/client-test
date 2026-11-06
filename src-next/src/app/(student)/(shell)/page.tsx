@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Doodle, InkUnderline, Note } from "@iitpulse/ui";
 import { HomeView } from "@/components/student/home-view";
-import { BatchBadge, GreetingComma, GreetingName, GreetingWord, HomeDate } from "@/components/student/home-greeting";
+import { BatchBadge, GreetingComma, GreetingName, GreetingWord, HomeDate, HomeOffline } from "@/components/student/home-greeting";
 
 export const metadata: Metadata = { title: "Home · IIT-PULSE" };
 
@@ -16,6 +16,7 @@ export default function HomePage() {
     <div className="col gap-7 md:pt-1 max-md:gap-3.5">
       <Doodle name="pendulum" slot="gl" style={{ top: 300 }} />
       <Doodle name="benzene" slot="gr" style={{ top: 760 }} />
+      <HomeOffline />
       <header className="row between wrap relative gap-4 rise max-md:gap-0.5">
         <Doodle name="atom" className="md:hidden [&_svg]:size-16" style={{ right: 2, top: -6 }} />
         <div className="col gap-0.5">

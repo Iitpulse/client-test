@@ -73,3 +73,26 @@ export function sentence(s: string): string {
   const t = s.trim();
   return /[.!?]$/.test(t) ? t : `${t}.`;
 }
+
+// ── Batch 5 (Student-Home / Student-Tests state props) ──
+
+/** "75 questions · 180 minutes · 300 marks" (the Home hero spells minutes out) */
+export function heroMeta(t: Pick<TestSummary, "totalQuestions" | "durationMinutes" | "maxScore">): string {
+  return `${t.totalQuestions} questions · ${t.durationMinutes} minutes · ${num(t.maxScore)} marks`;
+}
+
+/** "Opens in": "12d 15h 08m" (phone "12d 15h") a day or more ahead, else "02:14:36". */
+export function opensIn(seconds: number, short = false): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  if (d > 0) return short ? `${d}d ${h}h` : `${d}d ${h}h ${pad(m)}m`;
+  return `${pad(h)}:${pad(m)}:${pad(s % 60)}`;
+}
+
+/** The 1-hour email reminder time of a test: an hour before it opens. */
+export function reminderAt(opensAt: string): number {
+  return Date.parse(opensAt) - 3_600_000;
+}

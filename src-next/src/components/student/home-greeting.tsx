@@ -4,15 +4,36 @@ import { useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { greeting, longDay, shortDay } from "@/lib/time";
 import { qk, studentApi } from "@/lib/student-api";
+import { useOnline } from "@/lib/use-online";
 import { useAuthStore } from "@/stores/auth.store";
+import type { StudentHome } from "@/types/m2-student";
+import { fxKey, loadFixture, OfflineStrip, useFixture } from "./common";
+import { istTime } from "./states";
 
 // The client parts of Home's greeting: the words that depend on the time and the student. The frame around them
 // (the date note, the ink underline, the doodles) is rendered by app/(student)/(shell)/page.tsx, a server
 // component, so it costs no JavaScript.  The page stays static (prerendered at build):
 // the time comes from the Home response's server clock once it is in, from the device clock until then.
 
+/** GET /tests/student/home (or its fixture with `?fixture=<state>` on dev / staging). Home's one query. */
+export function useHomeQuery() {
+  const fx = useFixture();
+  return useQuery({
+    queryKey: fxKey(fx, qk.home),
+    queryFn: fx ? () => loadFixture<StudentHome>(fx, "home") : ({ signal }) => studentApi.home(signal),
+    retry: fx ? false : undefined,
+  });
+}
+
+/** Kit-States offline on Home: what loaded stays, with the time it loaded. */
+export function useHomeOffline(): boolean {
+  const online = useOnline();
+  const fx = useFixture();
+  return !online || fx === "offline";
+}
+
 function useHomeData() {
-  return useQuery({ queryKey: qk.home, queryFn: ({ signal }) => studentApi.home(signal) }).data;
+  return useHomeQuery().data;
 }
 
 /** The first name, from the session (the same source as the nav and avatar); Home's own copy fills a gap. */
@@ -34,7 +55,7 @@ function useNow(): number | null {
 /** "Good evening" */
 export function GreetingWord() {
   const now = useNow();
-  return now === null ? "\u00a0" : greeting(now); // a space keeps the line's height until the time is known
+  return now === null ? " " : greeting(now); // a space keeps the line's height until the time is known
 }
 
 /** "Wednesday, 4 November" on desktop, "Wed, 4 Nov" on phones */
@@ -59,7 +80,26 @@ export function GreetingName() {
   return useFirstName() ?? null;
 }
 
+/** "Batch: JEE 2027 · Indore A"; "No batch yet" (amber) when the account has none (desktop only, as the boards). */
 export function BatchBadge() {
-  const batch = useHomeData()?.student.batch?.name;
-  return batch ? <span className="badge b-navy max-md:hidden">Batch: {batch}</span> : null;
+  const data = useHomeData();
+  if (!data) return null;
+  const batch = data.student.batch;
+  if (!batch) return <span className="badge b-amber max-md:hidden">No batch yet</span>;
+  return batch.name ? <span className="badge b-navy max-md:hidden">Batch: {batch.name}</span> : null;
+}
+
+/** Student-Home / Phone-Home "offline": a strip over the page (edge to edge under the phone header). */
+export function HomeOffline() {
+  const q = useHomeQuery();
+  const offline = useHomeOffline();
+  if (!offline) return null;
+  const at = q.dataUpdatedAt ? istTime(q.dataUpdatedAt) : null;
+  return (
+    <OfflineStrip
+      className="rise max-md:-mx-4 max-md:-mt-4"
+      desktop={`${at ? `Showing what loaded at ${at}. ` : ""}A live test still starts, and your answers are kept on this device until you're back.`}
+      phone={`${at ? `Showing ${at}. ` : ""}A live test still starts.`}
+    />
+  );
 }

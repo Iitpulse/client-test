@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useStartPractice } from "@/lib/m4-api";
 import { StudentApiError } from "@/lib/student-api";
 import { resetsAt } from "@/lib/time";
@@ -17,6 +18,19 @@ export function practiceProblem(err: unknown, chapter: string, now: number): str
     return `That's 30 practice sets today, the most for one day.${at ? ` You can make more ${resetsAt(now, at)}.` : " You can make more tomorrow."}`;
   }
   return sentence(e?.message || "Couldn't make the practice set. Please try again");
+}
+
+/** The three reasons a set can't be made that get their own page (Student-Practice / Phone-Practice states). */
+const PAGE_CODES = new Set(["NO_PRACTICE_QUESTIONS", "PRACTICE_LIMIT", "PRACTICE_UNAVAILABLE"]);
+
+/** /practice/new?problem=…: the request rides along so "Try again" can send it again. */
+export function problemHref(req: PracticeRequest, e: StudentApiError): string {
+  const p = new URLSearchParams({ problem: String(e.code), chapter: req.chapter, count: String(req.count) });
+  if (req.subject) p.set("subject", req.subject);
+  if (req.topic) p.set("topic", req.topic);
+  if (req.minutes) p.set("minutes", String(req.minutes));
+  if (typeof e.details?.resetsAt === "string") p.set("resetsAt", e.details.resetsAt);
+  return `/practice/new?${p.toString()}`;
 }
 
 /**
@@ -37,13 +51,21 @@ export function PracticeButton({
   wrapClassName?: string;
 }) {
   const m = useStartPractice();
+  const router = useRouter();
+  const start = () =>
+    m.mutate(req, {
+      onError: (e) => {
+        if (e instanceof StudentApiError && e.code && PAGE_CODES.has(e.code)) router.push(problemHref(req, e));
+      },
+    });
+  const pageProblem = m.error instanceof StudentApiError && !!m.error.code && PAGE_CODES.has(m.error.code);
   return (
     <span className={cn("col items-start gap-1.5", wrapClassName)}>
-      <button type="button" className={className} disabled={m.isPending || m.isSuccess} aria-busy={m.isPending || undefined} onClick={() => m.mutate(req)}>
+      <button type="button" className={className} disabled={m.isPending || m.isSuccess} aria-busy={m.isPending || undefined} onClick={start}>
         {(m.isPending || m.isSuccess) && <Spinner size={14} />}
         {label}
       </button>
-      {m.isError && (
+      {m.isError && !pageProblem && (
         <span className="xs muted" role="status">
           {practiceProblem(m.error, req.chapter, now)}
         </span>

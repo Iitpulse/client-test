@@ -114,3 +114,95 @@
   @keyframes m4-draw-lg { from { stroke-dashoffset: 900 } }
   .draw-lg { stroke-dasharray: 900; animation: m4-draw-lg 1.4s cubic-bezier(.2,.8,.2,1) .2s both }
 }
+
+/* ==== Batch 5 states: Doubts (Student-Doubts, Phone-Doubts, Phone-Doubt; doubts-view.tsx, doubt-chat.tsx) ==== */
+@layer components {
+  /* the offline banner across a chat pane or under the phone header: full bleed, a line under it */
+  .bnr.bnr-flush { border-radius: 0; border: 0; border-bottom: 1px solid #F1D29A; padding: 10px 20px; font-size: 13px; line-height: 1.4; flex: none }
+  @media (width < 48rem) { .bnr.bnr-flush { padding: 10px 16px } }
+  /* the chat's 40px state icon (lock, error) */
+  .st-ico.st-ico-sm { width: 40px; height: 40px; border-radius: 12px }
+  .st-ico.st-ico-sm svg { width: 20px; height: 20px }
+  /* centred chat states (locked, couldn't load) */
+  .d-ctr { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; margin: auto; max-width: 420px; padding: 24px 0 }
+  .chat-log .d-ctr { white-space: normal }
+  @media (width < 48rem) { .d-ctr { margin: auto 0; max-width: none; padding: 24px 8px } }
+  .d-ctr.d-ctr-page { padding: 56px 0 }
+  @media (width < 48rem) { .d-ctr.d-ctr-page { padding: 120px 8px 24px } }
+  /* refused / failed / dropped answers: the not-counted or connection line under a dashed rule */
+  .d-cut { border-top: 1px dashed #E1E3F8; padding-top: 8px; white-space: normal }
+  .chat-log .bot.x { white-space: normal; display: flex; flex-direction: column; gap: 8px }
+  .chat-log .bot.x.ans { padding-bottom: 12px }
+  .chat-log .bot.ans .d-cut { line-height: 1.4; background: #fff }
+  /* composer states: blocked input and chips, the Offline button, over 600 characters */
+  .dcomp .input.off, .dcomp .chip.off { background: #F5F6FA; color: var(--muted); pointer-events: none }
+  .dcomp .btn.off { background: #E1E3F8; color: var(--muted); border-color: transparent; pointer-events: none; opacity: 1 }
+  .dcomp .input.over { border-color: #C40000 }
+  .dcomp .input::placeholder { color: #686D86 }
+  .dcomp .t-red { color: #C40000 }
+}
+
+/* ==== Batch 5 states: Progress (Student-Progress, Phone-Progress; progress-view.tsx, study-plan.tsx) ==== */
+@layer components {
+  /* the week: 7 day columns (4 on narrow desktops); dimmed while a rebuild runs */
+  .wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; transition: opacity 200ms }
+  @media (width < 64rem) { .wk { grid-template-columns: repeat(4, minmax(0, 1fr)) } }
+  .wk.dim, .pl-tasks.dim { opacity: .45 }
+  .pl-tasks { transition: opacity 200ms }
+  /* typing box (generating, slow, rebuilding) */
+  .pl-work { gap: 10px; padding: 14px }
+  /* plan notes: 14px and centred on desktop, the kit's 13px note on phones */
+  .pl-nt { margin: 0 }
+  @media (width >= 48rem) { .pl-nt { align-items: center; padding: 12px 14px; border-radius: 12px; font-size: 14px } .pl-nt svg { margin-top: 0 } }
+  @media (width < 48rem) { .pl-nt { margin-top: 8px; border-radius: 12px } }
+  /* locked / no plan yet: a quiet dashed box (desktop), centred lines (phone) */
+  .pl-quiet { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 28px 16px; border: 1.5px dashed #D3D6E2; border-radius: 14px }
+  .pl-quiet.ph { border: 0; padding: 18px 8px 6px }
+  /* the placeholders of "No tests yet" */
+  .pg-dash { border: 1.5px dashed #D3D6E2; border-radius: 12px; display: flex; align-items: center; justify-content: center }
+  /* offline banner: under the top bar, full width, square on phones */
+  .pg-bnr { margin-bottom: 16px }
+  @media (width < 48rem) { .pg-bnr { margin: 0; border-radius: 0; border-width: 0 0 1px; font-size: 13px } }
+}
+
+/* ==== Batch 5 states: Practice (Student-Practice, Phone-Practice; practice-view.tsx, practice-types.tsx) ==== */
+@layer components {
+  /* badges and keys of the answer types */
+  .badge.b-part { background: #FFF4E2; color: #8A4F00 }
+  .badge.b-wrong { background: #FFF0F0; color: #C40000 }
+  .key.sq { border-radius: 6px }
+  button.opt.miss { border: 1.5px dashed #0E7A3D }
+  /* a question held back (in a live test): grey cell, dashed box */
+  .cell.held { background: #EEF0F5; color: var(--muted); border-color: #D3D6E2 }
+  .qc-held { background: #EEF0F5; color: var(--muted); border: 1px solid #D3D6E2 }
+  .pr-held { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 44px 20px; border: 1.5px dashed #D3D6E2; border-radius: 14px; background: #fff }
+  @media (width < 48rem) { .pr-held { padding: 32px 16px } }
+  /* Check while offline */
+  .btn.pr-off, .btn.pr-off:disabled { background: #E1E3F8; color: var(--muted); border-color: transparent; opacity: 1 }
+  /* passage tabs: the board's 44px pills with a status dot */
+  .kids .kid { height: 44px }
+  .kids .dot.todo { background: #fff; border: 1.5px dashed #8A90A8; box-sizing: border-box }
+  /* matrix match */
+  .mx { border-collapse: separate; border-spacing: 6px; margin: -6px }
+  .mx th { font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; padding: 0 2px }
+  .mx th.rh { text-align: left; font-size: 13px; color: var(--ink); white-space: nowrap; padding-right: 8px; font-weight: 600 }
+  .mx td { padding: 0 }
+  .mc { width: 52px; height: 44px; border-radius: 10px; border: 1px solid #D3D6E2; background: #fff; display: flex; align-items: center; justify-content: center; color: var(--navy); padding: 0 }
+  @media (width < 48rem) { .mc { width: 48px } }
+  button.mc { font: inherit; cursor: pointer }
+  button.mc:focus-visible { outline: 3px solid var(--navy-200); outline-offset: 2px }
+  .mc.on { background: var(--navy); border-color: var(--navy); color: #fff }
+  .mc.hit { background: #E9F6EE; border-color: #7CC79A; color: #0E7A3D }
+  .mc.miss { background: #fff; border: 1.5px dashed #0E7A3D; color: #0E7A3D }
+  .mc.bad { background: #C40000; border-color: #C40000; color: #fff }
+  .mc.mc-key { width: 18px; height: 16px; border-radius: 4px; display: inline-block }
+  .rowres { font-size: 12px; font-weight: 600; white-space: nowrap }
+  /* page-sized states: a card on desktop, a centred column on phones */
+  .pr-msg { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 72px 24px }
+  .pr-msg .pr-acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 6px }
+  @media (width < 48rem) {
+    .card.pr-msg { background: transparent; border: 0; box-shadow: none; padding: 0 24px; flex: 1; justify-content: center; min-height: 60dvh }
+    .pr-msg .pr-acts { flex-direction: column-reverse; width: 100% }
+    .pr-msg .pr-acts .btn { width: 100%; height: 44px }
+  }
+}

@@ -1,18 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Doodle, InkUnderline, MathText, Stamp } from "@iitpulse/ui";
-import { m4Api, m4Keys, useProfile } from "@/lib/m4-api";
+import { m4Api, m4Keys, useProfile, useStartPractice } from "@/lib/m4-api";
 import { StudentApiError } from "@/lib/student-api";
 import { useServerClock } from "@/lib/server-clock";
-import { dayMonth, mmss } from "@/lib/time";
-import type { PracticeCheck, PracticeQuestion, PracticeSet } from "@/types/m4";
+import { useOnline } from "@/lib/use-online";
+import { fixtureParam } from "@/lib/fixtures";
+import { asPracticeFx, fxCheck, practiceFixture, type PracticeFxName } from "@/lib/practice-fixtures";
+import { dayMonth, mmss, resetsAt } from "@/lib/time";
+import type { PracticeRequest } from "@/types/m4";
+import type { PracticeAnswer, PracticeCheckM6, PracticeQuestionM6, PracticeSetM6 } from "@/types/practice-m6";
 import { ArrowLeftIcon, ArrowRightIcon, Spinner } from "@/components/shell/icons";
-import { ErrorCard, Skel } from "./common";
+import { Skel } from "./common";
 import { ChevronLeftIcon } from "./icons";
-import { num, sentence } from "./labels";
+import { sentence } from "./labels";
+import { OfflineBanner, supportCode } from "./states";
+import { answered, cellOutcome, checkBody, MatrixGrid, NumberAnswer, OptionList, outcomeLine, PassageHead, typeLabel } from "./practice-types";
 
 /**
  * /practice/[setId]: Student-Practice (desktop) and Phone-Practice. A set made from Progress (POST
@@ -20,78 +26,92 @@ import { num, sentence } from "./labels";
  * (POST …/questions/:n/check), then the key and the solution. Checks are final. A timed drill counts down from when
  * the set was made; when it runs out the student can still check. Once every question is checked: "Set finished".
  * Progress stays highlighted in the top bar (the set belongs to it); on phones a back header and no tab bar.
+ *
+ * Batch 5 states: loading, couldn't load (Code E-…), offline (read the set, Check waits), set not found, a question held
+ * back because it went into a live test (PRACTICE_QUESTION_HELD), and the answer types (multi-correct, numerical range,
+ * passage, matrix). /practice/new?problem=… shows why a set couldn't be made (practice-button.tsx sends the student
+ * there): nothing left in the chapter, 30 sets today, the question bank unreachable.
  */
 
 type Lang = "en" | "hi";
-type Answer = { optionIds: string[]; value: string };
-const EMPTY: Answer = { optionIds: [], value: "" };
-const multi = (q: PracticeQuestion) => q.type === "multiple" || q.type === "matrix";
+const EMPTY: PracticeAnswer = { optionIds: [], value: "", matrix: {} };
 const pick = (t: { en: string; hi: string | null }, lang: Lang) => (lang === "hi" && t.hi ? t.hi : t.en);
-const outcomeOf = (q: PracticeQuestion) => q.checked?.outcome ?? null;
-const OUT: Record<PracticeCheck["outcome"], { text: string; badge: string }> = {
-  correct: { text: "Correct", badge: "b-green" },
-  partial: { text: "Partly correct", badge: "b-amber" },
-  wrong: { text: "Wrong", badge: "b-wrong" },
-};
+const OUT_WORD = { correct: "correct", partial: "partly correct", wrong: "wrong" } as const;
 
-export function PracticeView({ setId }: { setId: string }) {
+export type PracticeProblem = { code: "NO_PRACTICE_QUESTIONS" | "PRACTICE_LIMIT" | "PRACTICE_UNAVAILABLE"; req: PracticeRequest; resetsAt: string | null };
+
+/** The `?fixture=` practice state (dev and staging only), read after mount: undefined until then. */
+function usePracticeFx(): PracticeFxName | null | undefined {
+  const [fx, setFx] = useState<PracticeFxName | null | undefined>(undefined);
+  useEffect(() => setFx(asPracticeFx(fixtureParam())), []);
+  return fx;
+}
+
+export function PracticeView({ setId, problem }: { setId: string; problem?: PracticeProblem | null }) {
+  const fx = usePracticeFx();
+  if (fx === undefined) return <PracticeSkeleton />;
+  if (fx === "noleft" || fx === "limit" || fx === "unavailable") {
+    const code = fx === "noleft" ? "NO_PRACTICE_QUESTIONS" : fx === "limit" ? "PRACTICE_LIMIT" : "PRACTICE_UNAVAILABLE";
+    return <ProblemPage p={{ code, req: { chapter: "Rotational motion", count: 12 }, resetsAt: nextMidnight() }} fixture />;
+  }
+  if (setId === "new" && !fx) return problem ? <ProblemPage p={problem} /> : <Message kind="notfound" />;
+  return <SetView key={fx ?? "live"} setId={setId} fxName={fx} />;
+}
+
+function nextMidnight(): string {
+  const IST = 5.5 * 3600_000;
+  const d = new Date(Date.now() + IST);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - IST).toISOString();
+}
+
+function SetView({ setId, fxName }: { setId: string; fxName: PracticeFxName | null }) {
   const client = useQueryClient();
-  const q = useQuery({ queryKey: m4Keys.practice(setId), queryFn: ({ signal }) => m4Api.practice(setId, signal), staleTime: 10 * 60_000 });
-  const set = q.data?.set;
+  const online = useOnline();
+  const fx = useMemo(() => (fxName && fxName !== "loading" && fxName !== "error" && fxName !== "notfound" ? practiceFixture(fxName, Date.now()) : null), [fxName]);
+  const q = useQuery({ queryKey: m4Keys.practice(setId), queryFn: ({ signal }) => m4Api.practice(setId, signal), staleTime: 10 * 60_000, enabled: !fxName });
+  const [fxSet, setFxSet] = useState<PracticeSetM6 | null>(fx?.set ?? null);
+  const set: PracticeSetM6 | undefined = fx ? (fxSet ?? undefined) : (q.data?.set as PracticeSetM6 | undefined);
+  const serverNow = fx ? fx.now : (q.data?.now ?? "");
+  const receivedAt = fx ? Date.parse(fx.now) : q.dataUpdatedAt;
   const pref = useProfile().data?.profile?.preferences?.questionLanguage ?? "en";
   const [langChoice, setLang] = useState<Lang | null>(null);
   const lang = langChoice ?? pref;
-  const [cur, setCur] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<Record<number, Answer>>({});
+  const [cur, setCur] = useState<number | null>(fx?.start ?? null);
+  const [answers, setAnswers] = useState<Record<number, PracticeAnswer>>({});
+  const [held, setHeld] = useState<Set<number>>(() => new Set(fx?.held ?? []));
+  const [fxBusy, setFxBusy] = useState<number | null>(null);
+  const putCheck = (n: number, check: PracticeCheckM6) => {
+    if (fx) setFxSet((s) => (s ? { ...s, questions: s.questions.map((x) => (x.n === n ? { ...x, checked: check } : x)) } : s));
+    else
+      client.setQueryData<{ now: string; set: PracticeSetM6 }>(m4Keys.practice(setId), (c) =>
+        c ? { ...c, set: { ...c.set, questions: c.set.questions.map((x) => (x.n === n ? { ...x, checked: check } : x)) } } : c
+      );
+  };
   const check = useMutation({
     mutationFn: ({ n, body }: { n: number; body: { optionIds?: string[]; value?: number } }) => m4Api.practiceCheck(setId, n, body),
     onMutate: ({ n }) => setCur(n), // pin it: "the first unchecked one" would move on before the key is seen
-    onSuccess: (res, { n }) =>
-      client.setQueryData<{ now: string; set: PracticeSet }>(m4Keys.practice(setId), (c) =>
-        c ? { ...c, set: { ...c.set, questions: c.set.questions.map((x) => (x.n === n ? { ...x, checked: res.check } : x)) } } : c
-      ),
+    onSuccess: (res, { n }) => putCheck(n, res.check),
+    onError: (e, { n }) => {
+      if (e instanceof StudentApiError && e.code === "PRACTICE_QUESTION_HELD") setHeld((h) => new Set(h).add(n));
+    },
   });
 
   if (!set) {
     const e = q.error instanceof StudentApiError ? q.error : null;
-    const body = q.isError ? (
-      e?.code === "PRACTICE_NOT_FOUND" || e?.status === 404 ? (
-        <div className="card col items-start gap-3 p-5">
-          <span className="h3">This practice set isn&apos;t here</span>
-          <span className="sm muted">It may belong to another account. Make a new one from your progress.</span>
-          <Link href="/progress" className="btn btn-secondary">
-            Go to Progress
-          </Link>
-        </div>
-      ) : (
-        <ErrorCard error={q.error} onRetry={() => q.refetch()} />
-      )
-    ) : (
-      <div className="col gap-3" aria-busy="true" aria-label="Loading the practice set">
-        <Skel className="h-28 w-full rounded-[14px]" />
-        {[0, 1, 2, 3].map((k) => (
-          <Skel key={k} className="h-14 w-full rounded-xl" />
-        ))}
-      </div>
-    );
-    return (
-      <div className="col gap-6 max-md:gap-0">
-        <PhoneHeader title="Practice" sub="" />
-        <BackToProgress className="max-md:hidden" />
-        <div className="max-md:px-4 max-md:pt-3">{body}</div>
-      </div>
-    );
+    if (fxName === "notfound" || (!fxName && q.isError && (e?.code === "PRACTICE_NOT_FOUND" || e?.status === 404))) return <Message kind="notfound" />;
+    if (fxName === "error" || (!fxName && q.isError)) return <Message kind="error" error={q.error ?? new StudentApiError(503, "")} onRetry={() => void q.refetch()} />;
+    return <PracticeSkeleton />;
   }
 
   const qs = set.questions;
-  const question = qs.find((x) => x.n === cur) ?? qs.find((x) => !x.checked) ?? qs[qs.length - 1];
+  const question = qs.find((x) => x.n === cur) ?? qs.find((x) => !x.checked && !held.has(x.n)) ?? qs[qs.length - 1];
   if (!question) return null;
   const idx = qs.indexOf(question);
   const count = qs.length;
   const nChecked = qs.filter((x) => x.checked).length;
-  const nRight = qs.filter((x) => outcomeOf(x) === "correct").length;
+  const nRight = qs.filter((x) => cellOutcome(x) === "correct").length;
   const ans = answers[question.n] ?? EMPTY;
-  const setAns = (a: Answer) => setAnswers((m) => ({ ...m, [question.n]: a }));
+  const setAns = (a: PracticeAnswer) => setAnswers((m) => ({ ...m, [question.n]: a }));
   const go = (n: number) => () => {
     check.reset();
     setCur(n);
@@ -99,35 +119,49 @@ export function PracticeView({ setId }: { setId: string }) {
   const prev = qs[idx - 1];
   const next = qs[idx + 1];
   const done = !!question.checked;
-  const busy = check.isPending && check.variables?.n === question.n;
-  const valueOk = ans.value.trim() !== "" && Number.isFinite(Number(ans.value.replace(",", ".")));
-  const ready = question.options.length ? ans.optionIds.length > 0 : valueOk;
+  const isHeld = held.has(question.n) && !done;
+  const busy = (check.isPending && check.variables?.n === question.n) || fxBusy === question.n;
+  const ready = answered(question, ans);
   const doCheck = () => {
-    if (!ready || done || busy) return;
-    check.mutate({ n: question.n, body: question.options.length ? { optionIds: ans.optionIds } : { value: Number(ans.value.replace(",", ".")) } });
+    if (!ready || done || busy || !online) return;
+    if (fx) {
+      setFxBusy(question.n);
+      const n = question.n;
+      window.setTimeout(() => {
+        setFxBusy(null);
+        putCheck(n, fxCheck(fx, question, ans));
+      }, 600);
+      return;
+    }
+    check.mutate({ n: question.n, body: checkBody(question, ans) as { optionIds?: string[]; value?: number } });
   };
   const [chapter, ...rest] = set.title.split(" · ");
   const topic = chapter ?? set.title;
   const timed = set.minutes != null;
   const subDesktop = `${timed ? "Timed drill from your progress" : "From your progress"} · Question ${idx + 1} of ${count}${timed && !nChecked ? "" : ` · ${nChecked} checked`}`;
   const subPhone = `Question ${idx + 1} of ${count}${timed && !nChecked ? "" : ` · ${nChecked} checked`}`;
+  const titlePhone = timed ? `${set.title.replace(/ questions$/, " Qs")} · ${set.minutes} min` : set.title;
   const finished = nChecked === count;
   const again = qs.filter((x) => x.checked && x.checked.outcome !== "correct");
-  const typeLabel = multi(question) ? "One or more answers are correct" : question.options.length ? "One answer is correct" : "Type a number";
+  const label = typeLabel(question);
   const hasHindi = !!question.stem.hi;
   const langBtn = hasHindi && (
     <button type="button" className="btn btn-ghost btn-sm max-md:h-9" aria-pressed={lang === "hi"} lang={lang === "hi" ? "en" : "hi"} onClick={() => setLang(lang === "hi" ? "en" : "hi")}>
       {lang === "hi" ? "English" : "हिंदी"}
     </button>
   );
-  const checkError = check.isError && check.variables?.n === question.n && (
+  const checkError = check.isError && check.variables?.n === question.n && !isHeld && (
     <span className="sm muted" role="alert">
-      {check.error instanceof StudentApiError && check.error.code === "PRACTICE_QUESTION_HELD"
-        ? "This question is now part of a live test, so it can't be checked here. Skip it for now."
-        : sentence((check.error instanceof StudentApiError && check.error.message) || "Couldn't check that. Please try again")}
+      {sentence((check.error instanceof StudentApiError && check.error.message) || "Couldn't check that. Please try again")}
     </span>
   );
-  const navButtons = (
+  const cellState = (x: PracticeQuestionM6) => (held.has(x.n) && !x.checked ? "held" : (cellOutcome(x) ?? "todo"));
+  const cellLabel = (x: PracticeQuestionM6, i: number) => {
+    const s = cellState(x);
+    return `Question ${i + 1}, ${s === "held" ? "hidden while it is in a live test" : s === "todo" ? "not checked" : OUT_WORD[s]}`;
+  };
+
+  const navButtons = isHeld ? (
     <>
       {prev ? (
         <button type="button" className="btn btn-secondary btn-lg flex-1" onClick={go(prev.n)}>
@@ -139,9 +173,38 @@ export function PracticeView({ setId }: { setId: string }) {
           Back to Progress
         </Link>
       )}
-      {!done && !busy && (
+      {next ? (
+        <button type="button" className="btn btn-primary btn-lg flex-1" onClick={go(next.n)}>
+          Skip to Q{idx + 2}
+          <ArrowRightIcon className="arrow" />
+        </button>
+      ) : (
+        <Link href="/progress" className="btn btn-primary btn-lg flex-1">
+          Done
+        </Link>
+      )}
+    </>
+  ) : (
+    <>
+      {prev ? (
+        <button type="button" className="btn btn-secondary btn-lg flex-1" onClick={go(prev.n)}>
+          <ArrowLeftIcon />
+          Previous
+        </button>
+      ) : (
+        <Link href="/progress" className="btn btn-secondary btn-lg flex-1">
+          Back to Progress
+        </Link>
+      )}
+      {!done && !busy && online && (
         <button type="button" className="btn btn-primary btn-lg flex-1" disabled={!ready} onClick={doCheck}>
           Check
+        </button>
+      )}
+      {!done && !busy && !online && (
+        <button type="button" className="btn btn-primary btn-lg pr-off flex-1" disabled>
+          <span className="max-md:hidden">Offline · Check waits</span>
+          <span className="md:hidden">Offline</span>
         </button>
       )}
       {busy && (
@@ -167,7 +230,7 @@ export function PracticeView({ setId }: { setId: string }) {
     finished && (
       <section className={phone ? "card pad col rise relative gap-2 md:hidden" : "card pad-lg row wrap rise relative gap-6 max-md:hidden"}>
         <Stamp rotate={-8} delay={700} style={phone ? { position: "absolute", top: 16, right: 16, fontSize: 11 } : { position: "absolute", top: 24, right: 28 }}>
-          {phone ? "Checked" : `Checked · ${dayMonth(q.data!.now)}`}
+          {phone ? "Checked" : `Checked · ${dayMonth(serverNow)}`}
         </Stamp>
         {!phone && (
           <svg width="96" height="96" viewBox="0 0 120 120" role="img" aria-label={`${nRight} of ${count} correct`}>
@@ -199,6 +262,9 @@ export function PracticeView({ setId }: { setId: string }) {
         </div>
       </section>
     );
+  const siblings = question.set ? qs.filter((x) => x.set?.setId === question.set!.setId) : [];
+  const checked = question.checked;
+  const out = checked ? outcomeLine(question, checked) : null;
 
   return (
     <div className="col gap-6 max-md:gap-0">
@@ -206,16 +272,16 @@ export function PracticeView({ setId }: { setId: string }) {
       <Doodle name="atom" slot="gr" style={{ top: 860 }} />
       {/* Phone-Practice header */}
       <PhoneHeader
-        title={set.title}
+        title={titlePhone}
         sub={subPhone}
-        right={<Countdown set={set} serverNow={q.data!.now} receivedAt={q.dataUpdatedAt} phone />}
+        right={<Countdown set={set} serverNow={serverNow} receivedAt={receivedAt} phone />}
         strip={
           <nav className="qstrip" aria-label="Questions in this set">
             {qs.map((x, i) => {
-              const o = outcomeOf(x);
+              const s = cellState(x);
               const on = x.n === question.n;
               return (
-                <button key={x.n} type="button" className={`qc qc-${o === "partial" ? "partial" : o ?? "todo"}${on ? " qc-on" : ""}`} aria-current={on ? "true" : undefined} aria-label={`Question ${i + 1}, ${o ? OUT[o].text.toLowerCase() : "not checked"}`} onClick={go(x.n)}>
+                <button key={x.n} type="button" className={`qc qc-${s}${on ? " qc-on" : ""}`} aria-current={on ? "true" : undefined} aria-label={cellLabel(x, i)} onClick={go(x.n)}>
                   {i + 1}
                 </button>
               );
@@ -223,6 +289,12 @@ export function PracticeView({ setId }: { setId: string }) {
           </nav>
         }
       />
+      {!online && (
+        <>
+          <OfflineBanner className="max-md:hidden">You can read this set. Checking an answer waits until you&apos;re back.</OfflineBanner>
+          <OfflineBanner className="bnr-flush md:hidden">Checking waits until you&apos;re back.</OfflineBanner>
+        </>
+      )}
 
       {/* Student-Practice header */}
       <header className="row between wrap items-end gap-4 max-md:hidden">
@@ -230,11 +302,17 @@ export function PracticeView({ setId }: { setId: string }) {
           <BackToProgress />
           <h1 className="h1 mb-1">
             <InkUnderline delay={450}>{chapter}</InkUnderline>
-            {rest.length > 0 && <span className="font-medium text-muted"> · {rest.join(" · ")}</span>}
+            {rest.length > 0 && (
+              <span className="font-medium text-muted">
+                {" "}
+                · {rest.join(" · ")}
+                {timed ? ` · ${set.minutes} min` : ""}
+              </span>
+            )}
           </h1>
           <span className="sm muted">{subDesktop}</span>
         </div>
-        <Countdown set={set} serverNow={q.data!.now} receivedAt={q.dataUpdatedAt} />
+        <Countdown set={set} serverNow={serverNow} receivedAt={receivedAt} />
       </header>
 
       <div className="flex flex-wrap items-start gap-5 max-md:block">
@@ -247,10 +325,9 @@ export function PracticeView({ setId }: { setId: string }) {
           </div>
           <div className="grid grid-cols-6 gap-1.5">
             {qs.map((x, i) => {
-              const o = outcomeOf(x);
               const on = x.n === question.n;
               return (
-                <button key={x.n} type="button" className={`cell ${o ?? "todo"}${on ? " sel" : ""}`} aria-current={on ? "true" : undefined} aria-label={`Question ${i + 1}, ${o ? OUT[o].text.toLowerCase() : "not checked"}`} onClick={go(x.n)}>
+                <button key={x.n} type="button" className={`cell ${cellState(x)}${on ? " sel" : ""}`} aria-current={on ? "true" : undefined} aria-label={cellLabel(x, i)} onClick={go(x.n)}>
                   {i + 1}
                 </button>
               );
@@ -277,41 +354,79 @@ export function PracticeView({ setId }: { setId: string }) {
         </aside>
 
         <div className="col min-w-0 flex-[999_1_560px] gap-5 max-md:gap-3 max-md:px-4 max-md:pt-3 max-md:pb-[calc(96px+env(safe-area-inset-bottom))]">
-          {finishedCard(false)}
-          {finishedCard(true)}
-          <div className="row xs muted min-h-8 gap-2 md:hidden">
-            <span className="grow">
-              {typeLabel} · {topic}
-            </span>
-            {langBtn}
-          </div>
-          <article className="card pad-lg col fade gap-[18px] max-md:contents" aria-label={`Question ${idx + 1}`}>
-            <div className="row between wrap gap-2 max-md:hidden">
-              <div className="row gap-2.5">
-                <span className="h3 mono">Q{idx + 1}</span>
-                <span className="badge b-grey">{topic}</span>
-                <span className="xs muted">{typeLabel}</span>
+          {!isHeld && finishedCard(false)}
+          {!isHeld && finishedCard(true)}
+          {isHeld ? (
+            <>
+              <div className="row xs muted min-h-8 gap-2 md:hidden">
+                <span className="grow">Question {idx + 1}</span>
+                <span className="badge b-grey">Hidden for now</span>
               </div>
-              {langBtn}
-            </div>
-            <MathText key={`${question.n}-${lang}`} html as="div" className="q-stem pr-stem" text={pick(question.stem, lang)} />
-            <Answers q={question} lang={lang} ans={ans} onAns={setAns} onEnter={doCheck} />
-            {done && question.checked && (
-              <div className="col fade gap-3 max-md:gap-2.5">
-                <span className={`badge self-start ${OUT[question.checked.outcome].badge}`}>{OUT[question.checked.outcome].text}</span>
-                {question.checked.solution ? (
-                  <section className="pr-sol col gap-2 max-md:gap-1.5" aria-label="Solution">
-                    <span className="eyebrow">Solution</span>
-                    <MathText html as="div" className="q-stem" text={pick(question.checked.solution, lang) || question.checked.solution.en} />
-                  </section>
+              <article className="card pad-lg col fade gap-[18px] max-md:contents" aria-label={`Question ${idx + 1}, hidden for now`}>
+                <div className="row gap-2.5 max-md:hidden">
+                  <span className="h3 mono">Q{idx + 1}</span>
+                  <span className="badge b-grey">Hidden for now</span>
+                </div>
+                <div className="pr-held" role="status">
+                  <span className="st-ico grey" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" focusable="false">
+                      <rect x="5" y="11" width="14" height="10" rx="2" />
+                      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                    </svg>
+                  </span>
+                  <span className="h3 max-w-[520px]">This question is now in a live test, so it&apos;s hidden until the test closes</span>
+                  <span className="sm muted max-w-[460px]">
+                    <span className="max-md:hidden">It comes back to this set after that.</span>
+                    <span className="md:hidden">It comes back here after that.</span> It doesn&apos;t count against you.
+                  </span>
+                </div>
+                <div className="row mt-1 gap-2.5 max-md:hidden">{navButtons}</div>
+              </article>
+            </>
+          ) : (
+            <>
+              <div className="row xs muted min-h-8 gap-2 md:hidden">
+                <span className="grow">
+                  {label} · {topic}
+                </span>
+                {langBtn}
+              </div>
+              <article className="card pad-lg col fade gap-[18px] max-md:contents" aria-label={`Question ${idx + 1}`}>
+                <div className="row between wrap gap-2 max-md:hidden">
+                  <div className="row gap-2.5">
+                    <span className="h3 mono">Q{idx + 1}</span>
+                    <span className="badge b-grey">{topic}</span>
+                    <span className="xs muted">{label}</span>
+                  </div>
+                  {langBtn}
+                </div>
+                {question.set && <PassageHead q={question} siblings={siblings} lang={lang} onPick={(n) => go(n)()} />}
+                <MathText key={`${question.n}-${lang}`} html as="div" className="q-stem pr-stem" text={pick(question.stem, lang)} />
+                {question.type === "matrix" && question.matrix ? (
+                  <MatrixGrid q={question} ans={ans} onAns={setAns} lang={lang} />
+                ) : question.options.length > 0 ? (
+                  <OptionList q={question} lang={lang} ans={ans} onAns={setAns} />
                 ) : (
-                  <span className="sm muted">There&apos;s no written solution for this one yet. Ask your teacher if the key doesn&apos;t make sense.</span>
+                  <NumberAnswer q={question} ans={ans} onAns={setAns} onEnter={doCheck} />
                 )}
-              </div>
-            )}
-            {checkError}
-            <div className="row mt-1 gap-2.5 max-md:hidden">{navButtons}</div>
-          </article>
+                {checked && out && (
+                  <div className="col fade gap-3 max-md:gap-2.5">
+                    <span className={`badge self-start ${out.badge}`}>{out.text}</span>
+                    {checked.solution ? (
+                      <section className="pr-sol col gap-2 max-md:gap-1.5" aria-label="Solution">
+                        <span className="eyebrow">Solution</span>
+                        <MathText html as="div" className="q-stem" text={pick(checked.solution, lang) || checked.solution.en} />
+                      </section>
+                    ) : (
+                      <span className="sm muted">There&apos;s no written solution for this one yet. Ask your teacher if the key doesn&apos;t make sense.</span>
+                    )}
+                  </div>
+                )}
+                {checkError}
+                <div className="row mt-1 gap-2.5 max-md:hidden">{navButtons}</div>
+              </article>
+            </>
+          )}
         </div>
       </div>
 
@@ -348,7 +463,141 @@ function PhoneHeader({ title, sub, right, strip }: { title: string; sub: string;
   );
 }
 
-function Countdown({ set, serverNow, receivedAt, phone }: { set: PracticeSet; serverNow: string; receivedAt: number; phone?: boolean }) {
+/** The board's loading state: the header, the grid card and the question card (desktop); header + strip + options (phone). */
+function PracticeSkeleton() {
+  return (
+    <div className="col gap-6 max-md:gap-0" aria-busy="true">
+      <span className="sr-only" role="status">
+        Loading this set
+      </span>
+      <header className="col gap-2.5 border-b border-line bg-white/90 px-3 pt-2 pb-2.5 md:hidden" aria-hidden="true">
+        <div className="row gap-2.5">
+          <Skel className="size-11 flex-none rounded-xl" />
+          <span className="col grow gap-1.5">
+            <Skel className="h-4 w-[70%]" />
+            <Skel className="h-3 w-[45%]" />
+          </span>
+        </div>
+        <Skel className="h-8 rounded-lg" />
+      </header>
+      <div className="col gap-2.5 px-4 pt-3 md:hidden">
+        <Skel className="h-3.5 w-[60%]" />
+        <Skel className="h-[110px] rounded-[14px]" />
+        {[0, 1, 2, 3].map((k) => (
+          <Skel key={k} className="h-[52px] rounded-xl" />
+        ))}
+      </div>
+      <div className="col gap-6 max-md:hidden">
+        <header className="col gap-2.5">
+          <Skel className="h-3.5 w-[90px]" />
+          <Skel className="h-10 w-[420px] rounded-[10px]" />
+          <Skel className="h-3.5 w-[260px]" />
+        </header>
+        <div className="flex flex-wrap items-start gap-5">
+          <Skel className="h-[300px] max-w-[320px] flex-[1_1_280px] rounded-card" />
+          <div className="card pad-lg col flex-[999_1_560px] gap-3.5">
+            <Skel className="h-5 w-[220px]" />
+            <Skel className="h-3.5" />
+            <Skel className="h-3.5 w-4/5" />
+            <Skel className="mt-1.5 h-14 rounded-xl" />
+            <Skel className="h-14 rounded-xl" />
+            <Skel className="h-14 rounded-xl" />
+            <Skel className="h-14 rounded-xl" />
+            <Skel className="mt-1.5 h-12 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type MsgKind = "error" | "notfound" | "noleft" | "limit" | "unavailable";
+
+const ICONS: Record<MsgKind, { tone: string; path: React.ReactNode }> = {
+  error: { tone: "red", path: <><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></> },
+  notfound: { tone: "grey", path: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></> },
+  noleft: { tone: "navy", path: <><circle cx="12" cy="12" r="9" /><path d="m8 12.5 2.8 2.8L16.5 9.5" /></> },
+  limit: { tone: "amber", path: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></> },
+  unavailable: { tone: "amber", path: <><path d="M7 18h10a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.2 9.1 4.5 4.5 0 0 0 7 18z" /><path d="M3 3l18 18" /></> },
+};
+
+/** The page-sized states (Student-Practice / Phone-Practice "msg"): bare header, icon, sentence, buttons, support code. */
+function Message({ kind, error, onRetry, chapter, when, busy }: { kind: MsgKind; error?: unknown; onRetry?: () => void; chapter?: string; when?: string; busy?: boolean }) {
+  const ico = ICONS[kind];
+  const copy: Record<MsgKind, { title: string; text: string }> = {
+    error: { title: "Couldn’t load this set", text: "Your checked answers are safe. Try again in a moment." },
+    notfound: { title: "This set isn’t here", text: "The link may be old, or the set was removed. Your progress page has fresh sets for you." },
+    noleft: { title: `You’ve done every question in ${chapter ?? "this chapter"}`, text: "There’s nothing new left in this chapter for now. More questions are added often." },
+    limit: { title: "That’s 30 new sets for today", text: `You can start new sets again ${when ?? "tomorrow at 12:00 AM"}. Sets you’ve already started still open.` },
+    unavailable: { title: "Practice is unavailable right now", text: "We can’t reach the question bank. Your checked answers are safe. Try again in a few minutes." },
+  };
+  const retry = kind === "error" || kind === "unavailable";
+  return (
+    <div className="col gap-6 max-md:min-h-dvh max-md:gap-0">
+      <header className="col gap-1.5 max-md:hidden">
+        <BackToProgress />
+        <h1 className="h1">Practice</h1>
+      </header>
+      <header className="row gap-1.5 border-b border-line bg-white/90 px-3 pt-[calc(8px+env(safe-area-inset-top))] pb-2.5 md:hidden">
+        <Link href="/progress" className="btn btn-ghost btn-icon size-11 flex-none" aria-label="Back to Progress">
+          <ChevronLeftIcon />
+        </Link>
+        <span className="h3">Practice</span>
+      </header>
+      <section className="card pad-lg pr-msg" role={kind === "error" ? "alert" : "status"}>
+        <span className={`st-ico ${ico.tone}`} aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" focusable="false">
+            {ico.path}
+          </svg>
+        </span>
+        <h2 className="h3">{copy[kind].title}</h2>
+        <span className="sm muted max-w-[460px]">{copy[kind].text}</span>
+        <div className="pr-acts">
+          {kind === "noleft" && (
+            <Link href="/progress" className="btn btn-secondary">
+              Back to Progress
+            </Link>
+          )}
+          {retry ? (
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={onRetry}>
+              {busy && <Spinner size={14} />}
+              Try again
+            </button>
+          ) : kind !== "noleft" ? (
+            <Link href="/progress" className="btn btn-primary">
+              Back to Progress
+            </Link>
+          ) : null}
+        </div>
+        {retry && <span className="xs muted mono">Code {supportCode(error ?? new StudentApiError(503, "", kind === "unavailable" ? "PRACTICE_UNAVAILABLE" : undefined))}</span>}
+      </section>
+    </div>
+  );
+}
+
+/** /practice/new?problem=…: why a set couldn't be made (practice-button.tsx), with "Try again" for the bank. */
+function ProblemPage({ p, fixture }: { p: PracticeProblem; fixture?: boolean }) {
+  const start = useStartPractice();
+  const now = Date.now();
+  const kind: MsgKind = p.code === "NO_PRACTICE_QUESTIONS" ? "noleft" : p.code === "PRACTICE_LIMIT" ? "limit" : "unavailable";
+  const r = p.resetsAt ? resetsAt(now, p.resetsAt) : null;
+  const when = r === "tomorrow" ? "tomorrow at 12:00 AM" : (r ?? undefined);
+  const err = start.error ?? new StudentApiError(503, "", p.code);
+  return (
+    <Message
+      kind={kind}
+      chapter={p.req.topic || p.req.chapter}
+      when={when}
+      error={err}
+      busy={start.isPending}
+      onRetry={() => {
+        if (!fixture) start.mutate(p.req);
+      }}
+    />
+  );
+}
+
+function Countdown({ set, serverNow, receivedAt, phone }: { set: PracticeSetM6; serverNow: string; receivedAt: number; phone?: boolean }) {
   const now = useServerClock(serverNow, receivedAt, set.minutes != null);
   if (set.minutes == null) return null;
   const left = Math.max(0, Math.floor((Date.parse(set.createdAt) + set.minutes * 60_000 - now) / 1000));
@@ -369,76 +618,5 @@ function Countdown({ set, serverNow, receivedAt, phone }: { set: PracticeSet; se
       </svg>
       <span className="mono num text-[18px]">{text}</span>
     </span>
-  );
-}
-
-/** The options (button.opt: sel before Check; done + correct / wrong after), or the number box and its key. */
-function Answers({ q, lang, ans, onAns, onEnter }: { q: PracticeQuestion; lang: Lang; ans: Answer; onAns: (a: Answer) => void; onEnter: () => void }) {
-  const c = q.checked;
-  const yours = new Set(c ? (c.yourAnswer.optionIds ?? []) : ans.optionIds);
-  const right = new Set(c?.correctAnswer.optionIds ?? []);
-  const toggle = (id: string) => {
-    if (c) return;
-    if (multi(q)) onAns({ ...ans, optionIds: ans.optionIds.includes(id) ? ans.optionIds.filter((x) => x !== id) : [...ans.optionIds, id] });
-    else onAns({ ...ans, optionIds: [id] });
-  };
-  if (q.options.length > 0)
-    return (
-      <div className="col gap-2.5 max-md:gap-2" role={multi(q) ? "group" : "radiogroup"} aria-label="Options">
-        {q.options.map((o) => {
-          const mine = yours.has(o.id);
-          const isC = right.has(o.id);
-          const cls = c ? `opt done${isC ? " correct" : mine ? " wrong" : ""}` : mine ? "opt sel" : "opt";
-          const tag = c ? (isC ? (mine ? ["Your answer · correct", "You · correct"] : ["Correct answer", "Correct"]) : mine ? ["Your answer", "You"] : null) : null;
-          return (
-            <button key={o.id} type="button" role={multi(q) ? "checkbox" : "radio"} aria-checked={mine} aria-disabled={c ? true : undefined} className={cls} onClick={() => toggle(o.id)}>
-              <span className="key">{o.key}</span>
-              <MathText html as="div" className="q-stem grow min-w-0" text={pick(o, lang)} />
-              {tag && (
-                <span className={`badge ${isC ? "b-green" : "b-wrong"}`}>
-                  <span className="max-md:hidden">{tag[0]}</span>
-                  <span className="md:hidden">{tag[1]}</span>
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    );
-  if (c)
-    return (
-      <div className="col gap-2">
-        <div className={`ans ${c.outcome === "correct" ? "correct" : "wrong"}`}>
-          <span className="sm grow">Your answer</span>
-          <span className="num text-[18px] font-[650] max-md:text-[17px]">{c.yourAnswer.value != null ? num(c.yourAnswer.value) : "–"}</span>
-        </div>
-        {c.outcome !== "correct" && c.correctAnswer.range && (
-          <div className="ans correct">
-            <span className="sm grow">Correct answer</span>
-            <span className="num text-[18px] font-[650] max-md:text-[17px]">
-              {c.correctAnswer.range.min === c.correctAnswer.range.max ? num(c.correctAnswer.range.min) : `${num(c.correctAnswer.range.min)} to ${num(c.correctAnswer.range.max)}`}
-            </span>
-          </div>
-        )}
-      </div>
-    );
-  return (
-    <div className="field max-w-[260px] max-md:max-w-none">
-      <label className="label" htmlFor="pr-value">
-        Your answer
-      </label>
-      <input
-        id="pr-value"
-        className="input num"
-        inputMode="decimal"
-        placeholder="Type a number"
-        autoComplete="off"
-        value={ans.value}
-        onChange={(e) => onAns({ ...ans, value: e.target.value.replace(/[^0-9.,\-]/g, "").slice(0, 16) })}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onEnter();
-        }}
-      />
-    </div>
   );
 }

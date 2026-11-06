@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import type { DoubtFx } from "@/lib/doubt-fixtures";
+import { useOnline } from "@/lib/use-online";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { AiMark, Doodle, InkUnderline, MathText, Note, Tape } from "@iitpulse/ui";
 import { aiRetry, isAiDown } from "@/lib/ai-api";
@@ -12,10 +14,11 @@ import { useIsDesktop } from "@/lib/use-media";
 import { longDay, relativeDayTime } from "@/lib/time";
 import type { DoubtQuota, DoubtThreadSummary } from "@/types/m4";
 import { PhoneTitleBar } from "@/components/shell/phone-title-bar";
-import { ErrorCard, Skel } from "./common";
+import { Skel } from "./common";
 import { ChevronRightIcon, LockIcon } from "./icons";
 import { sentence } from "./labels";
-import { ThreadPane } from "./doubt-chat";
+import { ThreadPane, useDoubtFixture } from "./doubt-chat";
+import { istTime, OfflineBanner, StateIco, supportCode } from "./states";
 
 /**
  * /doubts: Student-Doubts (desktop: the threads on the left, the selected chat on the right) and Phone-Doubts (the
@@ -23,19 +26,32 @@ import { ThreadPane } from "./doubt-chat";
  * question in a test's review ("Ask a doubt").
  */
 export function DoubtsView({ initialThread }: { initialThread: string | null }) {
+  const fx = useDoubtFixture();
+  return <DoubtsInner key={fx?.state ?? (fx === undefined ? "wait" : "live")} initialThread={initialThread} fx={fx} />;
+}
+
+function DoubtsInner({ initialThread, fx }: { initialThread: string | null; fx: DoubtFx | null | undefined }) {
+  const live = fx === null;
   const q = useInfiniteQuery({
     queryKey: m4Keys.doubtsPages,
     queryFn: ({ pageParam, signal }) => m4Api.doubts(pageParam, signal),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
     retry: aiRetry,
+    enabled: live,
   });
   const isDesktop = useIsDesktop();
-  const first = q.data?.pages[0];
-  const now = useServerClock(first?.now, q.dataUpdatedAt, false);
-  const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const online = useOnline() && !fx?.offline;
+  // Fixtures: "loading" and "error" are the list's states on the phone (Phone-Doubts) and the chat's on the desktop
+  // (Student-Doubts draws them in the right pane, under a loaded list).
+  const fxListState = fx && isDesktop === false && (fx.state === "loading" || fx.state === "error") ? fx.state : null;
+  const data = fx ? (fxListState ? undefined : { pages: [fx.page] }) : q.data;
+  const listError = fx ? (fxListState === "error" ? new StudentApiError(503, "Couldn't load your doubts") : null) : q.error;
+  const first = data?.pages[0];
+  const now = useServerClock(first?.now, fx ? 0 : q.dataUpdatedAt, false);
+  const items = data?.pages.flatMap((p) => p.items) ?? [];
   const quota = first?.quota;
-  const e = q.error instanceof StudentApiError ? q.error : null;
+  const e = listError instanceof StudentApiError ? listError : null;
   const [sel, setSel] = useState<string | null>(initialThread);
   const current = items.find((t) => t.id === sel) ?? items[0];
   const when = (t: DoubtThreadSummary) => (Number.isNaN(now) ? "" : sentenceCase(relativeDayTime(now, t.updatedAt)));
@@ -78,23 +94,31 @@ export function DoubtsView({ initialThread }: { initialThread: string | null }) 
           )}
         </header>
 
-        {!q.data ? (
-          q.isError ? (
+        {!online && data && isDesktop === false && (
+          <OfflineBanner className="bnr-flush md:hidden -mx-4 -mt-3.5 mb-1">
+            Showing your chats from {istTime(fx ? Date.now() : q.dataUpdatedAt)}.
+          </OfflineBanner>
+        )}
+        {!data ? (
+          listError ? (
             e?.code === "AI_NOT_AVAILABLE_YET" ? (
               <Notice locked title="Answers aren't open yet" body={sentence(e.message || "The tutor can help once your test has closed for everyone")} />
             ) : e && isAiDown(e) ? (
               <Notice title="The AI tutor is paused" body={sentence(e.message || "Your results and solutions are all still under Tests")} />
             ) : (
-              <ErrorCard error={q.error} onRetry={() => q.refetch()} />
+              <ListError error={listError} onRetry={() => void q.refetch()} />
             )
           ) : (
-            <div className="row items-start gap-5 max-md:col max-md:gap-2.5" aria-busy="true" aria-label="Loading your doubts">
+            <div className="row items-start gap-5 max-md:col max-md:gap-2.5" aria-busy="true">
               <div className="col w-full max-w-[400px] gap-2.5 max-md:max-w-none">
-                {[0, 1, 2].map((k) => (
-                  <Skel key={k} className="h-[132px] rounded-card" />
+                {[0, 1, 2, 3].map((k) => (
+                  <Skel key={k} className="h-[128px] rounded-[14px]" />
                 ))}
               </div>
               <Skel className="h-[560px] grow rounded-card max-md:hidden" />
+              <span className="sr-only" role="status">
+                Loading your doubts
+              </span>
             </div>
           )
         ) : items.length === 0 ? (
@@ -130,13 +154,13 @@ export function DoubtsView({ initialThread }: { initialThread: string | null }) 
                     <ThreadText t={t} when={when(t)} />
                   </button>
                 ))}
-                {q.hasNextPage && (
+                {!fx && q.hasNextPage && (
                   <button type="button" className="btn btn-secondary self-center" disabled={q.isFetchingNextPage} onClick={() => q.fetchNextPage()}>
                     {q.isFetchingNextPage ? "Loading…" : "Show older doubts"}
                   </button>
                 )}
               </nav>
-              {isDesktop === true && current && <ThreadPane key={current.id} t={current} />}
+              {isDesktop === true && current && <ThreadPane key={current.id} t={current} fx={fx} />}
             </div>
 
             {/* Phone-Doubts */}
@@ -151,7 +175,7 @@ export function DoubtsView({ initialThread }: { initialThread: string | null }) 
                   <ThreadText t={t} when={when(t)} phone />
                 </Link>
               ))}
-              {q.hasNextPage && (
+              {!fx && q.hasNextPage && (
                 <button type="button" className="btn btn-secondary h-11 self-center" disabled={q.isFetchingNextPage} onClick={() => q.fetchNextPage()}>
                   {q.isFetchingNextPage ? "Loading…" : "Show older doubts"}
                 </button>
@@ -161,6 +185,25 @@ export function DoubtsView({ initialThread }: { initialThread: string | null }) 
         )}
       </div>
     </>
+  );
+}
+
+/** Phone-Doubts "Couldn't load your doubts" (Student-Doubts draws no list error: same card, with "Code"). */
+function ListError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const code = supportCode(error);
+  return (
+    <div className="d-ctr d-ctr-page" role="alert">
+      <StateIco tone="red" icon="warn" className="st-ico-sm" />
+      <span className="h3">Couldn&apos;t load your doubts</span>
+      <span className="sm muted">Your chats are safe. Try again in a moment.</span>
+      <button type="button" className="btn btn-primary min-h-11 px-6" onClick={onRetry}>
+        Try again
+      </button>
+      <span className="xs muted mono">
+        <span className="max-md:hidden">Code </span>
+        {code}
+      </span>
+    </div>
   );
 }
 

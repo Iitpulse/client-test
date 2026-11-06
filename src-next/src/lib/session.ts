@@ -120,7 +120,9 @@ function remember(token: string, expiresAt?: string | null, broadcast = true) {
   if (broadcast) bc()?.postMessage({ type: "token", token, exp });
 }
 
-async function post(path: string, body: unknown, bearer?: string, keepalive = false): Promise<{ status: number; body: unknown }> {
+// keepalive: a refresh in flight when the page navigates away still finishes, so the browser stores the rotated cookie
+// (an aborted refresh would leave the old cookie, and presenting it later counts as reuse and ends the session).
+async function post(path: string, body: unknown, bearer?: string, keepalive = true): Promise<{ status: number; body: unknown }> {
   const headers: Record<string, string> = { "Content-Type": "application/json", "x-iitp-csrf": "1" };
   if (bearer) headers.Authorization = `Bearer ${bearer}`;
   const res = await fetch(`${API_GATEWAY}/users${path}`, { method: "POST", credentials: "include", headers, body: JSON.stringify(body), cache: "no-store", keepalive });
@@ -286,5 +288,5 @@ export const auth = {
  */
 export function sessionBootScript(): string {
   const url = JSON.stringify(`${API_GATEWAY}/users/auth/refresh`);
-  return `(function(){try{if(localStorage.getItem(${JSON.stringify(HINT_KEY)})!=="1")return;window.__iitpBoot={at:Date.now(),p:fetch(${url},{method:"POST",credentials:"include",headers:{"Content-Type":"application/json","x-iitp-csrf":"1"},body:${JSON.stringify(JSON.stringify({ app: APP }))},cache:"no-store"}).then(function(r){return r.json().catch(function(){return null}).then(function(b){return{status:r.status,body:b}})})}}catch(e){}})();`;
+  return `(function(){try{if(localStorage.getItem(${JSON.stringify(HINT_KEY)})!=="1")return;window.__iitpBoot={at:Date.now(),p:fetch(${url},{method:"POST",credentials:"include",keepalive:true,headers:{"Content-Type":"application/json","x-iitp-csrf":"1"},body:${JSON.stringify(JSON.stringify({ app: APP }))},cache:"no-store"}).then(function(r){return r.json().catch(function(){return null}).then(function(b){return{status:r.status,body:b}})})}}catch(e){}})();`;
 }

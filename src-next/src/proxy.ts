@@ -3,18 +3,26 @@
   and keep the host-only `iitp_brand` cookie in step, so the <head> boot script (lib/brand-shared brandBootScript) can
   theme the very first paint. IIT-PULSE's own look has no cookie (it is removed if present). Never on static files,
   the theme stylesheet or the frozen exam screens (/instructions, /test, /preview): those stay exactly as they are.
+  An institute-only address (lib/brand-server isInstituteHost) that no institute uses gets the plain "Institute not
+  found" page on every page path; the exam screens only use what is already cached (never a lookup on their way).
 */
 import { NextResponse, type NextRequest } from "next/server";
-import { BRAND_COOKIE, brandCookieFor, normaliseHost, tenantForHost } from "@/lib/brand-server";
+import { BRAND_COOKIE, brandCookieFor, instituteNotFoundResponse, isInstituteHost, knownUnknown, lookupHost, normaliseHost } from "@/lib/brand-server";
 
 export async function proxy(request: NextRequest) {
   const res = NextResponse.next();
   const path = request.nextUrl.pathname;
-  if (path === "/test" || path.startsWith("/test/") || path.startsWith("/instructions") || path.startsWith("/preview/")) return res;
-  if (request.method !== "GET" || request.headers.get("purpose") === "prefetch" || request.headers.get("next-router-prefetch")) return res;
   const host = normaliseHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
+  const institute = !!host && isInstituteHost(host);
+  if (path === "/test" || path.startsWith("/test/") || path.startsWith("/instructions") || path.startsWith("/preview/")) {
+    return host && institute && knownUnknown(host) ? instituteNotFoundResponse() : res;
+  }
+  if (request.method !== "GET" || request.headers.get("purpose") === "prefetch" || request.headers.get("next-router-prefetch")) {
+    return host && institute && knownUnknown(host) ? instituteNotFoundResponse() : res;
+  }
   if (!host) return res;
-  const tenant = await tenantForHost(host);
+  const { tenant, unknown } = await lookupHost(host);
+  if (unknown && institute) return instituteNotFoundResponse();
   const value = brandCookieFor(tenant, host);
   const current = request.cookies.get(BRAND_COOKIE)?.value ?? null;
   if (value === current) return res;

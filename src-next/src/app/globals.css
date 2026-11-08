@@ -143,6 +143,9 @@
   @media (width < 48rem) {
     .phone-hide { display: none !important }
   }
+
+  /* Avatar initials (components/shell/avatar.tsx): drawn by CSS so they are not part of the link's visible text. */
+  .avatar[data-initials]::before { content: attr(data-initials) }
 }
 
 /* ---------- M6 page states (Kit-States, Student-TestGate, -Submitted, -ResultStates) ---------- */

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { m4Api, m4Keys, useProfile } from "@/lib/m4-api";
 import type { StudentProfile } from "@/types/m4";
@@ -17,12 +17,15 @@ import { ChevronLeftIcon, HourglassRing, LockIcon } from "./icons";
 import { num, sentence, signed, underlineSplit } from "./labels";
 import { LeaksCard, MarksWentCard, useSummaryState, type SummaryState } from "./ai-review";
 import { RedoCard } from "./revision-bits";
-import { ReviewPane } from "./review-pane";
 import { Ring } from "./ring";
 import { correctionSummary, DownloadPdf, KeyCorrectedNote, ResultBlank } from "./result-states";
 import { fixtureParam } from "@/lib/fixtures";
 import type { StudentResultExtras } from "@/types/m6-student";
 import { resultFixture, summaryFixture } from "./result-fixtures";
+
+// The question grid and review pane sit below the hero and load on their own (with KaTeX for the questions), so the
+// hero and the AI summary are not behind that JavaScript (mobile LCP budget).
+const ReviewPane = lazy(() => import("./review-pane").then((m) => ({ default: m.ReviewPane })));
 
 /** The result with the M6 extras (absent on a pre-M6 server) */
 type ResultM6 = StudentResult & Partial<StudentResultExtras>;
@@ -346,7 +349,9 @@ function PublishedDesktop({ data, r, now, ai }: { data: ResultM6; r: PublishedRe
 
       <LeaksCard st={ai} now={now} onReview={reviewLeak} labelOf={shownAsOf} />
 
-      <ReviewPane data={data} r={r} now={now} sel={sel} onSel={setSel} />
+      <Suspense fallback={<Skel className="h-[240px] rounded-card" />}>
+        <ReviewPane data={data} r={r} now={now} sel={sel} onSel={setSel} />
+      </Suspense>
     </div>
   );
 }

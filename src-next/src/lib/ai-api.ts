@@ -6,7 +6,7 @@
 // never import it: no AI on the exam, not even its code.
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { isRetryable, request, StudentApiError } from "./student-api";
+import { hasEarly, isRetryable, request, StudentApiError } from "./student-api";
 import type { AiErrorCode, ExplanationResponse, FeedbackResponse, SummaryResponse } from "@/types/m3-ai";
 
 export const aiApi = {
@@ -71,11 +71,13 @@ export function useAfterPaint(): boolean {
 /** The leaks summary. "generating": poll every 3 s for up to 60 s, then `late` ("ready in a minute"). */
 export function useAiSummary(testId: string, enabled: boolean) {
   const afterPaint = useAfterPaint();
+  // The page's HTML already asked for it (earlyFetchScript): no request competes with the hero, so take it now.
+  const early = hasEarly(`/ai/student/results/${encodeURIComponent(testId)}/summary`);
   const [over, setOver] = useState(false);
   const query = useQuery({
     queryKey: aiKeys.summary(testId),
     queryFn: ({ signal }) => aiApi.summary(testId, signal),
-    enabled: enabled && afterPaint,
+    enabled: enabled && (afterPaint || early),
     staleTime: (q) => (q.state.data?.status === "generating" ? 0 : 10 * 60_000),
     retry: aiRetry,
     refetchOnWindowFocus: (q) => q.state.data?.status === "generating",

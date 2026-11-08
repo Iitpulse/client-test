@@ -5,7 +5,7 @@
     "": {
       "name": "src-next",
       "dependencies": {
-        "@iitpulse/ui": "0.1.2",
+        "@iitpulse/ui": "0.1.3",
         "@radix-ui/react-dialog": "^1.3.1",
         "@radix-ui/react-label": "^2.1.17",
         "@radix-ui/react-slot": "^1.5.0",
@@ -102,7 +102,7 @@
 
     "@humanwhocodes/retry": ["@humanwhocodes/retry@0.4.3", "", {}, "sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ=="],
 
-    "@iitpulse/ui": ["@iitpulse/ui@0.1.2", "https://npm.pkg.github.com/download/@iitpulse/ui/0.1.2/80dd8a0b9273335e9bbe2ff353b3e57488fd3b88", { "dependencies": { "dompurify": "3.4.17" }, "peerDependencies": { "katex": "~0.19.1", "next": ">=16.0.0", "react": "^19.0.0", "react-dom": "^19.0.0" } }, "sha512-6w5IcXJrBXhUdDXutXhAeNApGn85PMQ2gneAslIZth5m9CUjjDaeZHMJBI1xd6YtcpVMWQ7ljt+a+Y3G3nBoSQ=="],
+    "@iitpulse/ui": ["@iitpulse/ui@0.1.3", "https://npm.pkg.github.com/download/@iitpulse/ui/0.1.3/785f95f23b42c984d681f43d5d4669cc02e7a981", { "dependencies": { "dompurify": "3.4.17" }, "peerDependencies": { "katex": "~0.19.1", "next": ">=16.0.0", "react": "^19.0.0", "react-dom": "^19.0.0" } }, "sha512-65bueRV7y713pRxRqKMBTVAJFpL1vMZFsoGS6qV8RLUOcfHQsbuIfv5WF2ZnK3RYt3kKhTbH3CvFjgk1htKLQQ=="],
 
     "@img/colour": ["@img/colour@1.1.0", "", {}, "sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ=="],
 

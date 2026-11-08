@@ -9,11 +9,18 @@ export function initialsOf(name?: string, email?: string): string {
   return local.slice(0, 2).toUpperCase() || "?";
 }
 
-/** The boards' .avatar (36px; 32px in the phone header). */
+/**
+ * The boards' .avatar (36px; 32px in the phone header). The initials are drawn by CSS (globals.css,
+ * `.avatar[data-initials]::before`), not as text: the profile link's accessible name ("Aarav Jain, profile") then
+ * contains all of its visible text (WCAG 2.5.3 label in name), which the initials as text would break.
+ */
 export function Avatar({ name, email, size = 36, className }: { name?: string; email?: string; size?: 32 | 36; className?: string }) {
   return (
-    <span className={cn("avatar", className)} style={size === 32 ? { width: 32, height: 32, fontSize: 12 } : undefined} aria-hidden="true">
-      {initialsOf(name, email)}
-    </span>
+    <span
+      className={cn("avatar", className)}
+      style={size === 32 ? { width: 32, height: 32, fontSize: 12 } : undefined}
+      aria-hidden="true"
+      data-initials={initialsOf(name, email)}
+    />
   );
 }

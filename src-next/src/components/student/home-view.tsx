@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AiMark, Bar, InkMark, MathText, Note, SparkleIcon, Sticker, Tape } from "@iitpulse/ui";
+import { AiMark, Bar, InkMark, Note, SparkleIcon, Sticker, Tape } from "@iitpulse/ui";
+import { MathLite as MathText } from "@/components/math/math-lite";
 import { qk, studentApi } from "@/lib/student-api";
 import { m4Api, m4Keys, useTickItem } from "@/lib/m4-api";
 import { countdown, dowDayMonthTime, daysFrom, ist, relativeDayTime, timeOf } from "@/lib/time";

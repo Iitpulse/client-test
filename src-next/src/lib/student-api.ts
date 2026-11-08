@@ -87,6 +87,11 @@ export async function request<T>(
   body?: unknown,
   method?: "POST" | "PATCH" | "DELETE"
 ): Promise<T> {
+  if (body === undefined && !method && !params) {
+    // The page's HTML may already have asked for this (earlyFetchScript): take that answer once, if it is usable.
+    const early = await takeEarly(`/${service}${path}`);
+    if (early) return unwrap<T>(early.status, early.body as ApiOk<T> | ApiErrorBody | null);
+  }
   const url = new URL(`${API_GATEWAY}/${service}${path}`);
   for (const [k, v] of Object.entries(params || {})) if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
   const send = async (token: string | null): Promise<Response> => {
@@ -125,29 +130,48 @@ export function unwrap<T>(status: number, body: ApiOk<T> | ApiErrorBody | null):
 }
 
 /**
- * Home's data is requested by an inline script in the page's HTML (homeEarlyFetchScript), in parallel with the
- * app's JavaScript instead of after it: on a slow phone that is most of the time to the first useful screen.
- * The first Home query takes that response if it is fresh; every later one fetches as usual.
+ * The first screen's data is requested by an inline script in the page's HTML (earlyFetchScript), in parallel with
+ * the app's JavaScript instead of after it: on a slow phone that is most of the time to the first useful screen
+ * (mobile LCP budget). Home (/) asks for GET /tests/student/home; a result (/results/:testId) for the result and its
+ * AI summary. The first matching GET (request() with no params) takes that answer once if it is fresh and usable;
+ * every later call, and any early answer that failed or came back 401, goes over the network as usual.
  */
-type Early = { at: number; p: Promise<{ status: number; body: unknown }> };
-function takeEarlyHome(): Promise<StudentHome> | null {
-  const w = window as unknown as { __iitpHome?: Early };
-  const early = w.__iitpHome;
-  delete w.__iitpHome;
-  if (!early || Date.now() - early.at > 15_000) return null;
-  return early.p.then(
-    (r) => unwrap<StudentHome>(r.status, r.body as ApiOk<StudentHome> | ApiErrorBody | null),
-    () => {
-      throw new StudentApiError(0, "You seem to be offline. Check your connection and try again.");
-    }
-  );
+type EarlyAnswer = { status: number; body: unknown };
+type Early = { at: number; p: Promise<EarlyAnswer> };
+const EARLY_MAX_AGE_MS = 15_000;
+function earlyMap(): Record<string, Early> | undefined {
+  return typeof window === "undefined" ? undefined : (window as unknown as { __iitpEarly?: Record<string, Early> }).__iitpEarly;
+}
+/** Is there an unused early answer for this gateway path (e.g. "/ai/student/results/TT_1/summary")? */
+export function hasEarly(key: string): boolean {
+  const e = earlyMap()?.[key];
+  return !!e && Date.now() - e.at <= EARLY_MAX_AGE_MS;
+}
+async function takeEarly(key: string): Promise<EarlyAnswer | null> {
+  const map = earlyMap();
+  const early = map?.[key];
+  if (!map || !early) return null;
+  delete map[key];
+  if (Date.now() - early.at > EARLY_MAX_AGE_MS) return null;
+  const r = await early.p.catch(() => null);
+  return r && r.status !== 0 && r.status !== 401 ? r : null;
 }
 
-/** The inline script for the Home page: starts GET /tests/student/home while the app's JavaScript loads. */
-export function homeEarlyFetchScript(): string {
+/**
+ * The inline script for the first HTML: the boot refresh (sessionBootScript), then the current page's first reads
+ * with its token. Only signed-in pages that list their reads here; every other path does nothing more.
+ */
+export function earlyFetchScript(): string {
   // M7b: the token comes from the boot refresh (sessionBootScript, which runs first); no session hint, no early fetch
-  const url = JSON.stringify(`${API_GATEWAY}/tests/student/home`);
-  return sessionBootScript() + `(function(){try{var b=window.__iitpBoot;if(!b||location.pathname!=="/")return;window.__iitpHome={at:Date.now(),p:b.p.then(function(r){var t=r&&r.status===200&&r.body&&r.body.data&&r.body.data.token;if(!t)return{status:r?r.status:0,body:r?r.body:null};return fetch(${url},{headers:{Authorization:"Bearer "+t},cache:"no-store"}).then(function(h){return h.json().catch(function(){return null}).then(function(j){return{status:h.status,body:j}})})})}}catch(e){}})();`;
+  const api = JSON.stringify(API_GATEWAY);
+  return (
+    sessionBootScript() +
+    `(function(){try{var b=window.__iitpBoot;if(!b)return;var p=location.pathname,l=[],m;` +
+    `if(p==="/")l.push("/tests/student/home");` +
+    `else if((m=/^\\/results\\/([^\\/]+)\\/?$/.exec(p))){l.push("/tests/student/results/"+m[1]);l.push("/ai/student/results/"+m[1]+"/summary");}` +
+    `if(!l.length)return;var t=b.p.then(function(r){return r&&r.status===200&&r.body&&r.body.data&&r.body.data.token||null});var e=window.__iitpEarly={};` +
+    `l.forEach(function(u){e[u]={at:Date.now(),p:t.then(function(k){if(!k)return{status:401,body:null};return fetch(${api}+u,{headers:{Authorization:"Bearer "+k},cache:"no-store"}).then(function(h){return h.json().catch(function(){return null}).then(function(j){return{status:h.status,body:j}})})})}})}catch(x){}})();`
+  );
 }
 
 const get = <T,>(path: string, params?: Record<string, string | number | undefined | null>, signal?: AbortSignal) =>
@@ -157,7 +181,7 @@ export const studentApi = {
   /** GET /users/auth/me: the signed-in student's name for the avatar (the session token carries none) */
   me: () => request<{ _id: string; name?: string; email?: string }>("users", "/auth/me"),
   /** GET /tests/student/home: Student-Home and Phone-Home in one call */
-  home: (signal?: AbortSignal) => takeEarlyHome() ?? get<StudentHome>("/student/home", undefined, signal),
+  home: (signal?: AbortSignal) => get<StudentHome>("/student/home", undefined, signal),
   /** GET /tests/student/tests: one tab of the Tests list (completed is paged with `cursor`) */
   tests: (q: { tab: TestsTab; subject?: string; q?: string; limit?: number; cursor?: string | null }, signal?: AbortSignal) =>
     get<StudentTestsPage>("/student/tests", q, signal),

@@ -1,6 +1,7 @@
 "use client";
 
-import { AiMark, InkArrow, MathText, Note } from "@iitpulse/ui";
+import { AiMark, InkArrow, Note } from "@iitpulse/ui";
+import { MathLite as MathText } from "@/components/math/math-lite";
 import { isAiDown, useAiSummary } from "@/lib/ai-api";
 import { StudentApiError } from "@/lib/student-api";
 import { relativeDayTime } from "@/lib/time";
@@ -166,7 +167,7 @@ function LeakColumn({ leak, first, onReview, labelOf }: { leak: Leak; first: boo
         <span className="row wrap xs muted gap-x-2 gap-y-1">
           Review
           {leak.questionNs.map((n) => (
-            <button key={n} type="button" className="mono font-medium text-primary underline-offset-2 hover:underline" onClick={() => onReview(n)} aria-label={`Review question ${labelOf(n)}`}>
+            <button key={n} type="button" className="mono font-medium text-primary underline-offset-2 hover:underline" onClick={() => onReview(n)} aria-label={`Review Q${labelOf(n)}`}>
               Q{labelOf(n)}
             </button>
           ))}

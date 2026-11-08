@@ -11,7 +11,7 @@ import "../globals.css";
 
 export const metadata: Metadata = {
   title: "IIT-PULSE",
-  description: "Mock tests, results and study plans for JEE and NEET students",
+  description: "Mock tests, results and study plans for students",
 };
 
 export const viewport: Viewport = {

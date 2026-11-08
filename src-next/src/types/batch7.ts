@@ -94,6 +94,8 @@ export interface GuardianConsentStatus {
 export interface GuardianConsentPublic {
   now: IsoDateTime;
   status: "pending" | "confirmed";
+  /** batch 8 (users 5a2c0c3): "under18" = consent for a minor; "results" = a parent the institute added for result emails (18+ or no date of birth). Older servers send none: under18. */
+  purpose?: "under18" | "results";
   student: { firstName: string };
   institute: { name: string };
   guardian: { name: string | null; emailMasked: string };

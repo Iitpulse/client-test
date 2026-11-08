@@ -3,6 +3,8 @@
 // Under-18 guardian consent, the parent's side (batch 7; public, no sign-in): the link in the guardianConsent email.
 // Shows who asked, links the Terms and the Privacy Policy, and records "I agree" (time, IP, user agent and the
 // versions, on the server). States: loading, pending, confirmed, invalid link, expired link, error.
+// Batch 8: purpose "results" (a parent the institute added so they get result emails; the student is 18+ or has no
+// date of birth) uses the same layout with its own copy: "Confirm to get {name}'s test results from {institute}".
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
 import { LogoMark } from "@iitpulse/ui";
@@ -39,7 +41,7 @@ export default function GuardianConsentPage({ params }: { params: Promise<{ toke
   }, [token]);
 
   const confirm = async () => {
-    if (!agree) return setErr("Tick the box to agree.");
+    if (!agree) return setErr(st.kind === "ok" && st.data.purpose === "results" ? "Tick the box to confirm." : "Tick the box to agree.");
     setBusy(true);
     setErr(null);
     try {
@@ -82,11 +84,53 @@ export default function GuardianConsentPage({ params }: { params: Promise<{ toke
           <>
             <h1 className="h2 m-0">Thank you</h1>
             <p className="body m-0">
-              You agreed{st.data.confirmedAt ? ` on ${dayMonth(st.data.confirmedAt)}` : ""} to {st.data.institute.name}&apos;s Terms of Use and Privacy Policy for {st.data.student.firstName}. You can close this page.
+              {st.data.purpose === "results"
+                ? `You confirmed${st.data.confirmedAt ? ` on ${dayMonth(st.data.confirmedAt)}` : ""}. ${st.data.institute.name} will email you ${st.data.student.firstName}'s test results. You can close this page.`
+                : `You agreed${st.data.confirmedAt ? ` on ${dayMonth(st.data.confirmedAt)}` : ""} to ${st.data.institute.name}'s Terms of Use and Privacy Policy for ${st.data.student.firstName}. You can close this page.`}
             </p>
           </>
         )}
-        {st.kind === "ok" && st.data.status === "pending" && (
+        {st.kind === "ok" && st.data.status === "pending" && st.data.purpose === "results" && (
+          <>
+            <span className="eyebrow">{st.data.institute.name}</span>
+            <h1 className="h2 m-0">
+              Confirm to get {st.data.student.firstName}&apos;s test results from {st.data.institute.name}
+            </h1>
+            <p className="body m-0">
+              {st.data.institute.name} added your email as {st.data.student.firstName}&apos;s parent or guardian, so you can get {st.data.student.firstName}&apos;s test results by email. Please read the{" "}
+              <Link href="/terms" target="_blank">
+                Terms of Use
+              </Link>{" "}
+              and the{" "}
+              <Link href="/privacy" target="_blank">
+                Privacy Policy
+              </Link>
+              , which say what we keep and why, then confirm below.
+            </p>
+            <div className="field">
+              <label className="label" htmlFor="gp-name">
+                Your name
+              </label>
+              <input id="gp-name" className="input" value={name} maxLength={120} autoComplete="name" onChange={(e) => setName(e.target.value)} />
+            </div>
+            <label className="row sm items-start gap-2.5" style={{ cursor: "pointer" }}>
+              <input type="checkbox" checked={agree} onChange={(e) => { setAgree(e.target.checked); setErr(null); }} style={{ width: 18, height: 18, accentColor: "var(--navy)", margin: "1px 0 0", flex: "none" }} />
+              <span>
+                I am {st.data.student.firstName}&apos;s parent or guardian ({st.data.guardian.emailMasked}), and I want to get their test results by email.
+              </span>
+            </label>
+            {err && (
+              <span className="xs" role="alert" style={{ color: "#B00000" }}>
+                {err}
+              </span>
+            )}
+            <button type="button" className="btn btn-primary btn-lg" disabled={busy} onClick={confirm}>
+              {busy ? "Saving…" : "Confirm"}
+            </button>
+            <span className="xs muted">This link works until {dayMonth(st.data.expiresAt)}. Versions: terms {st.data.versions.terms}, privacy {st.data.versions.privacy}.</span>
+          </>
+        )}
+        {st.kind === "ok" && st.data.status === "pending" && st.data.purpose !== "results" && (
           <>
             <span className="eyebrow">{st.data.institute.name}</span>
             <h1 className="h2 m-0">Agree for {st.data.student.firstName}</h1>

@@ -29,6 +29,12 @@ const hour = (hhmm: string) => {
   return m ? `${h12}:${String(m).padStart(2, "0")} ${ap}` : `${h12} ${ap}`;
 };
 
+/** "+919826012345" → "+91 98260 12345" (the contract's display; staging sends E.164 as is) */
+const fmtPhone = (d: string) => {
+  const m = /^\+?91[\s-]?(\d{5})[\s-]?(\d{5})$/.exec(d.trim());
+  return m ? `+91 ${m[1]} ${m[2]}` : d;
+};
+
 const ErrI = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true" focusable="false" className="flex-none">
     <circle cx="12" cy="12" r="9" />
@@ -128,7 +134,7 @@ export function ReachView() {
                   </span>
                   <div className="col grow min-w-[240px] gap-1 max-md:min-w-0 max-md:basis-0">
                     <span className="sm font-semibold">Parent&apos;s phone</span>
-                    {r.parentPhone ? <span className="body num">{r.parentPhone.display}</span> : <span className="body muted">No parent&apos;s phone</span>}
+                    {r.parentPhone ? <span className="body num">{fmtPhone(r.parentPhone.display)}</span> : <span className="body muted">No parent&apos;s phone</span>}
                     <span className="ry-ro">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false">
                         <rect x="5" y="11" width="14" height="10" rx="2" />
@@ -288,7 +294,7 @@ function PhoneRow({ r, onVerified }: { r: ReachResponse; onVerified: () => void 
               </span>
             ))}
         </div>
-        {p ? <span className="body num">{p.display}</span> : <span className="body muted">No phone</span>}
+        {p ? <span className="body num">{fmtPhone(p.display)}</span> : <span className="body muted">No phone</span>}
         <span className="xs muted">{hint}</span>
 
         {changing && !open && (

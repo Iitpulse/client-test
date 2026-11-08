@@ -276,6 +276,8 @@ function SummaryPlaceholder({ st, now, compact }: { st: Exclude<SummaryState, { 
   }
   if (st.kind === "quiet") return <QuietLine message={st.message} retry={st.retry} />;
   if (st.kind === "paused") return <SummaryNote compact={compact} cls="info" role="status" title="AI help is paused right now." text="Your score, answers and the official solutions are all here." />;
+  // a bare failure (no review card: a 5xx without a code, the network): the summary's own line
+  if (st.kind === "failed" && st.triesLeft == null) return <SummaryNote compact={compact} cls="err" role="alert" title="Couldn't write your summary." text="Try again. It won't use any of today's AI questions." retry={st.retry} />;
   if (st.kind === "failed")
     return (
       <SummaryNote

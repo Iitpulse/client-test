@@ -35,6 +35,8 @@ export type StudentErrorCode =
   // Batch 8 Student-ErrorPages: 404 on result and paper routes (api-tests docs/m2-student-api.md)
   | "TEST_REMOVED"
   | "NOT_YOUR_TEST"
+  // Batch 8 assigned practice (api-tests docs/batch8-api.md)
+  | "ASSIGNMENT_NOT_FOUND"
   | "NO_SUBMISSION"
   | "TEST_NOT_FOUND"
   | "NOT_ASSIGNED"

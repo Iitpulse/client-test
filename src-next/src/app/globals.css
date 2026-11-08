@@ -161,6 +161,20 @@
   .st-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 56px 40px }
   @media (width < 48rem) { .st-card { padding: 28px 18px; gap: 10px } }
   .st-acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 4px }
+  /* Student-AssignedPractice (components/student/assigned-practice.tsx) */
+  .ap { background: #fff; border: 1px solid var(--line, #E4E6EF); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; position: relative }
+  .ap.late { border-color: #F1D29A }
+  @media (width < 48rem) { .ap { padding: 16px; border-radius: 14px } }
+  .ap-stamp { position: absolute; top: 18px; right: 18px; color: var(--navy) }
+  @media (width < 48rem) { .ap-stamp { top: 14px; right: 14px } }
+  .ap-from { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted) }
+  .ap-from .avatar { width: 22px; height: 22px; font-size: 10px }
+  .ap-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: #2B2F4A }
+  .ap-meta span { display: inline-flex; align-items: center; gap: 5px }
+  .ap-meta svg { color: var(--muted); flex: none }
+  .ap-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: #fff; border: 1px solid var(--line, #E4E6EF) }
+  .ap-ic { width: 36px; height: 36px; border-radius: 10px; background: var(--navy-50); color: var(--navy); display: flex; align-items: center; justify-content: center; flex: none }
+  @media (width < 48rem) { .ap-row { flex-wrap: wrap } }
   /* Review-NotGenerated "In the queue" bar (components/student/ai-review.tsx) */
   .ai-qbar { flex: 1; height: 6px; border-radius: 999px; background: var(--navy-100, #E1E3F8); overflow: hidden }
   .ai-qbar i { display: block; height: 100%; background: var(--navy); border-radius: 999px }

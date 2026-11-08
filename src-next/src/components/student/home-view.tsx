@@ -11,6 +11,8 @@ import { countdown, dowDayMonthTime, daysFrom, ist, relativeDayTime, timeOf } fr
 import { useServerClock } from "@/lib/server-clock";
 import { useAuthStore } from "@/stores/auth.store";
 import { useIsDesktop } from "@/lib/use-media";
+import { useAssignments } from "@/lib/assignments-api";
+import { AssignmentCard, AssignmentRows, homeCards } from "./assigned-practice";
 import type { LastResult, PendingResult, StudentHome, StudentTestsPage, TestCard } from "@/types/m2-student";
 import type { ProgressResponse, StudyPlanItem, StudyPlanResponse } from "@/types/m4";
 import type { StudentGateResponse } from "@/types/m6";
@@ -56,6 +58,8 @@ export function HomeView() {
   }, [fx, homeName, storedName, setUserName]);
   const isDesktop = useIsDesktop();
   const reminders = useReminderPref();
+  // Student-AssignedPractice: not on the first paint's path (Home's own data comes first)
+  const assignments = useAssignments(!fx && !!data);
 
   if (!data) {
     if (query.isError)
@@ -70,12 +74,43 @@ export function HomeView() {
   if (!data.student.batch) return <NoBatchCard where="home" />;
 
   const hasResult = !!data.lastResult;
+  const assigned = assignments.data?.items ?? [];
+  const cards = homeCards(assigned, now);
   return (
     <>
       <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
         <Hero home={data} now={now} reminders={reminders} />
+        {/* Student-AssignedPractice, phone: right after the hero */}
+        {cards.map((a) => (
+          <AssignmentCard key={a.id} a={a} phone className="rise md:hidden" style={{ "--i": 1 } as React.CSSProperties} />
+        ))}
         {data.lastResult ? <LastResultCard last={data.lastResult} /> : data.latestPending ? <PendingCard pending={data.latestPending} /> : <FirstResultCard />}
       </section>
+
+      {/* Student-AssignedPractice, desktop: the cards, then every assignment in "From your teachers" */}
+      {cards.length > 0 && (
+        <section className="grid grid-cols-3 gap-5 max-md:hidden" aria-label="Practice from your teachers">
+          {cards.map((a) => (
+            <AssignmentCard key={a.id} a={a} className="rise" style={{ "--i": 2 } as React.CSSProperties} />
+          ))}
+        </section>
+      )}
+      {assigned.length > 0 && (
+        <section className="col rise gap-2.5 max-md:hidden" style={{ "--i": 2 } as React.CSSProperties} aria-labelledby="ap-home-h">
+          <div className="row between gap-3">
+            <span className="col gap-px">
+              <h2 id="ap-home-h" className="h3 m-0">
+                From your teachers
+              </h2>
+              <span className="xs muted">The same list sits at the top of Progress</span>
+            </span>
+            <Link prefetch={false} href="/progress" className="sm font-semibold">
+              Open Progress
+            </Link>
+          </div>
+          <AssignmentRows items={assigned} />
+        </section>
+      )}
 
       <section className="grid grid-cols-3 gap-5 max-md:hidden">
         {hasResult ? (

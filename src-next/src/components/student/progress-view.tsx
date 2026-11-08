@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssignments } from "@/lib/assignments-api";
+import { AssignmentRows } from "./assigned-practice";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -108,6 +110,8 @@ export function ProgressView() {
           )}
         </header>
 
+        {fx === null && <FromTeachers />}
+
         {kind === "error" ? (
           <ProgressError error={error} onRetry={retry} />
         ) : kind === "loading" || !d ? (
@@ -129,6 +133,20 @@ export function ProgressView() {
         )}
       </div>
     </>
+  );
+}
+
+/** Student-AssignedPractice: practice teachers assigned, at the top of Progress (the same list as on Home). */
+function FromTeachers() {
+  const q = useAssignments();
+  if (!q.data) return null;
+  return (
+    <section className="col rise gap-2.5 max-md:px-4 max-md:pt-3" aria-labelledby="ap-progress-h">
+      <h2 id="ap-progress-h" className="h3 m-0">
+        From your teachers
+      </h2>
+      <AssignmentRows items={q.data.items} />
+    </section>
   );
 }
 

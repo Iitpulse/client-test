@@ -5,11 +5,13 @@
 // It never reaches the frozen exam screens: those live in their own root layout ((exam)), so a test in progress is
 // never interrupted and the dialog shows on the next shell page after submit. Failures (Mongo stacks, offline) show
 // nothing.
-import { useEffect, useState } from "react";
-import { Sheet } from "@/components/student/sheet";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAuthHydrated, useAuthStore } from "@/stores/auth.store";
 import { LEGAL_CHANGES, legalApi, markLegalSettled, type LegalStatus } from "@/lib/legal-api";
 import { StudentApiError } from "@/lib/student-api";
+
+// The dialog (Radix) loads only when there is something to accept: it stays out of every page's first JavaScript.
+const Sheet = lazy(() => import("@/components/student/sheet").then((m) => ({ default: m.Sheet })));
 
 export function ReacceptPrompt() {
   const hydrated = useAuthHydrated();
@@ -63,54 +65,56 @@ export function ReacceptPrompt() {
   };
 
   return (
-    <Sheet
-      open
-      onOpenChange={() => {}}
-      dismissible={false}
-      title={updated ? "We’ve updated our terms" : "Our terms and privacy policy"}
-      description={
-        updated
-          ? changes.length
-            ? "The new Terms of Use and Privacy Policy apply now. Here’s what changed:"
-            : "We’ve published new versions of the Terms of Use and the Privacy Policy."
-          : "Please read the Terms of Use and the Privacy Policy and accept them to keep using IIT-PULSE."
-      }
-      footer={
-        <>
-          <button type="button" className="btn btn-ghost btn-lg" onClick={signOut} disabled={busy}>
-            Sign out
-          </button>
-          <button type="button" className="btn btn-primary btn-lg" onClick={accept} disabled={busy} aria-busy={busy || undefined}>
-            {busy ? "Saving…" : "Accept and continue"}
-          </button>
-        </>
-      }
-    >
-      <div className="col" style={{ gap: 12 }}>
-        {changes.length > 0 && (
-          <ul className="sm" style={{ margin: 0, padding: "12px 14px 12px 32px", borderRadius: 12, background: "var(--cl-navy-50, #F7F7FD)", border: "1px solid #E1E3F8" }}>
-            {changes.map((c) => (
-              <li key={c}>{c}</li>
-            ))}
-          </ul>
-        )}
-        <span className="sm">
-          Read them in full:{" "}
-          <a href="/terms" target="_blank" rel="noopener">
-            Terms of Use
-          </a>{" "}
-          ·{" "}
-          <a href="/privacy" target="_blank" rel="noopener">
-            Privacy Policy
-          </a>
-        </span>
-        {err && (
-          <span className="sm" role="alert" style={{ color: "#C40000", fontWeight: 600 }}>
-            {err}
+    <Suspense fallback={null}>
+      <Sheet
+        open
+        onOpenChange={() => {}}
+        dismissible={false}
+        title={updated ? "We’ve updated our terms" : "Our terms and privacy policy"}
+        description={
+          updated
+            ? changes.length
+              ? "The new Terms of Use and Privacy Policy apply now. Here’s what changed:"
+              : "We’ve published new versions of the Terms of Use and the Privacy Policy."
+            : "Please read the Terms of Use and the Privacy Policy and accept them to keep using IIT-PULSE."
+        }
+        footer={
+          <>
+            <button type="button" className="btn btn-ghost btn-lg" onClick={signOut} disabled={busy}>
+              Sign out
+            </button>
+            <button type="button" className="btn btn-primary btn-lg" onClick={accept} disabled={busy} aria-busy={busy || undefined}>
+              {busy ? "Saving…" : "Accept and continue"}
+            </button>
+          </>
+        }
+      >
+        <div className="col" style={{ gap: 12 }}>
+          {changes.length > 0 && (
+            <ul className="sm" style={{ margin: 0, padding: "12px 14px 12px 32px", borderRadius: 12, background: "var(--cl-navy-50, #F7F7FD)", border: "1px solid #E1E3F8" }}>
+              {changes.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          )}
+          <span className="sm">
+            Read them in full:{" "}
+            <a href="/terms" target="_blank" rel="noopener">
+              Terms of Use
+            </a>{" "}
+            ·{" "}
+            <a href="/privacy" target="_blank" rel="noopener">
+              Privacy Policy
+            </a>
           </span>
-        )}
-        <span className="xs muted">You need to accept to keep using IIT-PULSE. A test you’ve already started is never interrupted: this shows after you submit.</span>
-      </div>
-    </Sheet>
+          {err && (
+            <span className="sm" role="alert" style={{ color: "#C40000", fontWeight: 600 }}>
+              {err}
+            </span>
+          )}
+          <span className="xs muted">You need to accept to keep using IIT-PULSE. A test you’ve already started is never interrupted: this shows after you submit.</span>
+        </div>
+      </Sheet>
+    </Suspense>
   );
 }

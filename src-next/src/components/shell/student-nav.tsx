@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoMark } from "@iitpulse/ui";
+import { LOGO_WEBP } from "./phone-header";
 import { cn } from "@/lib/utils";
 import { Avatar } from "./avatar";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -20,7 +21,7 @@ export function StudentNav({ name, email }: { name?: string; email?: string }) {
       <div className="row between mx-auto h-[72px] max-w-[1200px] gap-6 px-8">
         <div className="row gap-9">
           <Link prefetch={false} href="/" aria-label="Home" className="flex">
-            <BrandLogo fallback={<LogoMark />} />
+            <BrandLogo fallback={<LogoMark src={LOGO_WEBP} />} />
           </Link>
           <div className="row gap-1">
             {NAV_ITEMS.filter((i) => i.desktop).map(({ key, href, label }) => {

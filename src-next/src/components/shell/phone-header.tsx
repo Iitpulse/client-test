@@ -4,6 +4,13 @@ import { cn } from "@/lib/utils";
 import { BrandLogo } from "@/components/brand/brand-logo";
 
 /**
+ * The unchanged logo PNG re-packed as lossless WebP (`cwebp -lossless -exact`, decodes to the same pixels): 17 KB
+ * instead of 40 KB on the signed-in shell, where it downloads next to the app's JavaScript (mobile LCP budget).
+ * The PNG stays in public/ for everything else (sign-in, PDF, legal pages).
+ */
+export const LOGO_WEBP = "/iitpulse-logo.webp";
+
+/**
  * Phone-Home's compact header: 60px, the logo cropped to 139x27 (the unchanged PNG, tagline hidden by CSS),
  * and on signed-in screens the avatar, which opens /profile. Shown below 768px; sign-in screens use it without
  * the avatar (they collapse to one column with this header and no tab bar).
@@ -14,8 +21,8 @@ export function PhoneHeader({ right, homeHref, className }: { right?: ReactNode;
       size="sm"
       fallback={
         <span role="img" aria-label="IIT-PULSE" className="relative block h-[27px] w-[139px] overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element -- the logo is a fixed, unchanged PNG cropped by CSS */}
-          <img src="/iitpulse-logo.png" alt="" className="absolute top-[-7px] left-0 h-[44px] w-auto max-w-none" decoding="async" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- the logo is a fixed, unchanged image cropped by CSS */}
+          <img src={LOGO_WEBP} alt="" className="absolute top-[-7px] left-0 h-[44px] w-auto max-w-none" decoding="async" />
         </span>
       }
     />

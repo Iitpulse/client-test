@@ -128,7 +128,15 @@ export interface TestUITemplate {
 // API endpoints
 export const api = {
   tests: {
-    getForStudent: (testId: string) => apiTests.get(`/test/student/${testId}`),
+    // The paper and the attempt's timing. GET never starts an attempt (api-tests answers `started: false` without the
+    // paper when there is none), so a first open starts it with POST .../start (which also resumes, and may answer 409
+    // TESTERS_LIMIT or 403 TENANT_SUSPENDED). Same answer shape either way.
+    getForStudent: async (testId: string) => {
+      const id = encodeURIComponent(testId);
+      const res = await apiTests.get(`/test/student/${id}`);
+      if (res.data?.started === false) return apiTests.post(`/test/student/${id}/start`);
+      return res;
+    },
     // M6 extras (api-ai docs/m6-api.md SubmitExtras / SaveProgressExtras): submittedAtDevice, answerLog, events
     submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean; fullscreenExits?: number; submittedAtDevice?: string; answerLog?: unknown[]; events?: unknown[] }) =>
       apiTests.post("/test/submit", data),

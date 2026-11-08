@@ -111,8 +111,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               Take your mock tests, see exactly where marks slipped, and get a study plan built from your own answers.
             </p>
             <div className="row wrap rise gap-2.5" style={{ "--i": 2 } as CSSProperties}>
-              <span className="badge bg-white/12 text-white">JEE Main &amp; Advanced</span>
-              <span className="badge bg-white/12 text-white">NEET</span>
+              {/* G69: no exam names here (every institute's exams differ); the badges say what the app does */}
+              <span className="badge bg-white/12 text-white">Mock tests</span>
+              <span className="badge bg-white/12 text-white">Study plans</span>
               <span className="badge bg-white/12 text-white">AI review after every test</span>
             </div>
           </DefaultBrandOnly>

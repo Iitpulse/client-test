@@ -475,7 +475,7 @@ export function SignupFlow() {
                   {promoState.s === "error" && <ErrText>{promoState.message}</ErrText>}
                 </span>
                 <span id="su-promo-h" className="hint">
-                  6 letters or digits, like JEE7KQ.
+                  6 letters or digits, like K7Q2MX.
                 </span>
               </div>
               <div className="field">

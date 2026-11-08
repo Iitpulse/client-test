@@ -15,6 +15,7 @@ import {
 import { parseExamTemplate } from "@/lib/exam-template";
 import { clearRoughSheets } from "@/lib/rough-sheet";
 import { PENDING_SUBMIT_KEY, type PendingSubmit } from "@/lib/submit-handoff";
+import { errorCode, gateUrl, REENTRY_CODES, sittingFields } from "@/lib/reentry";
 import { fetchPreviewStart, previewActive } from "@/lib/exam-preview";
 import type { StudentExamTemplate } from "@/types/m6";
 
@@ -171,6 +172,15 @@ const initialStatus: ITestStatus = {
   answeredAndMarkedForReview: [],
 };
 
+// Re-entry (api-tests docs/reentry-api.md): the server refused this tab's write (the test moved to another device or
+// tab, the student signed out, or staff must let them back in). Nothing more is saved from here: the gate says why.
+let leftForGate: string | null = null;
+function toGate(testId: string, code: string | null) {
+  if (leftForGate === testId || typeof window === "undefined") return;
+  leftForGate = testId;
+  window.location.assign(gateUrl(testId, code === "SITTING_CLOSED"));
+}
+
 // The submit running now and the last test submitted from this page (see submitTest)
 let submitInFlight: { testId: string; promise: Promise<void> } | null = null;
 let submittedTestId: string | null = null;
@@ -248,6 +258,13 @@ export const useTestStore = create<TestState>((set, get) => ({
         });
       }
     } catch (error) {
+      // re-entry: coming back needs staff (or the test moved on): the gate shows the waiting page
+      const code = errorCode(error);
+      if (code && REENTRY_CODES.has(code)) {
+        set({ isLoading: false });
+        toGate(testId, code);
+        return;
+      }
       console.error("Failed to fetch test:", error);
       const serverMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       set({ error: serverMessage || "Failed to load test", isLoading: false });
@@ -528,6 +545,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     if (!testId) return;
     // A submit is on its way (or done): the server would refuse the save (409), and the submit carries the answers
     if (submitInFlight?.testId === testId || submittedTestId === testId) return;
+    if (leftForGate === testId) return;
 
     const sections = answerSections(test, questions);
 
@@ -540,7 +558,7 @@ export const useTestStore = create<TestState>((set, get) => ({
     // M6: fullscreen exits with durations and the answer history since the last acknowledged save
     const events = pendingFullscreenEvents(testId);
     const answerLog = pendingAnswerLog(testId);
-    const body = { testId, sections, fullscreenExits, events, answerLog };
+    const body = { testId, sections, fullscreenExits, events, answerLog, ...sittingFields(testId) };
     try {
       if (options?.keepalive) {
         // Page is unloading: a keepalive fetch is allowed to finish after the page is gone
@@ -554,6 +572,9 @@ export const useTestStore = create<TestState>((set, get) => ({
         if (res.ok) {
           acknowledgeFullscreenEvents(testId, events);
           acknowledgeAnswerLog(testId, answerLog);
+        } else if (res.status === 409) {
+          const code = ((await res.json().catch(() => null)) as { code?: string } | null)?.code ?? null;
+          if (code && REENTRY_CODES.has(code)) leftForGate = testId;
         }
       } else {
         const response = await api.tests.saveProgress(body);
@@ -568,6 +589,8 @@ export const useTestStore = create<TestState>((set, get) => ({
         }
       }
     } catch (error) {
+      const code = errorCode(error);
+      if (code && REENTRY_CODES.has(code)) return toGate(testId, code);
       // Silent fail - auto-save should not interrupt user
       console.warn("Failed to save progress:", error);
     }
@@ -606,7 +629,7 @@ export const useTestStore = create<TestState>((set, get) => ({
       const events = pendingFullscreenEvents(testId);
       const isAutoSubmitted = options?.isAutoSubmitted === true;
       const autoSubmitReason = isAutoSubmitted ? (options?.autoSubmitReason ?? "timeUp") : undefined;
-      const submitBody = { testId, sections, isAutoSubmitted, ...(autoSubmitReason ? { autoSubmitReason } : {}), fullscreenExits, submittedAtDevice, answerLog, events };
+      const submitBody = { testId, sections, isAutoSubmitted, ...(autoSubmitReason ? { autoSubmitReason } : {}), fullscreenExits, submittedAtDevice, answerLog, events, ...sittingFields(testId) };
 
       try {
         const response = await api.tests.submit(submitBody);
@@ -640,6 +663,13 @@ export const useTestStore = create<TestState>((set, get) => ({
       } catch (error: unknown) {
         const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
         const status = axiosError?.response?.status;
+        // re-entry: this tab no longer holds the test (moved, signed out): the gate says where it went
+        const refused = errorCode(error);
+        if (status === 409 && refused && REENTRY_CODES.has(refused)) {
+          toGate(testId, refused);
+          // the gate is loading: never resolve, so the page neither opens /result nor shows an error meanwhile
+          return new Promise<never>(() => {});
+        }
         // Offline or a server failure: hand the exact submit to /result (lib/submit-handoff.ts), which sends it, retries
         // and shows "Your answers are safe on this device" / "We couldn't submit yet". The server's submit rules keep a
         // late arrival fair (submittedAtDevice). A refusal (4xx) is not retried: the page shows its message.

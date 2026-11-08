@@ -4,8 +4,11 @@
 // GET /tests/student/tests/:id/gate (ready, opensSoon, closed, submitted, notAssigned, resume, notFound) plus the
 // client's own checks (unsupported browser, offline). The sign-in link problems (link expired / used) are drawn on
 // the sign-in link page with the same card. Nothing here starts the timer: the exam starts on /instructions.
+// Re-entry (batch 8, Student-ReEntryGate; ./reentry-gate.tsx): a running attempt's gate says what coming back does
+// (resuming, waiting for the invigilator with a code and a 10 s check, let back in, moved to another device) and the
+// submitted state says when re-entry ended it (not allowed, time ran out while away).
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { qk, studentApi, StudentApiError } from "@/lib/student-api";
@@ -21,6 +24,7 @@ import { Facts, Note, StateCard, supportCode } from "./states";
 import { StateIcon } from "./state-icons";
 import { useInstituteState } from "@/components/brand/institute-notices";
 import { Skel } from "./common";
+import { ReentryCard, ReentryEndCard, reentryCardApplies } from "./reentry-gate";
 
 /* ───────────── formatting (IST) ───────────── */
 
@@ -108,6 +112,24 @@ function gateFixture(state: string): (StudentGateResponse & { _client?: "unsuppo
       return { ...base, state: "resume", test: mock12, attempt: { startedAt: iso(now - 73 * 60e3), expiresAt: iso(now + 107 * 60e3), answered: 41, total: 75, lastSavedAt: iso(now - 4 * 60e3), fullscreenExits: 1, exitsAllowed: 3 } };
     case "not-found":
       return { ...base, state: "notFound", test: null };
+    // Student-ReEntryGate (batch 8)
+    case "resuming":
+    case "waiting":
+    case "waiting-new-device":
+    case "waiting-offline":
+    case "let-back-in":
+    case "moved": {
+      const attempt = { startedAt: iso(now - 74 * 60e3), expiresAt: iso(now + 66 * 60e3), answered: 41, total: 75, lastSavedAt: iso(now - (state === "resuming" ? 2 : 9) * 60e3), fullscreenExits: 2, exitsAllowed: 3 };
+      const facts = { lastSaveAt: attempt.lastSavedAt, minutesSinceSave: state === "resuming" ? 2 : 18, endReason: null, leftAt: iso(now - 9 * 60e3), deviceKind: (state === "waiting-new-device" ? "phone" : "desktop") as "phone" | "desktop", previousDeviceKind: "desktop" as const };
+      const request = { id: "REQ_fx", code: "R7K-42", status: (state === "let-back-in" ? "allowed" : "waiting") as "allowed" | "waiting", why: (state === "waiting-new-device" ? "newDevice" : "tooLate") as "newDevice" | "tooLate", createdAt: iso(now - 5 * 60e3), decidedAt: state === "let-back-in" ? iso(now - 30e3) : null, decidedBy: state === "let-back-in" ? { name: "Neha Verma" } : null, reason: state === "let-back-in" ? "deviceCrashed" : null, extraMinutes: state === "let-back-in" ? 10 : 0, allowUntil: state === "let-back-in" ? iso(now + 14 * 60e3) : null };
+      const decision = state === "resuming" ? "auto" : state === "let-back-in" ? "approved" : state === "moved" ? "staff" : "staff";
+      const reentry = { policy: "crash" as const, minutes: 5, decision: decision as "auto" | "approved" | "staff", how: state === "resuming" ? ("auto" as const) : null, newDevice: state === "waiting-new-device" || state === "moved", why: decision === "staff" ? (state === "waiting-new-device" ? ("newDevice" as const) : state === "moved" ? ("otherDevice" as const) : ("tooLate" as const)) : null, replacedHere: state === "moved", request: decision === "auto" || state === "moved" ? null : request, facts, pollSeconds: 10 };
+      return { ...base, state: "resume", test: mock12, attempt: { ...attempt, reentry }, ...(state === "waiting-offline" ? { _client: "offline" as const } : {}) };
+    }
+    case "not-allowed":
+      return { ...base, state: "submitted", test: mock12, submission: { submittedAt: iso(now - 60e3), receiptId: "TR-4C1D-88A2", resultVisible: false, resultAt: null, resultHidden: false, endedBy: "reentryDenied", answered: 41 } };
+    case "time-ran-out":
+      return { ...base, state: "submitted", test: mock12, submission: { submittedAt: iso(now - 60e3), receiptId: "TR-4C1D-91B7", resultVisible: false, resultAt: null, resultHidden: false, endedBy: "timeUpAway", answered: 41 } };
     case "unsupported":
       return { ...base, state: "ready", test: mock12, _client: "unsupported" };
     case "offline":
@@ -200,11 +222,14 @@ export function TestGate({ testId }: { testId: string }) {
   const [browser, setBrowser] = useState<Browser | null>(null);
   const [fsOk, setFsOk] = useState(true);
   const [copied, setCopied] = useState(false);
+  // re-entry: ?moved=1 (this tab's save was refused because the test moved on); "Ask to continue here" clears it
+  const [moved, setMoved] = useState(false);
 
   useEffect(() => {
     const f = fixtureParam();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only facts (location, user agent) read once after mount
     if (f) setFixture(gateFixture(f));
+    setMoved(new URLSearchParams(window.location.search).get("moved") === "1");
     setBrowser(detectBrowser());
     setFsOk(fullscreenAvailable());
   }, []);
@@ -219,8 +244,13 @@ export function TestGate({ testId }: { testId: string }) {
     queryFn: ({ signal }) => studentApi.gate(testId, signal),
     enabled: hydrated && !!currentUser && !fixture,
     staleTime: 0,
-    // a test about to open, or a resume, is re-checked every 30 s (the server decides when it opens)
-    refetchInterval: (q) => (q.state.data?.state === "opensSoon" || q.state.data?.state === "resume" ? 30_000 : false),
+    // a test about to open, or a resume, is re-checked every 30 s (the server decides when it opens); a student waiting
+    // for the invigilator every pollSeconds (10 s)
+    refetchInterval: (q) => {
+      const d = q.state.data;
+      if (d?.state === "resume" && d.attempt?.reentry?.decision === "staff") return (d.attempt.reentry.pollSeconds || 10) * 1000;
+      return d?.state === "opensSoon" || d?.state === "resume" ? 30_000 : false;
+    },
   });
 
   const data: StudentGateResponse | undefined = fixture ?? query.data;
@@ -240,11 +270,33 @@ export function TestGate({ testId }: { testId: string }) {
   const name = currentUser?.name;
   const clientState = fixture?._client ?? (!online ? "offline" : browser && !browser.supported ? "unsupported" : null);
 
-  const start = (to: "/instructions" | "/test") => {
-    setTestId(testId);
-    // the exam has its own root layout: a full page load, as useStartTest does
-    window.location.assign(to);
-  };
+  const start = useCallback(
+    (to: "/instructions" | "/test") => {
+      setTestId(testId);
+      // the exam has its own root layout: a full page load, as useStartTest does
+      window.location.assign(to);
+    },
+    [setTestId, testId]
+  );
+
+  // Re-entry: staff must say yes. Ask once from this device (the code appears), then the 10 s check moves the page on.
+  const reentry = data?.state === "resume" ? data.attempt?.reentry : null;
+  const asked = useRef(false);
+  const ask = useCallback(() => {
+    if (fixture) return;
+    asked.current = true;
+    setMoved(false);
+    studentApi
+      .askReentry(testId)
+      .then(() => query.refetch())
+      .catch(() => {
+        asked.current = false;
+      });
+  }, [fixture, testId, query]);
+  const blockedByMove = moved || !!reentry?.replacedHere;
+  useEffect(() => {
+    if (reentry?.decision === "staff" && !reentry.request && online && !blockedByMove && !asked.current) ask();
+  }, [reentry, online, blockedByMove, ask]);
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href.replace(/\?.*$/, ""));
@@ -254,12 +306,19 @@ export function TestGate({ testId }: { testId: string }) {
     }
   };
 
+  const waitingOffline = data?.state === "resume" && data.attempt?.reentry?.decision === "staff";
   const banner = clientState === "offline" ? (
     <div className="gate-banner" role="status">
       <StateIcon name="wifi" size={16} />
-      <span>
-        <b>{desktop === false ? "Offline." : "You're offline."}</b> {desktop === false ? "Checking again…" : "We'll check again every few seconds."}
-      </span>
+      {waitingOffline ? (
+        <span>
+          <b>{desktop === false ? "Offline." : "You're offline."}</b> {desktop === false ? "Request saved; checking again when you're back." : "Your request is saved. We'll check again as soon as you're connected."}
+        </span>
+      ) : (
+        <span>
+          <b>{desktop === false ? "Offline." : "You're offline."}</b> {desktop === false ? "Checking again…" : "We'll check again every few seconds."}
+        </span>
+      )}
     </div>
   ) : null;
 
@@ -269,7 +328,7 @@ export function TestGate({ testId }: { testId: string }) {
     const strip = t ? testStrip(t) : null;
     const back = <Btn kind="ghost" label="Back to tests" href="/tests" />;
 
-    if (clientState === "offline")
+    if (clientState === "offline" && !(data.state === "resume" && data.attempt?.reentry?.decision === "staff"))
       return (
         <GateCard tone="amber" icon="wifi" title="You're offline" body="Connect to the internet to start. Once you've started, a dropped connection is fine: answers stay on this device and are sent when you're back." test={strip} actions={<>
           <Btn label="Waiting for connection…" disabled />
@@ -358,6 +417,7 @@ export function TestGate({ testId }: { testId: string }) {
         );
       }
       case "submitted": {
+        if (data.submission?.endedBy) return <ReentryEndCard data={data} strip={strip} testId={testId} test={t} />;
         const s = data.submission;
         const result = !s ? null : s.resultHidden ? "Not shared for this test" : s.resultVisible ? "Out now" : s.resultAt ? `Out on ${dayTime(s.resultAt)}` : "Your institute will publish it";
         return (
@@ -380,6 +440,8 @@ export function TestGate({ testId }: { testId: string }) {
         );
       }
       case "resume": {
+        if (reentryCardApplies(data, moved))
+          return <ReentryCard data={data} strip={strip} now={now} desktop={desktop} online={clientState !== "offline"} moved={moved} checkedAt={receivedAt} onContinue={() => start("/instructions")} onAsk={ask} />;
         const a = data.attempt;
         const left = a ? (Date.parse(a.expiresAt) - now) / 1000 : 0;
         const pct = a && a.total ? Math.round((a.answered / a.total) * 100) : 0;
@@ -410,7 +472,7 @@ export function TestGate({ testId }: { testId: string }) {
         );
     }
     // `now` is read for the countdown and time left
-  }, [data, clientState, browser, desktop, fsOk, name, copied, now, opensIn, testId, institute.suspended]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, clientState, browser, desktop, fsOk, name, copied, now, opensIn, testId, institute.suspended, moved, receivedAt, online, ask, start]); // eslint-disable-line react-hooks/exhaustive-deps
 
   let content: React.ReactNode = body;
   if (!data) {

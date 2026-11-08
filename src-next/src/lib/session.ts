@@ -256,14 +256,17 @@ export const auth = {
     clearLocal();
     bc()?.postMessage({ type: "signed_out" });
   },
-  /** Sign out: ends the cookie session on the API, then forgets it in every tab */
-  signOut: async (): Promise<void> => {
+  /**
+   * Sign out: ends the cookie session on the API, then forgets it in every tab. `reason: "user"` = the student pressed
+   * Sign out (re-entry: a test they were writing then needs staff to come back to; api-tests docs/reentry-api.md).
+   */
+  signOut: async (opts?: { reason?: "user" }): Promise<void> => {
     if (!isBrowser()) return;
     // Forget it here first (callers navigate away at once), then end the cookie session; keepalive lets the request
     // finish after the page is gone. Offline: the session ends by itself (idle timeout).
     auth.removeToken();
     try {
-      await post("/auth/logout", { app: APP }, undefined, true);
+      await post("/auth/logout", { app: APP, ...(opts?.reason ? { reason: opts.reason } : {}) }, undefined, true);
     } catch {
       // nothing to do
     }

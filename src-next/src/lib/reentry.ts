@@ -1,0 +1,76 @@
+/**
+ * Re-entry per test (api-tests docs/reentry-api.md): this browser's device key and this tab's sitting.
+ *
+ * - Device key: a random id in localStorage (IITP_DEVICE_KEY), made the first time a test starts. The server keeps only
+ *   a hash of it; it tells "same device and browser" apart from a new device when a student comes back.
+ * - Sitting: POST /test/student/:id/start answers `sitting.id`; this tab keeps it in sessionStorage (a refresh keeps it,
+ *   a new tab or a reopened browser does not) and sends it with every save and the submit. Only the open sitting may
+ *   write; a closed one (the test moved to another device or tab, or Sign out) answers 409 SITTING_CLOSED.
+ * Storage blocked (private mode): no key, so the server treats every open as a new device (staff decide).
+ */
+const DEVICE_KEY = "IITP_DEVICE_KEY";
+const sittingKey = (testId: string) => `IITP_SITTING_${testId}`;
+
+function randomKey(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return `dk_${crypto.randomUUID().replace(/-/g, "")}`;
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    return `dk_${Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("")}`;
+  } catch {
+    return `dk_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`;
+  }
+}
+
+/** This browser's device key (made on first use); null when storage is blocked. */
+export function deviceKey(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    let k = localStorage.getItem(DEVICE_KEY);
+    if (!k || !/^[A-Za-z0-9_-]{16,64}$/.test(k)) {
+      k = randomKey();
+      localStorage.setItem(DEVICE_KEY, k);
+    }
+    return k;
+  } catch {
+    return null;
+  }
+}
+
+export function sittingOf(testId: string): string | null {
+  if (typeof window === "undefined" || !testId) return null;
+  try {
+    return sessionStorage.getItem(sittingKey(testId));
+  } catch {
+    return null;
+  }
+}
+
+export function rememberSitting(testId: string, id: string | null | undefined): void {
+  if (typeof window === "undefined" || !testId || !id) return;
+  try {
+    sessionStorage.setItem(sittingKey(testId), id);
+  } catch {
+    // storage blocked: the next open of this tab counts as coming back
+  }
+}
+
+/** The fields every start, save and submit carries */
+export function sittingFields(testId: string): { device?: string; sittingId?: string } {
+  const device = deviceKey();
+  const sittingId = sittingOf(testId);
+  return { ...(device ? { device } : {}), ...(sittingId ? { sittingId } : {}) };
+}
+
+/** 409 answers that mean "this tab may not write the test now": go to the gate, which says why */
+export const REENTRY_CODES = new Set(["REENTRY_REQUIRED", "SITTING_CLOSED"]);
+
+export function gateUrl(testId: string, moved = false): string {
+  return `/tests/${encodeURIComponent(testId)}/start${moved ? "?moved=1" : ""}`;
+}
+
+/** The error code of an axios or fetch error body */
+export function errorCode(error: unknown): string | null {
+  const data = (error as { response?: { data?: { code?: unknown } } })?.response?.data;
+  return typeof data?.code === "string" ? data.code : null;
+}

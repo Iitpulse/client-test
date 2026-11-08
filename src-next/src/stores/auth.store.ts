@@ -81,7 +81,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        void auth.signOut(); // ends the cookie session on the API and in every tab
+        void auth.signOut({ reason: "user" }); // the Sign out button: ends the cookie session on the API and in every tab
         localStorage.removeItem("IITP_TEST_SUBMITTED_KEY");
         set({ currentUser: null, isAuthenticated: false, testId: null });
       },

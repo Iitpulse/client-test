@@ -15,7 +15,8 @@ import type {
   TestsTab,
 } from "@/types/m2-student";
 import type { AiErrorCode } from "@/types/m3-ai";
-import type { StudentGateResponse } from "@/types/m6";
+import type { GateReentry, ReentryRequestView, StudentGateResponse } from "@/types/m6";
+import { sittingFields } from "./reentry";
 import type { M4ErrorCode } from "@/types/m4";
 
 /** Every coded error the student screens handle (M2 reads, M3 AI review, M4 progress / practice / profile / doubts). */
@@ -199,7 +200,10 @@ export const studentApi = {
   reviewItem: (testId: string, n: number, filter: ReviewFilter, signal?: AbortSignal) =>
     get<ReviewItem>(`/student/results/${encodeURIComponent(testId)}/questions/${n}`, { filter }, signal),
   /** M6 GET /tests/student/tests/:testId/gate: Student-TestGate state before the frozen /instructions */
-  gate: (testId: string, signal?: AbortSignal) => get<StudentGateResponse>(`/student/tests/${encodeURIComponent(testId)}/gate`, undefined, signal),
+  gate: (testId: string, signal?: AbortSignal) => get<StudentGateResponse>(`/student/tests/${encodeURIComponent(testId)}/gate`, sittingFields(testId), signal),
+  /** Re-entry: POST /tests/student/tests/:testId/reentry: the waiting page asks staff (idempotent per device) */
+  askReentry: (testId: string) =>
+    request<{ now: string; decision: GateReentry["decision"]; request: ReentryRequestView | null }>("tests", `/student/tests/${encodeURIComponent(testId)}/reentry`, undefined, undefined, sittingFields(testId)),
 };
 
 /** TanStack Query keys, so pages can share and prefetch each other's data. */

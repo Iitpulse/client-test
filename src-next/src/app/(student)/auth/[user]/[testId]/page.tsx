@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { InkUnderline } from "@iitpulse/ui";
 import { useAuthStore, useTestStore } from "@/stores";
 import { authApi, apiError } from "@/lib/auth-api";
+import { api } from "@/lib/api";
 import { SignInCard, SignInFrame } from "@/components/auth/signin-frame";
 import { LinkGateProblem, LinkProblem } from "@/components/auth/link-problem";
 import { StateCard } from "@/components/student/states";
@@ -28,7 +29,7 @@ export default function AuthWithURIPage() {
   const router = useRouter();
   const params = useParams();
   const { setTestId, login, checkAuth } = useAuthStore();
-  const { fetchTest, reset } = useTestStore();
+  const { reset } = useTestStore();
   const hasProcessed = useRef(false);
   const [step, setStep] = useState(0); // 0 checking the link, 1 signing in, 2 loading the instructions, 3 done
   const [studentName, setStudentName] = useState<string | undefined>();
@@ -52,9 +53,12 @@ export default function AuthWithURIPage() {
 
     const openTest = () => {
       setStep(2);
-      return fetchTest(testId)
-        .then(() => {
-          setTestName(useTestStore.getState().test?.name);
+      // Only the test's name: the read-only GET never starts the attempt or opens a sitting (re-entry: the gate decides
+      // what coming back does, then /instructions starts or resumes it)
+      return api.tests
+        .peek(testId)
+        .then((res) => {
+          setTestName((res.data as { data?: { name?: string } | null } | undefined)?.data?.name);
           setStep(3);
           router.push(gatePath);
         })
@@ -106,7 +110,7 @@ export default function AuthWithURIPage() {
     } else {
       router.push("/login");
     }
-  }, [credential, testId, gatePath, setTestId, login, checkAuth, fetchTest, reset, router]);
+  }, [credential, testId, gatePath, setTestId, login, checkAuth, reset, router]);
 
   useEffect(() => {
     if (hasProcessed.current) return; // strict-mode double run

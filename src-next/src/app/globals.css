@@ -251,7 +251,14 @@
   .tstrip { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; background: #F5F6FA; border: 1px solid #EEF0F5 }
   .gate-banner { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; line-height: 1.4; background: #FFF4E2; color: #5C3600; border-bottom: 1px solid #F1D29A; flex: none }
   .gate-banner svg { flex: none }
+  /* Student-ReEntryGate (batch 8): the invigilator code and the 10 s check */
+  .codebox { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-radius: 14px; background: #F1F2FC; border: 1px solid #C3C6EF }
+  .codebox .c { font: 600 30px/1 var(--font-mono); letter-spacing: .14em; color: var(--navy) }
+  .rg-chk { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #2B2F4A }
+  .rg-chk .spin { flex: none; color: var(--navy); animation: gate-spin .8s linear infinite }
+  @media (prefers-reduced-motion: reduce) { .rg-chk .spin { animation: none } }
   @media (width < 48rem) {
+    .codebox .c { font-size: 26px }
     .gate-top { height: 60px; padding: 0 16px }
     .gate-main { justify-content: flex-start; padding: 16px }
     .gate { border-radius: 16px; padding: 22px 18px; gap: 16px }

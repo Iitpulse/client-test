@@ -19,6 +19,7 @@ export type StateIconName =
   | "exit"
   | "clipboard"
   | "people"
+  | "hand"
   | "info";
 
 export function StateIcon({ name, size = 24 }: { name: StateIconName; size?: number }) {
@@ -123,6 +124,14 @@ export function StateIcon({ name, size = 24 }: { name: StateIconName; size?: num
       return (
         <svg {...p} strokeLinejoin="round">
           <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
+        </svg>
+      );
+    case "hand":
+      // Student-ReEntryGate: waiting for the invigilator
+      return (
+        <svg {...p} strokeLinejoin="round">
+          <circle cx="12" cy="7" r="3.5" />
+          <path d="M5 21v-1a7 7 0 0 1 14 0v1M18 3v4M20 5h-4" />
         </svg>
       );
     case "people":

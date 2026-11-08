@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosError, type InternalAxiosRequestConfig } fro
 
 import { auth } from "./session";
 import { apiError, type ApiErrorBody, type LinkErrorCode } from "./auth-api";
+import { rememberSitting, sittingFields } from "./reentry";
 
 export { auth, apiError };
 export type { ApiErrorBody, LinkErrorCode };
@@ -128,19 +129,21 @@ export interface TestUITemplate {
 // API endpoints
 export const api = {
   tests: {
-    // The paper and the attempt's timing. GET never starts an attempt (api-tests answers `started: false` without the
-    // paper when there is none), so a first open starts it with POST .../start (which also resumes, and may answer 409
-    // TESTERS_LIMIT or 403 TENANT_SUSPENDED). Same answer shape either way.
+    // The paper and the attempt's timing: POST .../start starts the attempt or comes back to it (re-entry, api-tests
+    // docs/reentry-api.md: this browser's device key and this tab's sitting decide; 409 REENTRY_REQUIRED when staff
+    // must let the student back in, 409 TESTERS_LIMIT, 403 TENANT_SUSPENDED). GET stays a read-only view that opens no
+    // sitting, so the exam never uses it. The answer's sitting id is kept for this tab (saves and submit send it).
+    /** GET /test/student/:id: read-only (the paper when started, else `started: false`); opens no sitting */
+    peek: (testId: string) => apiTests.get(`/test/student/${encodeURIComponent(testId)}`),
     getForStudent: async (testId: string) => {
-      const id = encodeURIComponent(testId);
-      const res = await apiTests.get(`/test/student/${id}`);
-      if (res.data?.started === false) return apiTests.post(`/test/student/${id}/start`);
+      const res = await apiTests.post(`/test/student/${encodeURIComponent(testId)}/start`, sittingFields(testId));
+      rememberSitting(testId, (res.data as { sitting?: { id?: string } } | undefined)?.sitting?.id);
       return res;
     },
     // M6 extras (api-ai docs/m6-api.md SubmitExtras / SaveProgressExtras): submittedAtDevice, answerLog, events
-    submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean; fullscreenExits?: number; submittedAtDevice?: string; answerLog?: unknown[]; events?: unknown[] }) =>
+    submit: (data: { testId: string; sections: unknown[]; isAutoSubmitted?: boolean; fullscreenExits?: number; submittedAtDevice?: string; answerLog?: unknown[]; events?: unknown[]; device?: string; sittingId?: string }) =>
       apiTests.post("/test/submit", data),
-    saveProgress: (data: { testId: string; sections: unknown[]; fullscreenExits?: number; events?: unknown[]; answerLog?: unknown[] }) =>
+    saveProgress: (data: { testId: string; sections: unknown[]; fullscreenExits?: number; events?: unknown[]; answerLog?: unknown[]; device?: string; sittingId?: string }) =>
       apiTests.post("/test/save-progress", data),
   },
   uiTemplates: {

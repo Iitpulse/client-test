@@ -161,6 +161,10 @@
   .st-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 56px 40px }
   @media (width < 48rem) { .st-card { padding: 28px 18px; gap: 10px } }
   .st-acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 4px }
+  /* Student-ErrorPages (components/student/error-screen.tsx) */
+  .err-ctr { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; max-width: 460px; width: 100% }
+  .err-big { font-size: 44px; font-weight: 650; color: #C3C6EF; letter-spacing: -.02em; line-height: 1 }
+  .err-code { font: 600 12px var(--font-iitp-mono), monospace; color: var(--muted) }
   @media (width < 48rem) { .st-acts { flex-direction: column; align-self: stretch } }
 
   /* Offline / stale banner: a strip over the page, never instead of it */

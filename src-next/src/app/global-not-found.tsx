@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { InkUnderline, Paper } from "@iitpulse/ui";
+import { Paper } from "@iitpulse/ui";
+import { ErrorScreen } from "@/components/student/error-screen";
 import { studentFonts } from "./fonts";
 import "./globals.css";
 
@@ -16,23 +16,17 @@ export default function GlobalNotFound() {
   return (
     <html lang="en" className={studentFonts}>
       <body>
-        <Paper surface="student" className="min-h-dvh">
-          <main className="col min-h-dvh items-center justify-center px-4">
-            {/* Kit-States "Not found · 404": short and calm, the way home */}
-            <section className="card st-card w-full max-w-[560px]">
-              <span className="num" aria-hidden="true" style={{ fontSize: 32, fontWeight: 650, color: "#C3C6EF", letterSpacing: "-.02em" }}>
-                404
-              </span>
-              <h1 className="h2" style={{ margin: 0 }}>
-                Page not <InkUnderline delay={300}>found</InkUnderline>
-              </h1>
-              <p className="body muted m-0">The link may be old or mistyped.</p>
-              <div className="st-acts">
-                <Link href="/" className="btn btn-lg btn-primary max-md:w-full">
-                  Go home
-                </Link>
-              </div>
-            </section>
+        <Paper surface="student" className="flex min-h-dvh flex-col">
+          {/* Student-ErrorPages "Not found": no app frame here (no layout to render in), the same copy as inside it */}
+          <main className="flex min-h-dvh flex-col">
+            <ErrorScreen
+              mark="404"
+              title="Page not found"
+              body="The link may be old or mistyped. Everything of yours is where it was."
+              bodyShort="The link may be old or mistyped."
+              primary={{ label: "Go to Home", href: "/" }}
+              secondary={{ label: "See your tests", href: "/tests" }}
+            />
           </main>
         </Paper>
       </body>

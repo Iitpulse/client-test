@@ -169,7 +169,12 @@ export function earlyFetchScript(): string {
     `(function(){try{var b=window.__iitpBoot;if(!b)return;var p=location.pathname,l=[],m;` +
     `if(p==="/")l.push("/tests/student/home");` +
     `else if((m=/^\\/results\\/([^\\/]+)\\/?$/.exec(p))){l.push("/tests/student/results/"+m[1]);l.push("/ai/student/results/"+m[1]+"/summary");}` +
-    `if(!l.length)return;var t=b.p.then(function(r){return r&&r.status===200&&r.body&&r.body.data&&r.body.data.token||null});var e=window.__iitpEarly={};` +
+    `if(!l.length)return;` +
+    // Geist Mono (timers, numbers) and Kalam (the notes) are not preloaded (sign-in LCP), so they would only start
+    // when the first screen renders, and each late swap re-reports its text as the LCP: ask for them as soon as the
+    // stylesheet has registered their faces (it is still loading when this runs).
+    `var fn=0;(function ff(){var d=document.fonts,h=0;if(!d)return;d.forEach(function(x){var f=x.family.replace(/["']/g,"");if(f==="Kalam"||f==="Geist Mono")h=1});if(h){d.load('400 16px "Geist Mono"',"0");d.load("400 16px Kalam","a")}else if(fn++<100)setTimeout(ff,30)})();` +
+    `var t=b.p.then(function(r){return r&&r.status===200&&r.body&&r.body.data&&r.body.data.token||null});var e=window.__iitpEarly={};` +
     `l.forEach(function(u){e[u]={at:Date.now(),p:t.then(function(k){if(!k)return{status:401,body:null};return fetch(${api}+u,{headers:{Authorization:"Bearer "+k},cache:"no-store"}).then(function(h){return h.json().catch(function(){return null}).then(function(j){return{status:h.status,body:j}})})})}})}catch(x){}})();`
   );
 }

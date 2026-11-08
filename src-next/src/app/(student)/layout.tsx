@@ -22,6 +22,8 @@ export const viewport: Viewport = {
   themeColor: "#F4F5FA",
 };
 
+const EARLY_FETCH_SRC = `data:text/javascript;charset=utf-8,${encodeURIComponent(earlyFetchScript())}`;
+
 export default function StudentRootLayout({
   children,
 }: Readonly<{
@@ -38,12 +40,13 @@ export default function StudentRootLayout({
       </head>
       <body>
         {/*
-          Home (/) and a result (/results/:testId), signed in: start their data requests while the JavaScript downloads
-          (mobile LCP budget; lib/student-api.ts earlyFetchScript).
-          A plain inline script, so it runs while the HTML is parsed (next/script's beforeInteractive waits for
-          Next's own runtime). This layout is only rendered into the first HTML, never re-rendered on the client.
+          Signed in: the first refresh, and for Home (/) and a result (/results/:testId) their data requests, start
+          while the JavaScript downloads (mobile LCP budget; lib/student-api.ts earlyFetchScript). An async script
+          from a data: URL, so it runs at once: an inline script would wait for the stylesheets to load (about
+          0.6 s on Slow 4G), and next/script's beforeInteractive waits for Next's own runtime. This layout is only
+          rendered into the first HTML, never re-rendered on the client.
         */}
-        <script dangerouslySetInnerHTML={{ __html: earlyFetchScript() }} />
+        <script async src={EARLY_FETCH_SRC} />
         {/* The classroom ground: graph-grid paper, grain as one fixed layer (data-surface="student"). */}
         <Paper surface="student" className="min-h-dvh">
           {children}

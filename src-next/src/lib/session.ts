@@ -135,7 +135,10 @@ const tokenOf = (body: unknown): TokenData => ((body as { data?: TokenData } | n
 /** The inline boot script (sessionBootScript) may have started the first refresh while the app's JavaScript loaded */
 function takeBootRefresh(): BootRefresh["p"] | null {
   if (!isBrowser()) return null;
-  const w = window as unknown as { __iitpBoot?: BootRefresh };
+  const w = window as unknown as { __iitpBoot?: BootRefresh; __iitpBootClaimed?: boolean };
+  // The boot script is async (it does not wait for the CSS): if it has not run yet, it must not start a second
+  // refresh with the single-use cookie after this one.
+  w.__iitpBootClaimed = true;
   const boot = w.__iitpBoot;
   delete w.__iitpBoot;
   if (!boot || Date.now() - boot.at > 15_000) return null;
@@ -283,10 +286,11 @@ export const auth = {
 };
 
 /**
- * Inline <head> script: starts the first refresh in parallel with the app's JavaScript (a slow phone's first screen
- * waits on it otherwise). session.ts takes the answer; Home's early fetch chains on it.
+ * Boot script: starts the first refresh in parallel with the app's JavaScript (a slow phone's first screen waits on
+ * it otherwise). session.ts takes the answer; the early fetch (student-api.ts earlyFetchScript) chains on it. It does
+ * nothing once session.ts has claimed the boot (window.__iitpBootClaimed), so it can run as an async script.
  */
 export function sessionBootScript(): string {
   const url = JSON.stringify(`${API_GATEWAY}/users/auth/refresh`);
-  return `(function(){try{if(localStorage.getItem(${JSON.stringify(HINT_KEY)})!=="1")return;window.__iitpBoot={at:Date.now(),p:fetch(${url},{method:"POST",credentials:"include",keepalive:true,headers:{"Content-Type":"application/json","x-iitp-csrf":"1"},body:${JSON.stringify(JSON.stringify({ app: APP }))},cache:"no-store"}).then(function(r){return r.json().catch(function(){return null}).then(function(b){return{status:r.status,body:b}})})}}catch(e){}})();`;
+  return `(function(){try{if(window.__iitpBootClaimed||localStorage.getItem(${JSON.stringify(HINT_KEY)})!=="1")return;window.__iitpBoot={at:Date.now(),p:fetch(${url},{method:"POST",credentials:"include",keepalive:true,headers:{"Content-Type":"application/json","x-iitp-csrf":"1"},body:${JSON.stringify(JSON.stringify({ app: APP }))},cache:"no-store"}).then(function(r){return r.json().catch(function(){return null}).then(function(b){return{status:r.status,body:b}})})}}catch(e){}})();`;
 }

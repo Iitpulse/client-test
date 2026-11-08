@@ -272,8 +272,5 @@ function SummaryPlaceholder({ st, now, compact }: { st: Exclude<SummaryState, { 
   );
 }
 
-// ---------------------------------------------------------------------------------------------
-// "Why this happened" (desktop question pane, Phone-Review): M6 Student-Review states, in review-ai.tsx
-// ---------------------------------------------------------------------------------------------
-
-export { canExplain, explainLabel, ExplainButton, useWhyState, WhyView } from "./review-ai";
+// "Why this happened" (desktop question pane, Phone-Review) lives in review-ai.tsx: import it from there, not
+// through this file, which the result page loads first (review-ai brings KaTeX with it; mobile LCP budget).

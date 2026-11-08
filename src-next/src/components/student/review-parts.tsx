@@ -1,5 +1,6 @@
 "use client";
 
+import "katex/dist/katex.min.css"; // equations (MathText)
 import Link from "next/link";
 import { useState } from "react";
 import { MathText } from "@iitpulse/ui";

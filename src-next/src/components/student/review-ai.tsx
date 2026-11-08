@@ -1,5 +1,6 @@
 "use client";
 
+import "katex/dist/katex.min.css"; // equations (MathText)
 import { useState } from "react";
 import { AiMark, MathText, SparkleIcon, TypingDots } from "@iitpulse/ui";
 import { useAiExplanation, useAiFeedback } from "@/lib/ai-api";

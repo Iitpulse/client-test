@@ -1,5 +1,6 @@
 "use client";
 
+import "katex/dist/katex.min.css"; // equations (MathText)
 import Link from "next/link";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";

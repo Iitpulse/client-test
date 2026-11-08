@@ -1,5 +1,6 @@
 "use client";
 
+import "katex/dist/katex.min.css"; // equations (MathText)
 import { MathText } from "@iitpulse/ui";
 import type { ReviewQuestion } from "@/types/m2-student";
 import { reviewExtras } from "@/types/m6-review";

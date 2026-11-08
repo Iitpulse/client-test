@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Blueboard, LogoMark, Tape } from "@iitpulse/ui";
 import { LegalFooter } from "@/components/auth/legal-footer";
 import { BrandLogo, DefaultBrandOnly, PoweredBy, WhiteLabelIntro } from "@/components/brand/brand-logo";
+import "@/app/b9-auth.css"; // Student-PhoneSignIn: the sign-in tabs, the code box, the account picker
 
 /**
  * Student-Login board (sign in, forgot password, reset password). The blueboard welcome panel and the taped card

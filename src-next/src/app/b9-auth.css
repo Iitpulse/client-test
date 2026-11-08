@@ -1,0 +1,18 @@
+/*
+ * Batch 9 sign-in bits (Student-PhoneSignIn), also used by Profile › How we reach you: the "Sign in with" tabs,
+ * the one-box code input, the "sent by email" box, the account picker. Small on purpose: it is render-blocking CSS
+ * of /login (mobile LCP budget).
+ */
+@layer components {
+  .seg.full { display: flex }
+  .seg.full .tab { flex: 1; justify-content: center }
+  .otp-in { height: 56px; width: 100%; font: 600 26px/1 var(--font-mono, monospace); letter-spacing: .5em; text-align: center; padding: 0 0 0 .5em }
+  .otp-in.sm { height: 48px; width: 200px; font-size: 22px; letter-spacing: .45em; padding-left: .45em }
+  .otp-in.e { border-color: #C40000; box-shadow: 0 0 0 4px #FFF0F0 }
+  .au-box.ok { background: #E9F6EE; border: 1px solid #BFE3CC; color: #0B4D27 }
+  .acct { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px; border: 1px solid #E4E6EF; border-radius: 12px; background: #fff; font: inherit; text-align: left; cursor: pointer; color: var(--ink) }
+  .acct:hover { border-color: #C3C6EF; background: #F8F8FD }
+  .acct:disabled { opacity: .6; cursor: default }
+  .chip2 { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 4px; border-radius: 999px; background: #F1F2FC; color: var(--navy); font-size: 13px; font-weight: 600; align-self: flex-start }
+  @media (max-width: 767.98px) { .otp-in.sm { width: 100% } }
+}

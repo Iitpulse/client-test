@@ -59,6 +59,24 @@ export type StudentErrorCode =
   | "CONSENT_LINK_INVALID"
   | "CONSENT_LINK_EXPIRED"
   | "CONSENT_ALREADY_CONFIRMED"
+  // Student classes (api-tests docs/student-classes-api.md) and batch 9 (api-users docs/sms-api.md)
+  | "CLASS_NOT_FOUND"
+  | "CLASS_NOT_ADDABLE"
+  | "RANGE_TOO_LONG"
+  | "RANGE_TOO_EARLY"
+  | "NOTIFICATION_NOT_FOUND"
+  | "NO_PHONE"
+  | "INVALID_PHONE"
+  | "ALREADY_VERIFIED"
+  | "OTP_WRONG"
+  | "OTP_EXPIRED"
+  | "OTP_LOCKED"
+  | "OTP_COOLDOWN"
+  | "OTP_RATE_LIMITED"
+  | "NOT_IMPLEMENTED"
+  | "LINK_EXPIRED"
+  | "LINK_NOT_FOUND"
+  | "REPORT_UNAVAILABLE"
   | "INTERNAL";
 
 export const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";

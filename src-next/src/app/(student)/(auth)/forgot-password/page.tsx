@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { PhoneCodeFlow } from "@/components/auth/phone-code";
 import { InkUnderline } from "@iitpulse/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +12,33 @@ import { Notice } from "@/components/auth/notice";
 import { ArrowLeftIcon, MailIcon, Spinner } from "@/components/shell/icons";
 import { authApi, apiError } from "@/lib/auth-api";
 
+// Student-PhoneSignIn (batch 9, SMS first): "Reset your password" by a code texted to the phone on the account
+// (reset-phone, reset-code, reset-pick-account, reset-new-password). `?by=email` is the email link reset below.
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ForgotPassword />
+    </Suspense>
+  );
+}
+
+function ForgotPassword() {
+  const by = useSearchParams().get("by");
+  if (by === "email") return <EmailReset />;
+  return (
+    <div className="col gap-[22px]">
+      <Link href="/login" className="sm row -my-2 gap-1.5 self-start py-2 font-semibold text-muted hover:text-ink">
+        <ArrowLeftIcon />
+        Back to sign in
+      </Link>
+      <PhoneCodeFlow purpose="reset" />
+    </div>
+  );
+}
+
 // Student-Login board, forgot-password state. POST /users/reset-password/request { email, app: "student" }:
 // always the same 200 whether or not the account exists, so the screen never says whether it does.
-export default function ForgotPasswordPage() {
+function EmailReset() {
   const [email, setEmail] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -53,7 +79,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="col fade gap-[22px]">
-      <Link href="/login" className="sm row -my-2 gap-1.5 self-start py-2 font-semibold text-muted hover:text-ink">
+      <Link href="/login?with=email" className="sm row -my-2 gap-1.5 self-start py-2 font-semibold text-muted hover:text-ink">
         <ArrowLeftIcon />
         Back to sign in
       </Link>
@@ -85,6 +111,12 @@ export default function ForgotPasswordPage() {
             {loading && <Spinner />}
             {loading ? "Sending…" : "Send reset link"}
           </Button>
+          <p className="xs muted m-0 text-center">
+            Have your phone?{" "}
+            <Link href="/forgot-password" className="font-semibold">
+              Reset with a code by SMS
+            </Link>
+          </p>
         </form>
       ) : (
         <div className="col pop items-center gap-3.5 py-2 text-center max-md:gap-3 max-md:py-1">

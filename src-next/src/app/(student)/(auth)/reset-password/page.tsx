@@ -139,7 +139,7 @@ function ResetPasswordForm() {
         </div>
         <div className="col gap-2">
           <Button asChild size="lg" className="w-full">
-            <Link href="/forgot-password">Send a new link</Link>
+            <Link href="/forgot-password?by=email">Send a new link</Link>
           </Button>
           <Button asChild size="lg" variant="ghost" className="w-full">
             <Link href="/login">Back to sign in</Link>

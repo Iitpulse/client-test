@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Doodle, InkUnderline } from "@iitpulse/ui";
@@ -117,6 +118,10 @@ export function ProfileView() {
           <a href="#details" className="navlink" aria-current={active === "details" ? "true" : undefined} onClick={go("details")}>
             Profile
           </a>
+          {/* Student-ReachYou (batch 9) */}
+          <Link prefetch={false} href="/profile/reach" className="navlink">
+            How we reach you
+          </Link>
           <a href="#prefs" className="navlink" aria-current={active === "prefs" ? "true" : undefined} onClick={go("prefs")}>
             Preferences
           </a>
@@ -155,6 +160,16 @@ export function ProfileView() {
                   </button>
                 ))}
               </div>
+              {/* Phone-Profile: How we reach you (batch 9) opens from the Profile tab */}
+              <Link prefetch={false} href="/profile/reach" className={`card pad row gap-3 text-ink md:hidden ${phoneOnly("details")}`}>
+                <span className="col grow gap-0.5">
+                  <span className="sm font-semibold">How we reach you</span>
+                  <span className="xs muted">SMS, email and your parent&apos;s phone</span>
+                </span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#575C75" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false">
+                  <path d="m9 6 6 6-6 6" />
+                </svg>
+              </Link>
               <Details key={p.id} p={p} fx={fx} offline={offline} onSaved={() => setToast({ kind: "ok", msg: "Profile saved" })} className={phoneOnly("details")} />
               {!fx && <GuardianConsentCard className={phoneOnly("details")} />}
               <Preferences p={p} fx={fx} onToast={setToast} className={phoneOnly("prefs")} />

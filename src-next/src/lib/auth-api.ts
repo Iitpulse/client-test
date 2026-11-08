@@ -10,6 +10,7 @@ import type {
   SignupRequest,
   SignupResponse,
 } from "@/types/m6-auth";
+import type { PhoneCodeSent, PhonePurpose, PhoneVerifyAnswer } from "@/types/b9";
 import { auth } from "./session";
 
 const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY || "http://localhost:8000";
@@ -110,6 +111,26 @@ export const authApi = {
     verify: (token: string) => post<{ success: boolean; data: { email: string; expiresAt: string } }>("/reset-password/verify", { token }),
     /** Sets the password (at least 8 characters) and uses the link up. 400 RESET_TOKEN_INVALID as above, WEAK_PASSWORD. */
     reset: (token: string, newPassword: string) => post<{ success: boolean; message: string }>("/reset-password/reset", { token, newPassword }),
+  },
+  /**
+   * Batch 9 phone codes (api-users docs/sms-api.md §2), students only. `phone` in any common Indian spelling.
+   * Every answer is the same whether or not the number has an account.
+   */
+  phone: {
+    /** 400 INVALID_PHONE; 429 OTP_COOLDOWN / OTP_RATE_LIMITED { retryAfterSeconds } / OTP_LOCKED { retryAfterSeconds, until } */
+    sendCode: (phone: string, purpose: PhonePurpose) => post<Ok<PhoneCodeSent>>("/auth/phone/code", { phone, purpose }),
+    /** "Send by email instead": the same live code to the account's email. 429 OTP_COOLDOWN; 410 OTP_EXPIRED */
+    byEmail: (phone: string, purpose: PhonePurpose) => post<Ok<{ sent: boolean }>>("/auth/phone/code/email", { phone, purpose }),
+    /** signin: the cookie session (or pick_account); reset: reset_ready. 400 OTP_WRONG { triesLeft }; 429 OTP_LOCKED; 410 OTP_EXPIRED; 403 ACCOUNT_DISABLED */
+    verify: (phone: string, purpose: PhonePurpose, code: string) =>
+      purpose === "signin"
+        ? signIn<Ok<PhoneVerifyAnswer>>("/auth/phone/verify", { phone, purpose, code, app: "student" })
+        : post<Ok<PhoneVerifyAnswer>>("/auth/phone/verify", { phone, purpose, code, app: "student" }),
+    /** Shared number: the picked account. 401 PICK_EXPIRED; 400 ACCOUNT_NOT_ON_NUMBER */
+    pick: (pickToken: string, accountId: string, purpose: PhonePurpose) =>
+      purpose === "signin" ? signIn<Ok<PhoneVerifyAnswer>>("/auth/phone/pick", { pickToken, accountId, app: "student" }) : post<Ok<PhoneVerifyAnswer>>("/auth/phone/pick", { pickToken, accountId, app: "student" }),
+    /** 400 WEAK_PASSWORD; 401 RESET_EXPIRED */
+    reset: (resetToken: string, password: string) => post<Ok<{ reset: boolean }>>("/auth/phone/reset", { resetToken, password }),
   },
   signup: {
     /** POST /users/otp/email/send: 409 EMAIL_TAKEN; 429 OTP_COOLDOWN { retryAfterSeconds }. Dev stacks answer `devOtp`. */

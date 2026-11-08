@@ -8,11 +8,12 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "./avatar";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { NAV_ITEMS, activeNav } from "./nav-items";
+import { Bell } from "./bell";
 
 /**
  * StudentNav board: the desktop top bar (768px and up). Logo, Home / Tests / Progress (the active one underlined
- * in blue ink, drawn once, never boxed), and the avatar with the student's name, which opens /profile.
- * The board's notification bell is left out until notifications exist (M4); it would only show a fake count.
+ * in blue ink, drawn once, never boxed), the bell (Student-Bell, batch 9) and the avatar with the student's name,
+ * which opens /profile.
  */
 export function StudentNav({ name, email }: { name?: string; email?: string }) {
   const active = activeNav(usePathname());
@@ -37,6 +38,8 @@ export function StudentNav({ name, email }: { name?: string; email?: string }) {
             })}
           </div>
         </div>
+        <div className="row gap-2">
+        <Bell />
         <Link
           prefetch={false}
           href="/profile"
@@ -46,6 +49,7 @@ export function StudentNav({ name, email }: { name?: string; email?: string }) {
           <Avatar name={name} email={email} />
           {name && <span className="sm font-semibold">{name}</span>}
         </Link>
+        </div>
       </div>
     </nav>
   );

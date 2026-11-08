@@ -16,8 +16,12 @@ import { useAuthStore } from "@/stores/auth.store";
 import { authApi, apiError, safeNext } from "@/lib/auth-api";
 import { useOnline } from "@/lib/use-online";
 import { cn } from "@/lib/utils";
+import { PhoneCodeFlow } from "@/components/auth/phone-code";
 
 /**
+ * Student-PhoneSignIn (batch 9, E9 Q4): students sign in with a code texted to their phone first; "Email and password"
+ * is the second tab (`?with=email` opens it: links from the code screens, a finished reset, the QA flows).
+ *
  * Student-Login / Phone-Login, sign-in state and its errors: POST /users/auth/login { app: "student" }.
  * wrong-credentials 401 · too-many 429 LOGIN_LOCKED { retryAfterSeconds } · account-disabled 403 ACCOUNT_DISABLED ·
  * staff-account 403 STAFF_ACCOUNT { adminUrl } · offline (navigator.onLine or no answer: what was typed stays).
@@ -34,9 +38,50 @@ export default function LoginPage() {
   );
 }
 
+type Via = "phone" | "email";
+
+/** "Sign in with": Phone code | Email and password (a segmented control; the choice is kept in the URL). */
+function SignInTabs({ via, onChange }: { via: Via; onChange: (v: Via) => void }) {
+  const opts: Array<[Via, string]> = [
+    ["phone", "Phone code"],
+    ["email", "Email and password"],
+  ];
+  return (
+    <div className="seg full" role="radiogroup" aria-label="Sign in with">
+      {opts.map(([k, l]) => (
+        <button
+          key={k}
+          type="button"
+          role="radio"
+          aria-checked={via === k}
+          className={via === k ? "tab on" : "tab"}
+          onClick={() => onChange(k)}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+              e.preventDefault();
+              onChange(k === "phone" ? "email" : "phone");
+            }
+          }}
+        >
+          {l}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // from the URL, so a link to /login?with=email (the code screens' "Use email and password") switches the tab
+  const via: Via = searchParams.get("with") === "email" ? "email" : "phone";
+  const pickVia = (v: Via) => {
+    const q = new URLSearchParams(searchParams.toString());
+    if (v === "email") q.set("with", "email");
+    else q.delete("with");
+    const qs = q.toString();
+    router.replace(qs ? `/login?${qs}` : "/login", { scroll: false });
+  };
   const { login, checkAuth } = useAuthStore();
   const online = useOnline();
   const passwordUpdated = searchParams.get("reset") === "done";
@@ -109,6 +154,15 @@ function LoginForm() {
   };
 
   const wrong = problem?.kind === "wrong";
+  const tabs = <SignInTabs via={via} onChange={pickVia} />;
+
+  if (via === "phone")
+    return (
+      <>
+        {passwordUpdated && <Notice tone="success">Password updated. Sign in with your new password.</Notice>}
+        <PhoneCodeFlow purpose="signin" tabs={tabs} next={next} />
+      </>
+    );
 
   return (
     <div className="col fade gap-[22px] max-md:gap-[18px]">
@@ -119,6 +173,7 @@ function LoginForm() {
         </h1>
         <p className="sm muted m-0">Sign in with the email your institute registered.</p>
       </div>
+      {tabs}
       {wrong && (
         <AuthBox id="form-err" tone="sum" icon="wrong" title="Email or password is wrong">
           <span className="xs">Check both and try again.</span>

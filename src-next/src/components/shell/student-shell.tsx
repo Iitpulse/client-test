@@ -13,6 +13,8 @@ import { StudentNav } from "./student-nav";
 import { OnboardingPrompt } from "@/components/onboarding/onboarding-prompt";
 import { ReacceptPrompt } from "@/components/legal/reaccept-prompt";
 import { InstituteNotices } from "@/components/brand/institute-notices";
+import { ClassDrawer } from "@/components/student/class-detail";
+import { Bell } from "./bell";
 
 /**
  * What a phone (below 768px) shows around a screen, as the Phone-* boards draw it:
@@ -26,7 +28,8 @@ type PhoneChrome = "full" | "tabs" | "none";
 function phoneChrome(pathname: string): PhoneChrome {
   // Opened from another page: their own back header, no tab bar (Phone-Result, Phone-Review, Phone-Doubt,
   // Phone-ResultPending, Phone-Practice, Phone-Profile).
-  if (pathname.startsWith("/results/") || pathname.startsWith("/practice/") || pathname === "/profile") return "none";
+  // Student-Classes (phone: "← Home" header, no tab bar), Profile › How we reach you (back header)
+  if (pathname.startsWith("/results/") || pathname.startsWith("/practice/") || pathname.startsWith("/profile") || pathname.startsWith("/classes")) return "none";
   if (pathname === "/tests" || pathname === "/progress" || pathname === "/revision" || pathname === "/doubts") return "tabs";
   return "full";
 }
@@ -51,8 +54,9 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    if (!checkAuth()) router.replace("/login");
-  }, [hydrated, checkAuth, router]);
+    // back to this page after signing in (an SMS or bell link opened while signed out)
+    if (!checkAuth()) router.replace(pathname && pathname !== "/" ? `/login?next=${encodeURIComponent(pathname + window.location.search)}` : "/login");
+  }, [hydrated, checkAuth, router, pathname]);
 
   // The session token carries no name: fetch it once for the avatar (sign-in links already supply it).
   useEffect(() => {
@@ -81,9 +85,13 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
           className="md:hidden"
           homeHref="/"
           right={
-            <Link prefetch={false} href="/profile" aria-label={name ? `${name}, profile` : "Your profile"} className="-mr-1.5 flex size-11 items-center justify-center rounded-full">
-              <Avatar name={name} email={email} size={32} />
-            </Link>
+            <span className="row -mr-1.5 gap-0.5">
+              {/* Student-Bell, phone: the bell opens a full sheet */}
+              <Bell phone />
+              <Link prefetch={false} href="/profile" aria-label={name ? `${name}, profile` : "Your profile"} className="flex size-11 items-center justify-center rounded-full">
+                <Avatar name={name} email={email} size={32} />
+              </Link>
+            </span>
           }
         />
       )}
@@ -102,6 +110,8 @@ export function StudentShell({ children }: { children: React.ReactNode }) {
       {chrome !== "none" && <PhoneTabBar />}
       {/* Student-Signup: "Complete your profile" after sign-in while the profile is incomplete */}
       {/* Student-Legal: "We've updated our terms" while the accepted versions are not the current ones (first) */}
+      {/* Student-ClassDetail: one drawer (desktop) / sheet (phone) for every class link on Home and /classes */}
+      <ClassDrawer />
       <ReacceptPrompt />
       <OnboardingPrompt />
     </div>

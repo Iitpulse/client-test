@@ -13,6 +13,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useIsDesktop } from "@/lib/use-media";
 import { useAssignments } from "@/lib/assignments-api";
 import { AssignmentCard, AssignmentRows, homeCards } from "./assigned-practice";
+import { ClassesCard, ClassStrip } from "./home-classes";
 import type { LastResult, PendingResult, StudentHome, StudentTestsPage, TestCard } from "@/types/m2-student";
 import type { ProgressResponse, StudyPlanItem, StudyPlanResponse } from "@/types/m4";
 import type { StudentGateResponse } from "@/types/m6";
@@ -78,8 +79,12 @@ export function HomeView() {
   const cards = homeCards(assigned, now);
   return (
     <>
+      {/* Student-Home-Classes rule 6: the "starts soon / now" strip under the greeting (desktop and laptop) */}
+      <ClassStrip enabled={!fx} />
       <section className="grid grid-cols-3 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
         <Hero home={data} now={now} reminders={reminders} />
+        {/* Phone-Home-Classes: the Classes card right under the test hero */}
+        <ClassesCard enabled={!fx} phone className="md:hidden" style={{ "--i": 1 } as React.CSSProperties} />
         {/* Student-AssignedPractice, phone: right after the hero */}
         {cards.map((a) => (
           <AssignmentCard key={a.id} a={a} phone className="rise md:hidden" style={{ "--i": 1 } as React.CSSProperties} />
@@ -695,8 +700,10 @@ function BottomRow({ home, now, hasResult, reminders }: { home: StudentHome; now
   const today = plan.data?.plan?.days.find((d) => d.isToday) ?? null;
   const showPlan = !hasResult || !!today;
   return (
-    <section className="grid grid-cols-2 gap-5 max-md:grid-cols-1 max-md:gap-3.5">
-      <ComingUp items={home.upcoming} now={now} reminders={reminders} className={showPlan ? "max-md:hidden" : "col-span-2 max-md:col-span-1"} />
+    // Student-Home-Classes: Coming up, Classes, Today's plan side by side (auto-fit, 320px at least)
+    <section className="grid items-start gap-5 md:[grid-template-columns:repeat(auto-fit,minmax(320px,1fr))] max-md:grid-cols-1 max-md:gap-3.5">
+      <ComingUp items={home.upcoming} now={now} reminders={reminders} className={showPlan ? "max-md:hidden" : ""} />
+      <ClassesCard enabled={!fx} className="max-md:hidden" style={{ "--i": 5 } as React.CSSProperties} />
       {!hasResult ? <PlanFirst /> : today ? <PlanToday items={today.items} basedOn={plan.data!.plan!.basedOn.map((b) => b.shortName)} /> : null}
     </section>
   );

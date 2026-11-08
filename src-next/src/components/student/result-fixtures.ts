@@ -94,6 +94,11 @@ export async function resultFixture(state: string): Promise<StudentResult> {
       throw new StudentApiError(404, "You have not submitted this test", "NO_SUBMISSION", { state: "missed", opensAt: iso(now - 17 * 86400e3), closesAt: iso(now - 16 * 86400e3), attempt: null });
     case "not-found":
       throw new StudentApiError(404, "Test not found", "TEST_NOT_FOUND");
+    // batch 8 Student-ErrorPages
+    case "test-removed":
+      throw new StudentApiError(404, "This test was removed", "TEST_REMOVED", { name: "Physics Sectional 3", removedAt: "2026-11-03T05:30:00.000Z" });
+    case "not-yours":
+      throw new StudentApiError(404, "This test isn't yours", "NOT_YOUR_TEST");
   }
   return published(state);
 }
@@ -111,9 +116,10 @@ const READY: SummaryResponse = {
   ],
   other: { marksLost: 19, note: "Single slips across the paper." },
   generatedAt: new Date().toISOString(),
+  review: { state: "ready", triesPerDay: 3, triesLeft: 2, nextAutomaticRetryAt: null, supportCode: null, lastFailedAt: null, queuedAt: null, queueAhead: null, stale: null, generatedAt: new Date().toISOString() },
 };
 
-/** The AI summary for a fixture: the board's states (writing, late, locked, paused, failed) or a ready summary. */
+/** The AI summary for a fixture: the board's states (writing, late, locked, paused, failed; batch 8 queued, generating, failed-final, stale) or a ready summary. */
 export function summaryFixture(state: string, retry: () => void): SummaryState | null {
   switch (state) {
     case "summary-writing":
@@ -129,7 +135,16 @@ export function summaryFixture(state: string, retry: () => void): SummaryState |
     case "summary-paused":
       return { kind: "paused" };
     case "summary-failed":
-      return { kind: "failed", retry };
+      return { kind: "failed", retry, triesLeft: 2 };
+    // Batch 8 Review-NotGenerated
+    case "summary-queued":
+      return { kind: "queued", ahead: 9 };
+    case "summary-generating":
+      return { kind: "loading", marksLost: 52 };
+    case "summary-failed-final":
+      return { kind: "failedFinal", code: "E-AI7C" };
+    case "summary-stale":
+      return { kind: "stale", before: 243, after: 248, qs: [38] };
     case "key-corrected":
     case "rank-pending":
     case "pdf":

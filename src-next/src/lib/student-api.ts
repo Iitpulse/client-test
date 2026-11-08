@@ -29,6 +29,12 @@ export type StudentErrorCode =
   | "TOO_MANY_ATTEMPTS"
   // M6 batches 4/5 (api-ai docs/m6-api.md M6B45ErrorCode)
   | "RESULT_HIDDEN"
+  // Batch 8: POST /ai/student/results/:testId/summary/retry (api-ai docs/m3-ai-api.md)
+  | "REVIEW_NOT_FAILED"
+  | "REVIEW_RETRY_LIMIT"
+  // Batch 8 Student-ErrorPages: 404 on result and paper routes (api-tests docs/m2-student-api.md)
+  | "TEST_REMOVED"
+  | "NOT_YOUR_TEST"
   | "NO_SUBMISSION"
   | "TEST_NOT_FOUND"
   | "NOT_ASSIGNED"

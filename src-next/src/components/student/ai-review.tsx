@@ -2,11 +2,12 @@
 
 import { AiMark, InkArrow, Note } from "@iitpulse/ui";
 import { MathLite as MathText } from "@/components/math/math-lite";
-import { isAiDown, useAiSummary } from "@/lib/ai-api";
+import { isAiDown, reviewOf, useAiSummary } from "@/lib/ai-api";
 import { StudentApiError } from "@/lib/student-api";
 import { relativeDayTime } from "@/lib/time";
 import type { StudentResult } from "@/types/m2-student";
-import type { Leak, SummaryResponse } from "@/types/m3-ai";
+import type { Leak, ReviewCard, SummaryResponse } from "@/types/m3-ai";
+import type { StudentResultExtras } from "@/types/m6-student";
 import { Skel } from "./common";
 import { LockIcon } from "./icons";
 import { num, sentence } from "./labels";
@@ -34,38 +35,72 @@ const lost = (n: number) => `−${num(Math.abs(n))}`;
 export type SummaryState =
   | { kind: "hidden" }
   /** first: the summary's first load (skeleton); else the AI is writing it (typing dots) */
-  | { kind: "loading"; first?: boolean }
+  | { kind: "loading"; first?: boolean; marksLost?: number }
+  // Batch 8 Review-NotGenerated: waiting its turn, failed with tries left today, failed for today (overnight retry),
+  // rewriting after a key fix
+  | { kind: "queued"; ahead: number | null }
+  | { kind: "failedFinal"; code: string | null }
+  | { kind: "stale"; before: number | null; after: number; qs: number[] }
   | { kind: "late" }
   | { kind: "locked"; message: string; at: string | null }
   | { kind: "quiet"; message: string; retry?: () => void }
   // M6 Student-ResultStates: AI paused (no retry), failed (retry, uses none of today's AI questions)
   | { kind: "paused" }
-  | { kind: "failed"; retry: () => void }
+  | { kind: "failed"; retry: () => void; triesLeft?: number | null; busy?: boolean }
   | { kind: "ready"; s: SummaryResponse };
 
 /** The summary's state for both layouts (call once per page: the desktop and phone cards share it). */
 export function useSummaryState(data: StudentResult): SummaryState {
   const enabled = data.review.available;
-  const { query, late, waiting } = useAiSummary(data.test.id, enabled);
+  const { query, retry, late, waiting } = useAiSummary(data.test.id, enabled);
   // Student-ResultStates "summary-locked": a published result whose answers open at the close says when
   if (!enabled) return data.result && data.review.availableAt ? { kind: "locked", message: "", at: data.review.availableAt } : { kind: "hidden" };
   const s = query.data;
   const e = query.error instanceof StudentApiError ? query.error : null;
+  const tryAgain = () => retry.mutate();
+  // a "Try again" that came back 429: today's tries are used up (its details carry the card)
+  const retryErr = retry.error instanceof StudentApiError ? retry.error : null;
+  const failedCard = (r: ReviewCard | null): SummaryState | null => {
+    if (r?.state === "failed_final" || (r?.state === "failed" && r.triesLeft <= 0)) return { kind: "failedFinal", code: r.supportCode };
+    if (r?.state === "failed") return { kind: "failed", retry: tryAgain, triesLeft: r.triesLeft, busy: retry.isPending };
+    return null;
+  };
+  if (retryErr?.code === "REVIEW_RETRY_LIMIT") return { kind: "failedFinal", code: reviewOf(retryErr)?.supportCode ?? null };
+  if (retry.isPending) return { kind: "loading", marksLost: s?.marksLost };
   if (!s && query.isError) {
     if (e?.code === "AI_NOT_AVAILABLE_YET") return { kind: "locked", message: e.message, at: typeof e.details?.availableAt === "string" ? e.details.availableAt : null };
     if (e?.code === "AI_PAUSED") return { kind: "paused" };
+    // Batch 8: a failed review answers 503 AI_UNAVAILABLE with the card in its details
+    const card = failedCard(reviewOf(e));
+    if (card) return card;
     if (e && isAiDown(e)) return { kind: "failed", retry: () => query.refetch() };
     // Not this student's result any more, or not a student: the page itself says so; the AI card stays out of it.
     if (e && e.status >= 400 && e.status < 500) return { kind: "hidden" };
     return { kind: "failed", retry: () => query.refetch() };
   }
   if (!s || waiting) return { kind: "loading", first: !s };
-  if (s.status === "generating") return late ? { kind: "late" } : { kind: "loading" };
+  const r = s.review;
+  if (s.status === "generating") {
+    if (r?.state === "stale_after_key_fix" && r.stale) {
+      const extras = data as StudentResult & Partial<StudentResultExtras>;
+      const shown = (n: number) => data.result?.questions.find((q) => q.n === n)?.shownAs ?? n;
+      return { kind: "stale", before: r.stale.scoreBefore, after: r.stale.scoreAfter, qs: (extras.keyCorrections ?? []).map((k) => shown(k.n)) };
+    }
+    if (r?.state === "queued" || r?.state === "not_opened") return { kind: "queued", ahead: r.queueAhead };
+    return late ? { kind: "late" } : { kind: "loading", marksLost: s.marksLost };
+  }
+  const card = failedCard(r);
+  if (card && s.status !== "ready") return card;
   if (s.status === "not_applicable" && s.reason === "NOT_CLOSED") return { kind: "locked", message: "", at: data.review.availableAt ?? data.test.closesAt };
   if (s.status === "not_applicable" && s.reason === "AI_PAUSED") return { kind: "paused" };
   // Full marks, or no question has an official solution to compare against: nothing to say.
   if (s.status === "not_applicable" || (s.leaks.length === 0 && !s.other)) return { kind: "hidden" };
   return { kind: "ready", s };
+}
+
+/** "about 2 min" for a queued review: the queue writes about 8 reviews a minute (api-ai ai.summaries, 4 at a time). */
+function queueMinutes(ahead: number | null): number {
+  return Math.max(1, Math.ceil(((ahead ?? 0) + 1) / 8));
 }
 
 function leaksHeading(s: SummaryResponse): string {
@@ -212,7 +247,7 @@ export function MarksWentCard({ st, now }: { st: SummaryState; now: number }) {
 }
 
 /** Student-ResultStates summary notes (desktop and phone): late, locked, paused, failed. */
-function SummaryNote({ cls, role, title, text, retry, compact }: { cls: string; role: "status" | "alert"; title: string; text: string; retry?: () => void; compact?: boolean }) {
+function SummaryNote({ cls, role, title, text, retry, compact, busy, fact }: { cls: string; role: "status" | "alert"; title: string; text: string; retry?: () => void; compact?: boolean; busy?: boolean; fact?: string }) {
   return (
     <div className={`nt ${cls}`} role={role} style={compact ? { flexDirection: "column", alignItems: "stretch", fontSize: 13 } : { fontSize: 14, alignItems: "center" }}>
       {!compact && (
@@ -225,10 +260,11 @@ function SummaryNote({ cls, role, title, text, retry, compact }: { cls: string; 
         <b>{title}</b> {text}
       </span>
       {retry && (
-        <button type="button" className={compact ? "btn btn-secondary" : "btn btn-secondary btn-sm"} style={compact ? { minHeight: 44 } : { flex: "none" }} onClick={retry}>
+        <button type="button" className={compact ? "btn btn-secondary" : "btn btn-secondary btn-sm"} style={compact ? { minHeight: 44 } : { flex: "none" }} onClick={retry} disabled={busy}>
           Try again
         </button>
       )}
+      {fact && <span className="xs muted" style={{ flex: "none" }}>{fact}</span>}
     </div>
   );
 }
@@ -240,7 +276,70 @@ function SummaryPlaceholder({ st, now, compact }: { st: Exclude<SummaryState, { 
   }
   if (st.kind === "quiet") return <QuietLine message={st.message} retry={st.retry} />;
   if (st.kind === "paused") return <SummaryNote compact={compact} cls="info" role="status" title="AI help is paused right now." text="Your score, answers and the official solutions are all here." />;
-  if (st.kind === "failed") return <SummaryNote compact={compact} cls="err" role="alert" title="Couldn't write your summary." text="Try again. It won't use any of today's AI questions." retry={st.retry} />;
+  if (st.kind === "failed")
+    return (
+      <SummaryNote
+        compact={compact}
+        cls="err"
+        role="alert"
+        title="Couldn't write your review."
+        text="The AI service didn't answer. Your result is complete without it."
+        retry={st.retry}
+        busy={st.busy}
+        fact={st.triesLeft != null ? (st.triesLeft === 1 ? "1 more try today" : `${num(st.triesLeft)} more tries today`) : undefined}
+      />
+    );
+  if (st.kind === "failedFinal")
+    return (
+      <div className="col gap-1.5" role="status">
+        <span className="sm font-semibold">Your review isn&apos;t ready yet</span>
+        <span className="sm">
+          We couldn&apos;t write it after 3 tries. We&apos;ll try again by ourselves tonight, and it shows here once it works. Your teacher can still go through the paper with you.
+        </span>
+        {st.code && (
+          <span className="xs muted mono">
+            Code {st.code}
+            <span className="max-md:hidden"> · share it if you ask for help</span>
+          </span>
+        )}
+      </div>
+    );
+  if (st.kind === "queued") {
+    const min = queueMinutes(st.ahead);
+    return (
+      <div className="col gap-2" role="status">
+        <span className="sm font-semibold">Your review is in the queue</span>
+        <span className="row gap-2.5">
+          <span className="ai-qbar" aria-hidden="true">
+            <i style={{ width: `${Math.max(12, 100 - Math.min(88, (st.ahead ?? 0) * 4))}%` }} />
+          </span>
+          <span className="xs muted num">about {min} min</span>
+        </span>
+        <span className="sm">
+          Many results came out at once, so reviews are being written one after another. Your score, rank and every answer are already {compact ? "here" : "below"}.
+        </span>
+        <span className="xs muted">You can leave this page. We&apos;ll show it here and on Home when it&apos;s ready.</span>
+      </div>
+    );
+  }
+  if (st.kind === "stale")
+    return (
+      <div className="col gap-2" role="status">
+        <span className="sm font-semibold">Rewriting your review</span>
+        <span className="sm">
+          Your institute corrected the answer key{st.qs.length ? ` for ${st.qs.map((n) => `Q${n}`).join(", ")}` : ""}
+          {st.before != null ? `, and your score went from ${num(st.before)} to ${num(st.after)}` : ""}. We&apos;re writing the review again so it matches.
+        </span>
+        <span className="row gap-2.5">
+          <span className="typing" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="xs muted">Usually under a minute</span>
+        </span>
+      </div>
+    );
   if (st.kind === "late") return <SummaryNote compact={compact} cls="warn" role="status" title="Your summary is taking longer than usual." text="It will appear here by itself. Your score and answers are final." />;
   if (st.kind === "loading" && !st.first)
     return (
@@ -250,7 +349,9 @@ function SummaryPlaceholder({ st, now, compact }: { st: Exclude<SummaryState, { 
           <i />
           <i />
         </span>
-        <span className="sm muted">{compact ? "Writing your summary…" : "Writing your summary. This usually takes under a minute; your score above is final."}</span>
+        <span className="sm muted">
+          {st.marksLost ? `Looking at the ${num(st.marksLost)} marks you lost…` : compact ? "Writing your review…" : "Writing your review. This usually takes under a minute; your score above is final."}
+        </span>
       </div>
     );
   return compact ? (

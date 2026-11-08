@@ -7,11 +7,14 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { hasEarly, isRetryable, request, StudentApiError } from "./student-api";
-import type { AiErrorCode, ExplanationResponse, FeedbackResponse, SummaryResponse } from "@/types/m3-ai";
+import type { AiErrorCode, ExplanationResponse, FeedbackResponse, ReviewCard, SummaryResponse } from "@/types/m3-ai";
 
 export const aiApi = {
   /** GET /ai/student/results/:testId/summary: the 1-3 biggest leaks */
   summary: (testId: string, signal?: AbortSignal) => request<SummaryResponse>("ai", `/student/results/${encodeURIComponent(testId)}/summary`, undefined, signal),
+  /** POST /ai/student/results/:testId/summary/retry: "Try again" on a failed review (202 queued; 409 / 429 / 503) */
+  retrySummary: (testId: string) =>
+    request<{ now: string; review: ReviewCard }>("ai", `/student/results/${encodeURIComponent(testId)}/summary/retry`, undefined, undefined, {}),
   /** GET /ai/student/results/:testId/questions/:n/explanation: "Why this happened" (n = the number the student saw) */
   explanation: (testId: string, n: number, signal?: AbortSignal) =>
     request<ExplanationResponse>("ai", `/student/results/${encodeURIComponent(testId)}/questions/${n}/explanation`, undefined, signal),
@@ -74,6 +77,9 @@ export function useAiSummary(testId: string, enabled: boolean) {
   // The page's HTML already asked for it (earlyFetchScript): no request competes with the hero, so take it now.
   const early = hasEarly(`/ai/student/results/${encodeURIComponent(testId)}/summary`);
   const [over, setOver] = useState(false);
+  const client = useQueryClient();
+  // Batch 8: a queued review waits its turn (polled as long as it is queued); "late" is only for one being written
+  const queued = (d: SummaryResponse | undefined) => d?.review?.state === "queued" || d?.review?.state === "stale_after_key_fix";
   const query = useQuery({
     queryKey: aiKeys.summary(testId),
     queryFn: ({ signal }) => aiApi.summary(testId, signal),
@@ -81,11 +87,26 @@ export function useAiSummary(testId: string, enabled: boolean) {
     staleTime: (q) => (q.state.data?.status === "generating" ? 0 : 10 * 60_000),
     retry: aiRetry,
     refetchOnWindowFocus: (q) => q.state.data?.status === "generating",
-    refetchInterval: (q) => (q.state.data?.status === "generating" && !over ? 3000 : false),
+    refetchInterval: (q) => (q.state.data?.status === "generating" && (!over || queued(q.state.data)) ? 3000 : false),
   });
   const generating = query.data?.status === "generating";
-  usePollWindow(generating, 60_000, setOver);
-  return { query, late: generating && over, waiting: enabled && !query.data && !query.error };
+  usePollWindow(generating && !queued(query.data), 60_000, setOver);
+  // "Try again" on a failed review: queued again (202), then polled as above
+  const retry = useMutation({
+    mutationFn: () => aiApi.retrySummary(testId),
+    onSettled: () => client.invalidateQueries({ queryKey: aiKeys.summary(testId) }),
+  });
+  return { query, retry, late: generating && over && !queued(query.data), waiting: enabled && !query.data && !query.error };
+}
+
+/** The review card of a summary answer or of its 503 AI_UNAVAILABLE / 429 REVIEW_RETRY_LIMIT details. */
+export function reviewOf(x: SummaryResponse | StudentApiError | null | undefined): ReviewCard | null {
+  if (!x) return null;
+  if (x instanceof StudentApiError) {
+    const r = (x.details as { review?: ReviewCard } | undefined)?.review;
+    return r && typeof r === "object" && typeof r.state === "string" ? r : null;
+  }
+  return x.review ?? null;
 }
 
 /**

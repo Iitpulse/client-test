@@ -5,6 +5,8 @@
 // submitted: in progress / upcoming / missed, not found). From GET /tests/student/results/:id (M6
 // StudentResultExtras; 403 RESULT_HIDDEN, 404 NO_SUBMISSION details, 404 TEST_NOT_FOUND).
 
+import { testGoneScreen } from "./error-screen";
+import { useBrand } from "@/lib/brand";
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -145,6 +147,7 @@ function PhoneBack() {
  */
 export function ResultBlank({ error, testId, onRetry }: { error: unknown; testId: string; onRetry: () => void }) {
   const e = error instanceof StudentApiError ? error : null;
+  const brand = useBrand();
   const known = e?.code === "RESULT_HIDDEN" || e?.code === "NO_SUBMISSION";
   const gate = useQuery({ queryKey: qk.gate(testId), queryFn: ({ signal }) => studentApi.gate(testId, signal), enabled: known, staleTime: 60_000, retry: false });
   const startGate = useStartTestGate();
@@ -184,6 +187,14 @@ export function ResultBlank({ error, testId, onRetry }: { error: unknown; testId
         <StateCard tone="grey" icon="clipboard" eyebrow={name} title="You didn't take this test" body={`${closedAt ? `It closed on ${dayOnly(closedAt)} at ${ist(closedAt).time}, so there's no result.` : "It closed before you took it, so there's no result."} You can still practise its chapters.`} primary={{ label: "Practise these chapters", href: "/progress" }} secondary={back} headingLevel={1} />
       );
     }
+  } else if (e?.code === "TEST_REMOVED" || e?.code === "NOT_YOUR_TEST") {
+    // Student-ErrorPages (batch 8): the page's own full state (the phone keeps its back header)
+    return (
+      <div className="col flex-1">
+        <PhoneBack />
+        {testGoneScreen(e, brand.name)}
+      </div>
+    );
   } else if (e?.code === "TEST_NOT_FOUND" || e?.status === 404) {
     card = <StateCard tone="amber" icon="clipboard" eyebrow="404" title="We couldn't find this result" body="The link may be old, or your institute removed the test. Your other results are safe." primary={back} headingLevel={1} />;
   } else {

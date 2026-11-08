@@ -6,6 +6,8 @@
 // Desktop shows the long body, the support line and the note; phones the short body and full-width buttons.
 
 import Link from "next/link";
+import { StudentApiError } from "@/lib/student-api";
+import { dayMonth } from "@/lib/time";
 
 export type ErrorAction = { label: string; href?: string; onClick?: () => void; /** a full page load, not the client router */ hard?: boolean };
 
@@ -115,4 +117,39 @@ export function errorCode(error: Error & { digest?: string }): string {
     h = Math.imul(h, 16777619);
   }
   return `E-${((h >>> 0) & 0xffff).toString(16).toUpperCase().padStart(4, "0")}`;
+}
+
+/**
+ * Student-ErrorPages "Test removed" and "Not yours" (batch 8), inside the app frame: api-tests answers 404
+ * TEST_REMOVED { name, removedAt } (the institute deleted a test that was this student's) or NOT_YOUR_TEST (another
+ * batch's test or another student's link; no details, so nothing about the test leaks) on the result and paper
+ * routes. Null for any other error.
+ */
+export function testGoneScreen(error: unknown, institute: string): React.ReactNode {
+  const e = error instanceof StudentApiError ? error : null;
+  if (e?.code === "TEST_REMOVED") {
+    const d = (e.details ?? {}) as { name?: string; removedAt?: string };
+    const when = d.removedAt ? ` on ${dayMonth(d.removedAt)}` : "";
+    return (
+      <ErrorScreen
+        title="This test was removed"
+        body={`${institute} removed ${d.name ? `"${d.name}"` : "this test"}${when}. If you wrote it, your score is still on Progress.`}
+        bodyShort={`Your institute removed this test${when}. Any score you had stays on Progress.`}
+        primary={{ label: "See your tests", href: "/tests" }}
+        secondary={{ label: "Open Progress", href: "/progress" }}
+      />
+    );
+  }
+  if (e?.code === "NOT_YOUR_TEST") {
+    return (
+      <ErrorScreen
+        title="This page isn't available to you"
+        body="It belongs to another student or another batch, so it can't be shown. If a friend sent you this link, open your own result from Tests."
+        bodyShort="It belongs to another student or batch. Open your own from Tests."
+        primary={{ label: "See your tests", href: "/tests" }}
+        secondary={{ label: "Go to Home", href: "/" }}
+      />
+    );
+  }
+  return null;
 }

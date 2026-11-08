@@ -1,5 +1,7 @@
 "use client";
 
+import { testGoneScreen } from "./error-screen";
+import { useBrand } from "@/lib/brand";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -301,6 +303,9 @@ function PhoneQuestion({
 
 function ReviewProblem({ error, now, back, onRetry }: { error: unknown; now: number | null; back: string; onRetry: () => void }) {
   const e = error instanceof StudentApiError ? error : null;
+  const brand = useBrand();
+  const gone = testGoneScreen(e, brand.name);
+  if (gone) return gone;
   if (e?.code === "REVIEW_NOT_AVAILABLE_YET" || e?.code === "RESULT_NOT_AVAILABLE") {
     const at = typeof e.details?.availableAt === "string" ? e.details.availableAt : null;
     return (

@@ -161,6 +161,9 @@
   .st-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 56px 40px }
   @media (width < 48rem) { .st-card { padding: 28px 18px; gap: 10px } }
   .st-acts { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 4px }
+  /* Review-NotGenerated "In the queue" bar (components/student/ai-review.tsx) */
+  .ai-qbar { flex: 1; height: 6px; border-radius: 999px; background: var(--navy-100, #E1E3F8); overflow: hidden }
+  .ai-qbar i { display: block; height: 100%; background: var(--navy); border-radius: 999px }
   /* Student-ErrorPages (components/student/error-screen.tsx) */
   .err-ctr { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; max-width: 460px; width: 100% }
   .err-big { font-size: 44px; font-weight: 650; color: #C3C6EF; letter-spacing: -.02em; line-height: 1 }

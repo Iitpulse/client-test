@@ -58,7 +58,7 @@ export function rememberSitting(testId: string, id: string | null | undefined): 
 /**
  * Tests are written on a laptop or desktop only (owner, 8 Nov 2026, design-gaps E6). This device's form factor: a phone
  * or tablet by its user agent (an iPad asking for the desktop site: a Mac with touch), else "small" when the screen
- * is too small for the NTA layout (shorter side under 600 or longer side under 1024 CSS px). The server checks the
+ * is too small for the NTA layout (its long side under 1024 CSS px). Touchscreen laptops are not blocked. The server checks the
  * user agent too (POST start: 403 DEVICE_NOT_ALLOWED).
  */
 export type FormFactor = "desktop" | "tablet" | "phone" | "small";
@@ -69,7 +69,7 @@ export function formFactor(): FormFactor {
   if (/iPad|Tablet|Android/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "tablet";
   const w = window.screen?.width || window.innerWidth;
   const h = window.screen?.height || window.innerHeight;
-  if (Math.max(w, h) < 1024 || Math.min(w, h) < 600) return "small";
+  if (Math.max(w, h) < 1024) return "small";
   return "desktop";
 }
 

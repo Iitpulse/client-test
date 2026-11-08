@@ -42,6 +42,8 @@ export interface GateReentry {
   why: ReentryWhy | null;
   /** this tab's sitting closed because the test moved to another device or tab */
   replacedHere: boolean;
+  /** replacedHere: when the test moved, and the kind of device it is open on now */
+  moved?: { at: IsoDateTime; deviceKind: DeviceKind | null } | null;
   request: ReentryRequestView | null;
   facts: { lastSaveAt: IsoDateTime | null; minutesSinceSave: number | null; endReason: string | null; leftAt: IsoDateTime | null; deviceKind: DeviceKind | null; previousDeviceKind: DeviceKind | null };
   pollSeconds: number;

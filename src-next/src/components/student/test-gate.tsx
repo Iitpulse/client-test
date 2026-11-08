@@ -123,8 +123,8 @@ function gateFixture(state: string): (StudentGateResponse & { _client?: "unsuppo
       const attempt = { startedAt: iso(now - 74 * 60e3), expiresAt: iso(now + 66 * 60e3), answered: 41, total: 75, lastSavedAt: iso(now - (state === "resuming" ? 2 : 9) * 60e3), fullscreenExits: 2, exitsAllowed: 3 };
       const facts = { lastSaveAt: attempt.lastSavedAt, minutesSinceSave: state === "resuming" ? 2 : 18, endReason: null, leftAt: iso(now - 9 * 60e3), deviceKind: (state === "waiting-new-device" ? "phone" : "desktop") as "phone" | "desktop", previousDeviceKind: "desktop" as const };
       const request = { id: "REQ_fx", code: "R7K-42", status: (state === "let-back-in" ? "allowed" : "waiting") as "allowed" | "waiting", why: (state === "waiting-new-device" ? "newDevice" : "tooLate") as "newDevice" | "tooLate", createdAt: iso(now - 5 * 60e3), decidedAt: state === "let-back-in" ? iso(now - 30e3) : null, decidedBy: state === "let-back-in" ? { name: "Neha Verma" } : null, reason: state === "let-back-in" ? "deviceCrashed" : null, extraMinutes: state === "let-back-in" ? 10 : 0, allowUntil: state === "let-back-in" ? iso(now + 14 * 60e3) : null };
-      const decision = state === "resuming" ? "auto" : state === "let-back-in" ? "approved" : state === "moved" ? "staff" : "staff";
-      const reentry = { policy: "crash" as const, minutes: 5, decision: decision as "auto" | "approved" | "staff", how: state === "resuming" ? ("auto" as const) : null, newDevice: state === "waiting-new-device" || state === "moved", why: decision === "staff" ? (state === "waiting-new-device" ? ("newDevice" as const) : state === "moved" ? ("otherDevice" as const) : ("tooLate" as const)) : null, replacedHere: state === "moved", request: decision === "auto" || state === "moved" ? null : request, facts, pollSeconds: 10 };
+      const decision = state === "resuming" || state === "moved" ? "auto" : state === "let-back-in" ? "approved" : "staff";
+      const reentry = { policy: (state === "moved" ? "any" : "crash") as "any" | "crash", minutes: 5, decision: decision as "auto" | "approved" | "staff", how: state === "resuming" ? ("auto" as const) : null, newDevice: state === "waiting-new-device" || state === "moved", why: decision === "staff" ? (state === "waiting-new-device" ? ("newDevice" as const) : state === "moved" ? ("otherDevice" as const) : ("tooLate" as const)) : null, replacedHere: state === "moved", moved: state === "moved" ? { at: iso(now - 7 * 60e3), deviceKind: "desktop" as const } : null, request: decision === "auto" || state === "moved" ? null : request, facts, pollSeconds: 10 };
       return { ...base, state: "resume", test: mock12, attempt: { ...attempt, reentry }, ...(state === "waiting-offline" ? { _client: "offline" as const } : {}) };
     }
     case "not-allowed":
@@ -337,6 +337,21 @@ export function TestGate({ testId }: { testId: string }) {
     const strip = t ? testStrip(t) : null;
     const back = <Btn kind="ghost" label="Back to tests" href="/tests" />;
 
+    // Tests need a laptop or desktop (owner, design-gaps E6; Student-TestGate / Student-ReEntryGate v223): on a phone, a
+    // tablet or a screen whose long side is under 1024 px, every state that could start or resume a test (ready, opens
+    // soon, resume and every coming-back state, also offline or with an unsupported browser) is this one card. Info-only
+    // states (closed, submitted, not your batch, not found) show as usual. The server refuses the start too.
+    const blocked = (data.device ? !data.device.allowed : false) || (!fixture && form !== "desktop");
+    if (blocked && (data.state === "ready" || data.state === "opensSoon" || data.state === "resume")) {
+      const started = data.state === "resume";
+      return (
+        <GateCard tone="grey" icon="device" title="This test needs a laptop or desktop" body={started ? "Tests run only on a laptop or desktop computer. Open this link there to continue; your saved answers are waiting." : "Tests run only on a laptop or desktop computer. Open this link there to start; nothing has started and no time is used."} test={strip} actions={<>
+          <Btn label={copied ? "Link copied" : "Copy test link"} onClick={copyLink} />
+          {back}
+        </>} />
+      );
+    }
+
     if (clientState === "offline" && !(data.state === "resume" && data.attempt?.reentry?.decision === "staff"))
       return (
         <GateCard tone="amber" icon="wifi" title="You're offline" body="Connect to the internet to start. Once you've started, a dropped connection is fine: answers stay on this device and are sent when you're back." test={strip} actions={<>
@@ -369,28 +384,6 @@ export function TestGate({ testId }: { testId: string }) {
     if (institute.suspended && (data.state === "ready" || data.state === "opensSoon")) {
       return (
         <GateCard tone="amber" icon="lock" title="New tests can't start right now" body="Your institute's account is paused. Your results, reviews and practice are still here. Ask your institute when tests will be back." test={strip} actions={back} />
-      );
-    }
-
-    // Tests need a laptop or desktop (owner, design-gaps E6): this device (or the server's view of it) is a phone, a tablet
-    // or a screen too small for the NTA layout. Nothing starts here.
-    const blocked = (data.device ? !data.device.allowed : false) || (!fixture && form !== "desktop");
-    if (blocked && (data.state === "ready" || data.state === "opensSoon" || data.state === "resume")) {
-      const kind = data.device && !data.device.allowed ? data.device.formFactor : form;
-      const started = data.state === "resume";
-      const what = kind === "phone" ? "Phone" : kind === "tablet" ? "Tablet" : "Small screen";
-      return (
-        <GateCard tone="red" icon="device" title="This test needs a laptop or desktop" body={started ? "Your answers are saved. Open the test on a laptop or desktop to carry on; the clock keeps running while you switch." : "Open this test on a laptop or desktop computer, as in the real exam. Nothing has started yet, so you lose no time."} test={strip} actions={<>
-          <Btn label={copied ? "Link copied" : "Copy test link"} onClick={copyLink} />
-          {back}
-        </>}>
-          <Checks items={[
-            { label: what, kind: "no", detail: "Tests are written on a laptop or desktop screen" },
-            { label: "Connection is good", kind: "ok" },
-            { label: `Signed in as ${name ?? "you"}`, kind: "ok" },
-          ]} />
-          {started && data.attempt && <Note>{data.attempt.answered} of {data.attempt.total} answered so far. Sign in on the laptop with the same account or link.</Note>}
-        </GateCard>
       );
     }
 

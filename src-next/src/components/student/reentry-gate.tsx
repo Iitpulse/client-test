@@ -42,7 +42,7 @@ function Btn({ label, onClick, href, kind = "primary", disabled }: { label: stri
   );
 }
 
-function Progress({ answered, total, savedAt, desktop }: { answered: number; total: number; savedAt: string | null; desktop: boolean | null }) {
+function Progress({ answered, total, savedAt, desktop, savedLine }: { answered: number; total: number; savedAt: string | null; desktop: boolean | null; savedLine?: string }) {
   const pct = total ? Math.round((answered / total) * 100) : 0;
   return (
     <div className="col" style={{ gap: 6 }}>
@@ -50,7 +50,7 @@ function Progress({ answered, total, savedAt, desktop }: { answered: number; tot
         <span className="sm" style={{ fontWeight: 600 }}>
           {answered} of {total} answered
         </span>
-        {savedAt && <span className="xs muted">{desktop === false ? "Saved" : "All saved · last at"} {ist(savedAt).time}</span>}
+        {savedLine ? <span className="xs muted">{savedLine}</span> : savedAt && <span className="xs muted">{desktop === false ? "Saved" : "All saved · last at"} {ist(savedAt).time}</span>}
       </div>
       <div className="bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Answered">
         <i style={{ width: `${pct}%` }} />
@@ -165,15 +165,22 @@ export function ReentryCard({ data, strip, now, desktop, online, moved, checkedA
   const back = <Btn kind="ghost" label="Back to tests" href="/tests" />;
   const progress = <Progress answered={a.answered} total={a.total} savedAt={a.lastSavedAt} desktop={desktop} />;
 
-  // The test moved to another device or tab (this tab's saves were refused)
+  // The test moved to another device or tab (this tab's saves were refused): Student-ReEntryGate "moved to another
+  // device" (v223). Under "any time" opening it here again moves it back; otherwise staff decide.
   if ((moved || re.replacedHere) && re.decision !== "continue" && re.decision !== "approved") {
     const tab = !re.newDevice;
+    const at = re.moved?.at ? ist(re.moved.at).time : null;
+    const where = deviceWord(re.moved?.deviceKind ?? "desktop");
     return (
       <GateCard
-        tone="grey"
+        tone="navy"
         icon="device"
         title={tab ? "This test is open in another tab" : "This test moved to another device"}
-        body={tab ? "You carried on in another tab, so this one stopped saving. Your answers are safe: continue there." : "You carried on on another device, so this one stopped saving. Your answers are safe: continue there."}
+        body={
+          tab
+            ? "You carried on in another tab, so this one has stopped. Nothing you answered here is lost, because it was saved before the move."
+            : `You opened ${strip?.name ?? "this test"} on another ${where}${at ? ` at ${at}` : ""}, so it continues there. This one has stopped; nothing you answered here is lost, because it was saved before the move.`
+        }
         test={strip}
         actions={
           <>
@@ -182,8 +189,9 @@ export function ReentryCard({ data, strip, now, desktop, online, moved, checkedA
           </>
         }
       >
-        {progress}
-        <Facts items={[{ k: "Time left", v: `${hm(left)} · still running` }, ...exits]} />
+        <Progress answered={a.answered} total={a.total} savedAt={a.lastSavedAt} desktop={desktop} savedLine={at ? `All saved · moved with you at ${at}` : undefined} />
+        <Facts items={[...(tab ? [] : [{ k: "Now on", v: `Another ${where}${at ? ` · since ${at}` : ""}` }]), { k: "Time left", v: `${hm(left)} · still running` }]} />
+        <Note tone="warn">{re.policy === "any" ? "Wasn't you? Tell your invigilator now. Only one device can have the test open at a time; opening it here again moves it back." : "Wasn't you? Tell your invigilator now. Only one device can have the test open at a time."}</Note>
       </GateCard>
     );
   }

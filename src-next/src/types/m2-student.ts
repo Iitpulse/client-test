@@ -361,6 +361,8 @@ export interface ReviewQuestion extends QuestionCell {
   averageTimeSeconds: number | null;
   /** Share of submissions that got it fully right; null when fewer than 5 submissions */
   correctPercent: number | null;
+  /** M10: "IIT-PULSE library" for a shared library question when the institute shows the source; null / absent otherwise */
+  librarySource?: "IIT-PULSE library" | null;
 }
 
 export interface ReviewList {

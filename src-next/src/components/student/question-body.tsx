@@ -5,6 +5,7 @@ import { MathText } from "@iitpulse/ui";
 import type { ReviewQuestion } from "@/types/m2-student";
 import { reviewExtras } from "@/types/m6-review";
 import { markingRule, MatrixReview, NumericalAnswer, ownType, pick, type Lang } from "./review-parts";
+import { LibrarySource } from "./library-source";
 
 export type { Lang } from "./review-parts";
 
@@ -44,6 +45,7 @@ export function QuestionBody({ q, lang, compact }: { q: ReviewQuestion; lang: La
       ) : (
         <NumericalAnswer q={q} compact={compact} />
       )}
+      <LibrarySource source={q.librarySource} />
     </>
   );
 }

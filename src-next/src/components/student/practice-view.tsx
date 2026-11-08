@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Doodle, InkUnderline, MathText, Stamp } from "@iitpulse/ui";
+import { LibrarySource } from "./library-source";
 import { m4Api, m4Keys, useProfile, useStartPractice } from "@/lib/m4-api";
 import { StudentApiError } from "@/lib/student-api";
 import { useServerClock } from "@/lib/server-clock";
@@ -412,6 +413,7 @@ function SetView({ setId, fxName }: { setId: string; fxName: PracticeFxName | nu
                 ) : (
                   <NumberAnswer q={question} ans={ans} onAns={setAns} onEnter={doCheck} />
                 )}
+                <LibrarySource source={question.librarySource} />
                 {checked && out && (
                   <div className="col fade gap-3 max-md:gap-2.5">
                     <span className={`badge self-start ${out.badge}`}>

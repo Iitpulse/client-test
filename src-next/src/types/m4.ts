@@ -96,6 +96,8 @@ export interface PracticeQuestion {
   options: Array<{ id: string; key: string; en: RichText; hi: RichText | null }>;
   /** Filled once the student has checked this question */
   checked: PracticeCheck | null;
+  /** M10: "IIT-PULSE library" for a shared library question when the institute shows the source; null / absent otherwise */
+  librarySource?: "IIT-PULSE library" | null;
 }
 
 /** POST /tests/student/practice/:setId/questions/:n/check, body { optionIds?: string[]; value?: number } */

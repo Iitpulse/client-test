@@ -25,6 +25,7 @@ import { StateIcon } from "./state-icons";
 import { useInstituteState } from "@/components/brand/institute-notices";
 import { Skel } from "./common";
 import { ReentryCard, ReentryEndCard, reentryCardApplies } from "./reentry-gate";
+import { formFactor, type FormFactor } from "@/lib/reentry";
 
 /* ───────────── formatting (IST) ───────────── */
 
@@ -132,6 +133,11 @@ function gateFixture(state: string): (StudentGateResponse & { _client?: "unsuppo
       return { ...base, state: "submitted", test: mock12, submission: { submittedAt: iso(now - 60e3), receiptId: "TR-4C1D-91B7", resultVisible: false, resultAt: null, resultHidden: false, endedBy: "timeUpAway", answered: 41 } };
     case "unsupported":
       return { ...base, state: "ready", test: mock12, _client: "unsupported" };
+    // tests need a laptop or desktop (owner, design-gaps E6): the batch 5 device check, now a block
+    case "laptop-only":
+      return { ...base, state: "ready", test: mock12, device: { allowed: false, formFactor: "phone" } };
+    case "laptop-only-resume":
+      return { ...base, state: "resume", test: mock12, device: { allowed: false, formFactor: "phone" }, attempt: { startedAt: iso(now - 73 * 60e3), expiresAt: iso(now + 107 * 60e3), answered: 41, total: 75, lastSavedAt: iso(now - 4 * 60e3), fullscreenExits: 1, exitsAllowed: 3 } };
     case "offline":
       return { ...base, state: "ready", test: mock12, _client: "offline" };
   }
@@ -224,12 +230,14 @@ export function TestGate({ testId }: { testId: string }) {
   const [copied, setCopied] = useState(false);
   // re-entry: ?moved=1 (this tab's save was refused because the test moved on); "Ask to continue here" clears it
   const [moved, setMoved] = useState(false);
+  const [form, setForm] = useState<FormFactor>("desktop");
 
   useEffect(() => {
     const f = fixtureParam();
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only facts (location, user agent) read once after mount
     if (f) setFixture(gateFixture(f));
     setMoved(new URLSearchParams(window.location.search).get("moved") === "1");
+    setForm(formFactor());
     setBrowser(detectBrowser());
     setFsOk(fullscreenAvailable());
   }, []);
@@ -293,7 +301,8 @@ export function TestGate({ testId }: { testId: string }) {
         asked.current = false;
       });
   }, [fixture, testId, query]);
-  const blockedByMove = moved || !!reentry?.replacedHere;
+  // never from a phone or tablet: tests need a laptop or desktop
+  const blockedByMove = moved || !!reentry?.replacedHere || form !== "desktop" || data?.device?.allowed === false;
   useEffect(() => {
     if (reentry?.decision === "staff" && !reentry.request && online && !blockedByMove && !asked.current) ask();
   }, [reentry, online, blockedByMove, ask]);
@@ -360,6 +369,28 @@ export function TestGate({ testId }: { testId: string }) {
     if (institute.suspended && (data.state === "ready" || data.state === "opensSoon")) {
       return (
         <GateCard tone="amber" icon="lock" title="New tests can't start right now" body="Your institute's account is paused. Your results, reviews and practice are still here. Ask your institute when tests will be back." test={strip} actions={back} />
+      );
+    }
+
+    // Tests need a laptop or desktop (owner, design-gaps E6): this device (or the server's view of it) is a phone, a tablet
+    // or a screen too small for the NTA layout. Nothing starts here.
+    const blocked = (data.device ? !data.device.allowed : false) || (!fixture && form !== "desktop");
+    if (blocked && (data.state === "ready" || data.state === "opensSoon" || data.state === "resume")) {
+      const kind = data.device && !data.device.allowed ? data.device.formFactor : form;
+      const started = data.state === "resume";
+      const what = kind === "phone" ? "Phone" : kind === "tablet" ? "Tablet" : "Small screen";
+      return (
+        <GateCard tone="red" icon="device" title="This test needs a laptop or desktop" body={started ? "Your answers are saved. Open the test on a laptop or desktop to carry on; the clock keeps running while you switch." : "Open this test on a laptop or desktop computer, as in the real exam. Nothing has started yet, so you lose no time."} test={strip} actions={<>
+          <Btn label={copied ? "Link copied" : "Copy test link"} onClick={copyLink} />
+          {back}
+        </>}>
+          <Checks items={[
+            { label: what, kind: "no", detail: "Tests are written on a laptop or desktop screen" },
+            { label: "Connection is good", kind: "ok" },
+            { label: `Signed in as ${name ?? "you"}`, kind: "ok" },
+          ]} />
+          {started && data.attempt && <Note>{data.attempt.answered} of {data.attempt.total} answered so far. Sign in on the laptop with the same account or link.</Note>}
+        </GateCard>
       );
     }
 
@@ -472,7 +503,7 @@ export function TestGate({ testId }: { testId: string }) {
         );
     }
     // `now` is read for the countdown and time left
-  }, [data, clientState, browser, desktop, fsOk, name, copied, now, opensIn, testId, institute.suspended, moved, receivedAt, online, ask, start]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data, clientState, browser, desktop, fsOk, name, copied, now, opensIn, testId, institute.suspended, moved, receivedAt, online, ask, start, form, fixture]); // eslint-disable-line react-hooks/exhaustive-deps
 
   let content: React.ReactNode = body;
   if (!data) {

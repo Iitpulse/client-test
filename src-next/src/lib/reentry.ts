@@ -55,15 +55,33 @@ export function rememberSitting(testId: string, id: string | null | undefined): 
   }
 }
 
-/** The fields every start, save and submit carries */
-export function sittingFields(testId: string): { device?: string; sittingId?: string } {
+/**
+ * Tests are written on a laptop or desktop only (owner, 8 Nov 2026, design-gaps E6). This device's form factor: a phone
+ * or tablet by its user agent (an iPad asking for the desktop site: a Mac with touch), else "small" when the screen
+ * is too small for the NTA layout (shorter side under 600 or longer side under 1024 CSS px). The server checks the
+ * user agent too (POST start: 403 DEVICE_NOT_ALLOWED).
+ */
+export type FormFactor = "desktop" | "tablet" | "phone" | "small";
+export function formFactor(): FormFactor {
+  if (typeof window === "undefined") return "desktop";
+  const ua = navigator.userAgent;
+  if (/iPhone|iPod|Android.*Mobile|Mobi/.test(ua)) return "phone";
+  if (/iPad|Tablet|Android/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "tablet";
+  const w = window.screen?.width || window.innerWidth;
+  const h = window.screen?.height || window.innerHeight;
+  if (Math.max(w, h) < 1024 || Math.min(w, h) < 600) return "small";
+  return "desktop";
+}
+
+/** The fields every start, save and submit carries (and the gate's query) */
+export function sittingFields(testId: string): { device?: string; sittingId?: string; formFactor: FormFactor } {
   const device = deviceKey();
   const sittingId = sittingOf(testId);
-  return { ...(device ? { device } : {}), ...(sittingId ? { sittingId } : {}) };
+  return { ...(device ? { device } : {}), ...(sittingId ? { sittingId } : {}), formFactor: formFactor() };
 }
 
 /** 409 answers that mean "this tab may not write the test now": go to the gate, which says why */
-export const REENTRY_CODES = new Set(["REENTRY_REQUIRED", "SITTING_CLOSED"]);
+export const REENTRY_CODES = new Set(["REENTRY_REQUIRED", "SITTING_CLOSED", "DEVICE_NOT_ALLOWED"]);
 
 export function gateUrl(testId: string, moved = false): string {
   return `/tests/${encodeURIComponent(testId)}/start${moved ? "?moved=1" : ""}`;

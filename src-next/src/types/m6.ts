@@ -59,6 +59,8 @@ export interface StudentGateResponse {
   submission: { submittedAt: IsoDateTime; receiptId: string; resultVisible: boolean; resultAt: IsoDateTime | null; resultHidden: boolean; endedBy?: "reentryDenied" | "timeUpAway" | null; answered?: number } | null;
   fullscreenPolicy: FullscreenPolicy;
   reminderEmailOn: boolean;
+  /** tests need a laptop or desktop (the server's view of this device; api-tests docs/reentry-api.md) */
+  device?: { allowed: boolean; formFactor: "desktop" | "tablet" | "phone" | "small" };
 }
 
 /* Exam UI template v2 as the exam app gets it (StudentExamTemplate in api-ai src/contracts/m6.ts) */
